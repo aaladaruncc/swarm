@@ -33,3 +33,49 @@ We have custom .cursorrules for this project. It'll help quite a bit with writin
 ### Run on Local
 
 To run on a local browser, add your API keys to .env and change `env: "LOCAL"` to `env: "BROWSERBASE"` in [stagehand.config.ts](stagehand.config.ts).
+
+## 🧪 Running the User Test Agent
+
+The project includes a user testing agent that simulates real users browsing a website and generates comprehensive UX feedback reports.
+
+### Basic Usage
+
+```bash
+npm test
+```
+
+This runs the test against the default URL with the first persona (Maria).
+
+### Custom URL and Persona
+
+```bash
+npm test -- <URL> <persona-index>
+```
+
+**Examples:**
+
+```bash
+# Test a specific URL with default persona
+npm test -- https://your-website.com
+
+# Test with a specific persona (0, 1, or 2)
+npm test -- https://your-website.com 1
+```
+
+### Available Personas
+
+| Index | Name  | Profile |
+|-------|-------|---------|
+| 0 | Maria | 34yo teacher from Brazil, beginner tech user |
+| 1 | James | 62yo retired factory worker, beginner tech user |
+| 2 | Priya | 28yo software engineer from India, advanced tech user |
+
+### Output
+
+After running a test, you'll find the reports in the `sessions/<timestamp>/` folder:
+
+- `thoughts-log.md` - Live thoughts captured during exploration
+- `ux-report.md` - Comprehensive UX analysis
+- `session-report.md` - Detailed session report
+- `report-data.json` - Raw data for further processing
+- `screenshots/` - Screenshots captured during the session
