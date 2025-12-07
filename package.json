@@ -1,0 +1,19 @@
+{
+  "name": "my-stagehand-app",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "tsx index.ts",
+    "test": "tsx user-test-agent.ts"
+  },
+  "dependencies": {
+    "@browserbasehq/stagehand": "latest",
+    "dotenv": "^16.4.7",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.0.0",
+    "@types/node": "^22.0.0"
+  }
+}
