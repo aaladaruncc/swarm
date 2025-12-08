@@ -1,19 +1,24 @@
 {
-  "name": "my-stagehand-app",
+  "name": "ux-testing-platform",
+  "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc",
-    "start": "tsx index.ts",
-    "test": "tsx user-test-agent.ts"
-  },
-  "dependencies": {
-    "@browserbasehq/stagehand": "latest",
-    "dotenv": "^16.4.7",
-    "zod": "^3.24.0"
+    "dev": "pnpm --parallel -r run dev",
+    "dev:api": "pnpm --filter @ux-testing/api dev",
+    "dev:web": "pnpm --filter @ux-testing/web dev",
+    "build": "pnpm -r run build",
+    "db:generate": "pnpm --filter @ux-testing/db generate",
+    "db:push": "pnpm --filter @ux-testing/db push",
+    "db:studio": "pnpm --filter @ux-testing/db studio",
+    "test:agent": "pnpm --filter @ux-testing/api test:agent",
+    "lint": "pnpm -r run lint",
+    "clean": "pnpm -r run clean && rm -rf node_modules"
   },
   "devDependencies": {
-    "tsx": "^4.19.2",
-    "typescript": "^5.0.0",
-    "@types/node": "^22.0.0"
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
   }
 }

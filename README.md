@@ -1,81 +1,187 @@
-# 🤘 Welcome to Stagehand!
+# 🧪 UX Testing Platform
 
-Hey! This is a project built with [Stagehand](https://github.com/browserbase/stagehand).
+AI-powered user experience testing with realistic personas. Test your website with simulated users and get actionable UX feedback in minutes.
 
-You can build your own web agent using: `npx create-browser-app`!
+## Architecture
 
-## Setting the Stage
-
-Stagehand is an SDK for automating browsers. It's built on top of [Playwright](https://playwright.dev/) and provides a higher-level API for better debugging and AI fail-safes.
-
-## Curtain Call
-
-Get ready for a show-stopping development experience. Just run:
-
-```bash
-npm start
+```
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│  Frontend       │────▶│  Backend API     │────▶│  Neon Database  │
+│  (Next.js)      │     │  (Hono)          │     │  (PostgreSQL)   │
+│  Vercel         │     │  Railway         │     │                 │
+└─────────────────┘     └────────┬─────────┘     └─────────────────┘
+                                 │
+                                 ▼
+                        ┌────────────────┐
+                        │  Browserbase   │
+                        │  (Cloud Browser)│
+                        └────────────────┘
 ```
 
-## What's Next?
+## Project Structure
 
-### Add your API keys
-
-Required API keys/environment variables are in the `.env.example` file. Copy it to `.env` and add your API keys.
-
-```bash
-cp .env.example .env && nano .env # Add your API keys to .env
+```
+├── apps/
+│   ├── api/                 # Hono backend API
+│   │   ├── src/
+│   │   │   ├── index.ts     # Entry point
+│   │   │   ├── routes/      # API routes
+│   │   │   ├── lib/         # Auth, agent logic
+│   │   │   └── db/          # Database client
+│   │   └── Dockerfile
+│   │
+│   └── web/                 # Next.js frontend
+│       └── src/
+│           ├── app/         # Pages
+│           ├── components/  # UI components
+│           └── lib/         # Auth client, API
+│
+├── packages/
+│   └── db/                  # Shared database schema (Drizzle)
+│
+├── pnpm-workspace.yaml
+└── package.json
 ```
 
-### Custom .cursorrules
+## Getting Started
 
-We have custom .cursorrules for this project. It'll help quite a bit with writing Stagehand easily.
+### Prerequisites
 
-### Run on Local
+- Node.js 18+
+- pnpm 8+
+- Docker (for local Postgres)
+- Accounts on:
+  - [Browserbase](https://browserbase.com) (cloud browser)
+  - [Anthropic](https://console.anthropic.com) (AI model)
 
-To run on a local browser, add your API keys to .env and change `env: "LOCAL"` to `env: "BROWSERBASE"` in [stagehand.config.ts](stagehand.config.ts).
-
-## 🧪 Running the User Test Agent
-
-The project includes a user testing agent that simulates real users browsing a website and generates comprehensive UX feedback reports.
-
-### Basic Usage
-
-```bash
-npm test
-```
-
-This runs the test against the default URL with the first persona (Maria).
-
-### Custom URL and Persona
+### 1. Install Dependencies
 
 ```bash
-npm test -- <URL> <persona-index>
+pnpm install
 ```
 
-**Examples:**
+### 2. Start Local Postgres
 
 ```bash
-# Test a specific URL with default persona
-npm test -- https://your-website.com
-
-# Test with a specific persona (0, 1, or 2)
-npm test -- https://your-website.com 1
+docker compose up -d
 ```
 
-### Available Personas
+This starts a Postgres container at `localhost:5432`.
 
-| Index | Name  | Profile |
-|-------|-------|---------|
+### 3. Set Up Environment Variables
+
+```bash
+# Copy example env files
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env.local
+```
+
+Edit `apps/api/.env` with your credentials:
+
+```env
+# Database (Local Postgres - default works out of the box)
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ux_testing
+
+# Authentication
+BETTER_AUTH_SECRET=your-secret-key  # Generate: openssl rand -base64 32
+BETTER_AUTH_URL=http://localhost:8080
+
+# Browserbase
+BROWSERBASE_API_KEY=...
+BROWSERBASE_PROJECT_ID=...
+
+# Anthropic
+ANTHROPIC_API_KEY=...
+
+# Frontend URL (for CORS)
+FRONTEND_URL=http://localhost:3000
+```
+
+### 4. Set Up Database
+
+```bash
+# Push schema to Postgres
+pnpm db:push
+```
+
+### 5. Run Development Servers
+
+```bash
+# Run both frontend and backend
+pnpm dev
+
+# Or run separately:
+pnpm dev:api   # Backend on http://localhost:8080
+pnpm dev:web   # Frontend on http://localhost:3000
+```
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/*` | Better Auth endpoints |
+| GET | `/api/tests` | List user's tests |
+| POST | `/api/tests` | Create a new test |
+| GET | `/api/tests/:id` | Get test details + report |
+| GET | `/api/tests/:id/screenshots` | Get screenshots |
+
+## Deployment
+
+### Backend (Railway)
+
+1. Connect your GitHub repo to Railway
+2. Set the root directory to `apps/api`
+3. Add environment variables
+4. Deploy with the included Dockerfile
+
+### Frontend (Vercel)
+
+1. Import your GitHub repo to Vercel
+2. Set the root directory to `apps/web`
+3. Add `NEXT_PUBLIC_API_URL` pointing to your Railway backend
+4. Deploy
+
+### Database
+
+**Local Development:**
+```bash
+docker compose up -d    # Start Postgres
+pnpm db:push           # Sync schema
+```
+
+**Production (Neon):**
+1. Create a new project at [neon.tech](https://neon.tech)
+2. Copy the connection string to `DATABASE_URL`
+3. Run `pnpm db:push` to sync the schema
+
+## Available Personas
+
+| Index | Name | Profile |
+|-------|------|---------|
 | 0 | Maria | 34yo teacher from Brazil, beginner tech user |
-| 1 | James | 62yo retired factory worker, beginner tech user |
+| 1 | James | 62yo retired worker from US, beginner tech user |
 | 2 | Priya | 28yo software engineer from India, advanced tech user |
 
-### Output
+## Tech Stack
 
-After running a test, you'll find the reports in the `sessions/<timestamp>/` folder:
+- **Frontend**: Next.js 14, React, Tailwind CSS
+- **Backend**: Hono, Better Auth
+- **Database**: PostgreSQL (local or Neon), Drizzle ORM
+- **Browser Automation**: Stagehand, Browserbase
+- **AI**: Claude (Anthropic)
 
-- `thoughts-log.md` - Live thoughts captured during exploration
-- `ux-report.md` - Comprehensive UX analysis
-- `session-report.md` - Detailed session report
-- `report-data.json` - Raw data for further processing
-- `screenshots/` - Screenshots captured during the session
+## Scripts
+
+```bash
+pnpm dev          # Run all apps in dev mode
+pnpm dev:api      # Run backend only
+pnpm dev:web      # Run frontend only
+pnpm build        # Build all apps
+pnpm db:push      # Push schema to database
+pnpm db:studio    # Open Drizzle Studio
+pnpm test:agent   # Run agent CLI directly
+```
+
+## License
+
+MIT
