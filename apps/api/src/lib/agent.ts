@@ -57,7 +57,7 @@ function generateSystemPrompt(persona: UserPersona, targetUrl: string): string {
 
 PROFILE:
 - Tech level: ${persona.techSavviness}
-- Goal: ${persona.financialGoal}
+- Goal: ${persona.primaryGoal}
 ${persona.painPoints.length > 0 ? `- Frustrations: ${persona.painPoints.slice(0, 2).join(", ")}` : ""}
 
 BEHAVIOR:
