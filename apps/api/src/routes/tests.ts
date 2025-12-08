@@ -134,6 +134,8 @@ testsRoutes.get("/personas", async (c) => {
 
 // Background test runner
 async function runTestInBackground(testRunId: string, targetUrl: string, personaIndex: number) {
+  console.log(`[${testRunId}] Starting background test...`);
+  
   try {
     // Update status to running
     await db
@@ -144,12 +146,16 @@ async function runTestInBackground(testRunId: string, targetUrl: string, persona
       })
       .where(eq(schema.testRuns.id, testRunId));
 
+    console.log(`[${testRunId}] Status set to running, starting agent...`);
+
     // Run the test
     const result = await runUserTestAgent({
       targetUrl,
       personaIndex,
       onProgress: (msg) => console.log(`[${testRunId}] ${msg}`),
     });
+
+    console.log(`[${testRunId}] Agent completed, saving report...`);
 
     // Save the report
     await db.insert(schema.reports).values({
@@ -164,15 +170,23 @@ async function runTestInBackground(testRunId: string, targetUrl: string, persona
       totalDuration: result.totalDuration,
     });
 
-    // Save screenshots
+    console.log(`[${testRunId}] Report saved, saving ${result.screenshots.length} screenshots...`);
+
+    // Save screenshots (handle errors individually)
     for (const screenshot of result.screenshots) {
-      await db.insert(schema.screenshots).values({
-        testRunId,
-        stepNumber: screenshot.stepNumber,
-        description: screenshot.description,
-        base64Data: screenshot.base64Data,
-      });
+      try {
+        await db.insert(schema.screenshots).values({
+          testRunId,
+          stepNumber: screenshot.stepNumber,
+          description: screenshot.description,
+          base64Data: screenshot.base64Data,
+        });
+      } catch (screenshotError) {
+        console.error(`[${testRunId}] Failed to save screenshot ${screenshot.stepNumber}:`, screenshotError);
+      }
     }
+
+    console.log(`[${testRunId}] Updating status to completed...`);
 
     // Update status to completed
     await db
@@ -183,18 +197,24 @@ async function runTestInBackground(testRunId: string, targetUrl: string, persona
         browserbaseSessionId: result.browserbaseSessionId,
       })
       .where(eq(schema.testRuns.id, testRunId));
+
+    console.log(`[${testRunId}] ✅ Test completed successfully!`);
   } catch (error) {
-    console.error(`[${testRunId}] Test failed:`, error);
+    console.error(`[${testRunId}] ❌ Test failed:`, error);
 
     // Update status to failed
-    await db
-      .update(schema.testRuns)
-      .set({
-        status: "failed",
-        completedAt: new Date(),
-        errorMessage: error instanceof Error ? error.message : "Unknown error",
-      })
-      .where(eq(schema.testRuns.id, testRunId));
+    try {
+      await db
+        .update(schema.testRuns)
+        .set({
+          status: "failed",
+          completedAt: new Date(),
+          errorMessage: error instanceof Error ? error.message : "Unknown error",
+        })
+        .where(eq(schema.testRuns.id, testRunId));
+    } catch (dbError) {
+      console.error(`[${testRunId}] Failed to update status to failed:`, dbError);
+    }
   }
 }
 
