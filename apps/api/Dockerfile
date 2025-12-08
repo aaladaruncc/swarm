@@ -1,8 +1,8 @@
 # Build stage
 FROM node:20-slim AS builder
 
-# Install pnpm
-RUN npm install -g pnpm
+# Install specific pnpm version
+RUN npm install -g pnpm@10.24.0
 
 WORKDIR /app
 
@@ -12,8 +12,8 @@ COPY pnpm-lock.yaml* ./
 COPY packages/db/package.json ./packages/db/
 COPY apps/api/package.json ./apps/api/
 
-# Install dependencies (use frozen-lockfile if lockfile exists, otherwise generate)
-RUN if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else pnpm install; fi
+# Install dependencies
+RUN pnpm install --no-frozen-lockfile
 
 # Copy source code
 COPY packages/db ./packages/db
@@ -27,8 +27,8 @@ RUN pnpm --filter @ux-testing/api build
 # Production stage
 FROM node:20-slim AS runner
 
-# Install pnpm
-RUN npm install -g pnpm
+# Install specific pnpm version
+RUN npm install -g pnpm@10.24.0
 
 WORKDIR /app
 
@@ -38,7 +38,7 @@ COPY packages/db/package.json ./packages/db/
 COPY apps/api/package.json ./apps/api/
 
 # Install production dependencies only
-RUN if [ -f pnpm-lock.yaml ]; then pnpm install --prod --frozen-lockfile; else pnpm install --prod; fi
+RUN pnpm install --prod --no-frozen-lockfile
 
 # Copy built files
 COPY --from=builder /app/packages/db ./packages/db
