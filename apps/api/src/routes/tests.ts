@@ -16,7 +16,7 @@ const testsRoutes = new Hono<{ Variables: Variables }>();
 // Create test request schema
 const createTestSchema = z.object({
   targetUrl: z.string().url(),
-  personaIndex: z.number().min(0).max(2).optional().default(0),
+  personaIndex: z.number().min(0).max(9).optional().default(0),
 });
 
 // GET /tests - List all tests for the user
