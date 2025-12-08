@@ -14,11 +14,16 @@ export function SessionReplayPlayer({ testId, browserbaseSessionId }: SessionRep
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const isInitializing = useRef(false);
 
   useEffect(() => {
     let mounted = true;
 
     async function loadRecording() {
+      // Prevent multiple simultaneous initializations
+      if (isInitializing.current) return;
+      isInitializing.current = true;
+
       try {
         setLoading(true);
         setError(null);
@@ -26,10 +31,31 @@ export function SessionReplayPlayer({ testId, browserbaseSessionId }: SessionRep
         // Fetch the recording from our API
         const { recording } = await getSessionRecording(testId);
 
-        if (!mounted) return;
+        if (!mounted) {
+          isInitializing.current = false;
+          return;
+        }
 
-        if (!recording || recording.length === 0) {
+        // Validate recording data
+        if (!recording || !Array.isArray(recording) || recording.length === 0) {
           setError("No recording data available");
+          isInitializing.current = false;
+          setLoading(false);
+          return;
+        }
+
+        // Validate that recording events have required fields
+        const hasValidEvents = recording.every(event => 
+          event && 
+          typeof event === 'object' && 
+          'type' in event && 
+          'timestamp' in event
+        );
+
+        if (!hasValidEvents) {
+          setError("Invalid recording data format");
+          isInitializing.current = false;
+          setLoading(false);
           return;
         }
 
@@ -50,32 +76,81 @@ export function SessionReplayPlayer({ testId, browserbaseSessionId }: SessionRep
           });
         }
 
-        if (!mounted || !containerRef.current) return;
+        if (!mounted || !containerRef.current) {
+          isInitializing.current = false;
+          return;
+        }
 
-        // Clear any existing player
-        containerRef.current.innerHTML = "";
+        // Properly destroy existing player before creating new one
+        if (playerRef.current) {
+          try {
+            if (typeof playerRef.current.$destroy === 'function') {
+              playerRef.current.$destroy();
+            }
+          } catch (e) {
+            console.warn("Error destroying player:", e);
+          }
+          playerRef.current = null;
+        }
 
-        // Initialize the player
-        playerRef.current = new rrwebPlayer.default({
-          target: containerRef.current,
-          props: {
-            events: recording,
-            width: containerRef.current.clientWidth,
-            height: Math.min(containerRef.current.clientWidth * 0.5625, 576), // 16:9 aspect ratio, max 576px
-            skipInactive: true,
-            showController: true,
-            autoPlay: false,
-            speedOption: [1, 2, 4, 8],
-          },
-        });
+        // Clear container
+        if (containerRef.current) {
+          containerRef.current.innerHTML = "";
+        }
 
-        setLoading(false);
+        // Initialize the player with error handling
+        try {
+          // Suppress rrweb-player's internal console errors temporarily
+          const originalError = console.error;
+          const errors: any[] = [];
+          console.error = (...args: any[]) => {
+            errors.push(args);
+            // Only show non-rrweb errors
+            if (!args[0]?.toString().includes('rrweb') && 
+                !args[0]?.toString().includes('replayer has been destroyed')) {
+              originalError(...args);
+            }
+          };
+
+          playerRef.current = new rrwebPlayer.default({
+            target: containerRef.current,
+            props: {
+              events: recording,
+              width: containerRef.current.clientWidth,
+              height: Math.min(containerRef.current.clientWidth * 0.5625, 576), // 16:9 aspect ratio, max 576px
+              skipInactive: true,
+              showController: true,
+              autoPlay: false,
+              speedOption: [1, 2, 4, 8],
+            },
+          });
+
+          // Restore console.error
+          console.error = originalError;
+
+          // If there were critical errors during initialization, log them
+          const criticalErrors = errors.filter(e => 
+            e[0]?.toString().includes('Cannot read properties')
+          );
+          if (criticalErrors.length > 0) {
+            console.warn('Player initialized with warnings:', criticalErrors);
+          }
+        } catch (playerError) {
+          console.error("Error creating player:", playerError);
+          throw new Error("Failed to initialize replay player. The recording format may be incompatible.");
+        }
+
+        if (mounted) {
+          setLoading(false);
+        }
       } catch (err) {
         if (mounted) {
           console.error("Failed to load session recording:", err);
           setError(err instanceof Error ? err.message : "Failed to load recording");
           setLoading(false);
         }
+      } finally {
+        isInitializing.current = false;
       }
     }
 
@@ -83,7 +158,17 @@ export function SessionReplayPlayer({ testId, browserbaseSessionId }: SessionRep
 
     return () => {
       mounted = false;
+      isInitializing.current = false;
+      
+      // Properly cleanup player on unmount
       if (playerRef.current) {
+        try {
+          if (typeof playerRef.current.$destroy === 'function') {
+            playerRef.current.$destroy();
+          }
+        } catch (e) {
+          console.warn("Error destroying player on unmount:", e);
+        }
         playerRef.current = null;
       }
     };
@@ -106,26 +191,41 @@ export function SessionReplayPlayer({ testId, browserbaseSessionId }: SessionRep
 
   if (error) {
     return (
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg shadow p-6 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold mb-2">🎬 Session Replay</h2>
-            <p className="text-purple-100 mb-4">
-              Unable to load embedded replay. You can still view it on Browserbase.
-            </p>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-white/10 rounded-lg">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h2 className="text-xl font-bold mb-2">🎬 Session Replay</h2>
+              <p className="text-purple-100 mb-1">
+                Unable to load embedded replay player.
+              </p>
+              <p className="text-purple-200 text-sm">
+                {error}
+              </p>
+            </div>
           </div>
         </div>
-        <a
-          href={`https://browserbase.com/sessions/${browserbaseSessionId}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-white text-purple-600 rounded-lg hover:bg-purple-50 transition-colors font-medium"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-          </svg>
-          View on Browserbase
-        </a>
+        <div className="p-6 bg-gray-50 dark:bg-gray-900">
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            You can still watch the full session recording directly on Browserbase:
+          </p>
+          <a
+            href={`https://browserbase.com/sessions/${browserbaseSessionId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all font-medium shadow-lg hover:shadow-xl"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            View Full Session on Browserbase
+          </a>
+        </div>
       </div>
     );
   }
