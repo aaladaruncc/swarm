@@ -20,7 +20,8 @@ COPY packages/db ./packages/db
 COPY apps/api ./apps/api
 COPY tsconfig.json ./
 
-# Build the API
+# Build packages in order
+RUN pnpm --filter @ux-testing/db build
 RUN pnpm --filter @ux-testing/api build
 
 # Production stage
@@ -37,13 +38,12 @@ COPY pnpm-lock.yaml* ./
 COPY packages/db/package.json ./packages/db/
 COPY apps/api/package.json ./apps/api/
 
-# Install ALL dependencies (drizzle-orm etc. are runtime deps)
+# Install ALL dependencies
 RUN pnpm install --no-frozen-lockfile
 
-# Copy built files and source (needed for workspace references)
-COPY --from=builder /app/packages/db ./packages/db
+# Copy built files
+COPY --from=builder /app/packages/db/dist ./packages/db/dist
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
-COPY --from=builder /app/apps/api/package.json ./apps/api/
 
 # Set environment
 ENV NODE_ENV=production
