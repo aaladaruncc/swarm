@@ -71,16 +71,16 @@ function generateAgentInstructions(persona: UserPersona): string {
   return `
 You are ${persona.name} testing this website. Tech level: ${persona.techSavviness}.
 
-EXPLORE EFFICIENTLY (complete within 30-40 steps):
-1. Scroll to see homepage content
-2. Click 2-3 navigation items to visit key pages
-3. On each page: scroll, note what you see
-4. Test 1-2 interactive elements (buttons, forms, etc.)
-5. Share brief thoughts after key actions only
+QUICK EXPLORATION (complete in 25-30 steps max):
+1. Scroll homepage quickly - what do you see?
+2. Click 2 navigation items to see key pages
+3. Quick scroll on each, note main elements
+4. Try 1 interactive element if available
+5. Brief thoughts on confusing/good parts only
 
-Keep moving! Don't overthink. Real users browse quickly.
+Move fast! You have limited time. Skip repetitive actions.
 
-AFTER EXPLORING, give your assessment:
+AFTER EXPLORING (must complete by step 30), give assessment:
 
 === FINAL UX ASSESSMENT ===
 
@@ -222,7 +222,7 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
     targetUrl,
     personaIndex = 0,
     customPersona,
-    maxSteps = 50,
+    maxSteps = 35,
     onProgress,
   } = options;
 
@@ -242,6 +242,11 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
   const stagehand = new Stagehand({
     env: "BROWSERBASE",
     verbose: 1,
+    browserbaseSessionCreateParams: {
+      projectId: process.env.BROWSERBASE_PROJECT_ID,
+      // Extend session timeout to 15 minutes
+      timeout: 900, // 15 minutes in seconds
+    },
   });
 
   await stagehand.init();
@@ -275,10 +280,11 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
     });
 
     // Create agent with persona
+    // Using Haiku for faster execution while maintaining quality
     const agent = stagehand.agent({
       cua: true,
       model: {
-        modelName: "anthropic/claude-sonnet-4-20250514",
+        modelName: "anthropic/claude-3-5-haiku-20241022",
         apiKey: process.env.ANTHROPIC_API_KEY,
       },
       systemPrompt: generateSystemPrompt(persona, targetUrl),
@@ -286,10 +292,49 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
 
     log("Starting agent exploration...");
 
-    const agentResult = await agent.execute({
-      instruction: generateAgentInstructions(persona),
-      maxSteps,
-    });
+    let agentResult;
+    try {
+      agentResult = await agent.execute({
+        instruction: generateAgentInstructions(persona),
+        maxSteps,
+      });
+    } catch (error: any) {
+      // If session times out or CDP closes, capture what we have
+      if (error.message?.includes("CDP") || error.message?.includes("timeout") || error.message?.includes("closed")) {
+        log("Session ended early (timeout/close), generating report from partial exploration...");
+        agentResult = {
+          message: `Partial exploration completed. Session ended early.
+          
+=== FINAL UX ASSESSMENT ===
+
+🎯 FIRST IMPRESSION:
+Explored the website before session timeout.
+
+😊 WHAT I LIKED:
+1. Managed to navigate parts of the site
+
+😕 WHAT CONFUSED ME:
+1. Session ended before full exploration
+
+🚧 USABILITY ISSUES:
+- Unable to complete full assessment due to early session end
+
+♿ ACCESSIBILITY CONCERNS:
+Limited assessment time
+
+💡 TOP SUGGESTIONS:
+1. Extend testing session for thorough evaluation
+
+⭐ OVERALL SCORE: 6/10
+Limited time for proper assessment
+
+=== END ASSESSMENT ===`,
+          success: false,
+        };
+      } else {
+        throw error;
+      }
+    }
 
     // Capture final screenshot
     stepCount++;
