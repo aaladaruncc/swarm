@@ -142,15 +142,33 @@ testsRoutes.get("/:id/recording", async (c) => {
       apiKey: process.env.BROWSERBASE_API_KEY!,
     });
 
-    // Get the live view URL using the debug endpoint
-    const debugInfo = await bb.sessions.debug(testRun.browserbaseSessionId);
-
-    return c.json({ 
-      liveViewUrl: debugInfo.debuggerFullscreenUrl,
-      sessionId: testRun.browserbaseSessionId,
-    });
+    // Try to get the live view URL using the debug endpoint
+    try {
+      const debugInfo = await bb.sessions.debug(testRun.browserbaseSessionId);
+      
+      return c.json({ 
+        liveViewUrl: debugInfo.debuggerFullscreenUrl,
+        sessionId: testRun.browserbaseSessionId,
+      });
+    } catch (debugError: any) {
+      // If session is stopped (410), return a fallback viewer URL
+      if (debugError.status === 410 || debugError.error?.message === "Session stopped") {
+        console.log(`Session ${testRun.browserbaseSessionId} has stopped, using fallback viewer`);
+        
+        // Return the Browserbase session page as fallback
+        // This will show the recording on Browserbase's platform
+        return c.json({ 
+          liveViewUrl: `https://www.browserbase.com/sessions/${testRun.browserbaseSessionId}`,
+          sessionId: testRun.browserbaseSessionId,
+          isFallback: true,
+        });
+      }
+      
+      // Re-throw other errors
+      throw debugError;
+    }
   } catch (error) {
-    console.error(`Failed to fetch live view URL for session ${testRun.browserbaseSessionId}:`, error);
+    console.error(`Failed to fetch session viewer for ${testRun.browserbaseSessionId}:`, error);
     return c.json({ 
       error: "Failed to fetch session viewer",
       details: error instanceof Error ? error.message : "Unknown error"

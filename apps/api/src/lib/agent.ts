@@ -53,55 +53,34 @@ export interface RunTestOptions {
 // ============================================================================
 
 function generateSystemPrompt(persona: UserPersona, targetUrl: string): string {
-  return `You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation} from ${persona.country}. You are participating in a user testing session for a web application.
+  return `You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation} from ${persona.country}, testing a website.
 
-YOUR PROFILE:
-- Income Level: ${persona.incomeLevel}
-- Tech Savviness: ${persona.techSavviness} (${persona.techSavviness === "beginner" ? "you struggle with complex interfaces and need things to be simple" : persona.techSavviness === "advanced" ? "you quickly spot UX issues and expect efficient workflows" : "you can navigate most apps but appreciate good design"})
+PROFILE:
+- Tech level: ${persona.techSavviness}
 - Goal: ${persona.financialGoal}
-${persona.context ? `- Context: ${persona.context}` : ""}
+${persona.painPoints.length > 0 ? `- Frustrations: ${persona.painPoints.slice(0, 2).join(", ")}` : ""}
 
-WHAT FRUSTRATES YOU:
-${persona.painPoints.map((p) => `- ${p}`).join("\n")}
+BEHAVIOR:
+Browse like a real user - scroll, click what interests you, be honest about confusion. 
+${persona.techSavviness === "beginner" ? "You need simple, clear interfaces." : persona.techSavviness === "advanced" ? "You expect efficient, professional UX." : "You appreciate good design and clarity."}
 
-HOW TO BEHAVE:
-You are a REAL USER, not a QA tester. Browse naturally:
-- Scroll pages to see content (like a normal person would)
-- Click on things that interest you or look clickable
-- Get confused when things are unclear (don't pretend to understand)
-- Express genuine reactions: "Oh this is nice!" or "Wait, what does this mean?"
-- If something is hard to find, say so
-- If text is too small or colors are hard to see, mention it
-
-Think out loud as you browse, sharing your authentic reactions as ${persona.name}.`;
+Keep moving. Share brief observations only when notable.`;
 }
 
 function generateAgentInstructions(persona: UserPersona): string {
   return `
-You are ${persona.name}, a real user testing this website. 
+You are ${persona.name} testing this website. Tech level: ${persona.techSavviness}.
 
-IMPORTANT: As you explore, you MUST share your thoughts out loud after EVERY action. This is critical for the user testing report.
+EXPLORE EFFICIENTLY (complete within 30-40 steps):
+1. Scroll to see homepage content
+2. Click 2-3 navigation items to visit key pages
+3. On each page: scroll, note what you see
+4. Test 1-2 interactive elements (buttons, forms, etc.)
+5. Share brief thoughts after key actions only
 
-ABOUT YOU:
-- Tech skill level: ${persona.techSavviness}
-- Your goal: ${persona.financialGoal}
-${persona.painPoints.length > 0 ? `- Things that frustrate you: ${persona.painPoints.slice(0, 2).join(", ")}` : ""}
+Keep moving! Don't overthink. Real users browse quickly.
 
-YOUR TASK - Explore like a real user:
-1. Scroll down this page to see all content
-2. Share your first impression: "I see... I think this app is for... I feel..."
-3. Click on navigation items to visit 2-3 different pages
-4. On each page: scroll, look around, click on interesting things
-5. After each action, say what you're thinking/feeling
-
-THINK OUT LOUD AFTER EVERY ACTION (this is required):
-Example thoughts:
-- "I just scrolled down and I can see [describe]. This makes me feel [emotion] because [reason]."
-- "I clicked on [element] because [reason]. Now I see [what happened]. This is [good/confusing/frustrating] because [reason]."
-- "As someone who is ${persona.techSavviness} with technology, I find this [easy/hard/confusing] to understand."
-- "I was looking for [X] but instead found [Y]. This is [helpful/frustrating]."
-
-AFTER EXPLORING, provide your FINAL ASSESSMENT with these exact sections:
+AFTER EXPLORING, give your assessment:
 
 === FINAL UX ASSESSMENT ===
 
@@ -111,26 +90,22 @@ AFTER EXPLORING, provide your FINAL ASSESSMENT with these exact sections:
 😊 WHAT I LIKED (list 2-3 things):
 1. [positive thing]
 2. [positive thing]
-3. [positive thing]
 
-😕 WHAT CONFUSED ME (list 2-3 things):
+😕 WHAT CONFUSED ME (list 1-2 things):
 1. [confusing thing]
-2. [confusing thing]
 
-🚧 USABILITY ISSUES FOUND:
-- [Issue 1 - severity: low/medium/high]
-- [Issue 2 - severity: low/medium/high]
+🚧 USABILITY ISSUES:
+- [Issue - severity: low/medium/high/critical]
 
 ♿ ACCESSIBILITY CONCERNS:
-[Any issues with text size, colors, complexity, language?]
+[Text size, colors, clarity issues?]
 
-💡 MY TOP SUGGESTIONS:
+💡 TOP SUGGESTIONS:
 1. [suggestion]
 2. [suggestion]
-3. [suggestion]
 
 ⭐ OVERALL SCORE: [X]/10
-[Explain why you gave this score]
+[One sentence why]
 
 === END ASSESSMENT ===
 `;
@@ -247,7 +222,7 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
     targetUrl,
     personaIndex = 0,
     customPersona,
-    maxSteps = 20,
+    maxSteps = 50,
     onProgress,
   } = options;
 
