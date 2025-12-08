@@ -35,7 +35,20 @@ export function SessionReplayPlayer({ testId, browserbaseSessionId }: SessionRep
 
         // Dynamically import rrweb-player to avoid SSR issues
         const rrwebPlayer = await import("rrweb-player");
-        await import("rrweb-player/dist/style.css");
+        
+        // Import CSS only if not already loaded
+        if (typeof document !== 'undefined' && !document.getElementById('rrweb-player-styles')) {
+          const link = document.createElement('link');
+          link.id = 'rrweb-player-styles';
+          link.rel = 'stylesheet';
+          link.href = 'https://cdn.jsdelivr.net/npm/rrweb-player@1.0.0-alpha.4/dist/style.css';
+          document.head.appendChild(link);
+          // Wait for styles to load
+          await new Promise(resolve => {
+            link.onload = resolve;
+            link.onerror = resolve; // Continue even if styles fail to load
+          });
+        }
 
         if (!mounted || !containerRef.current) return;
 
