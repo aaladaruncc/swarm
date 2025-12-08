@@ -136,30 +136,77 @@ export default function TestDetails() {
 
             </div>
 
-            {/* Running/Pending State */}
+            {/* Running/Pending State with Live View */}
             {(testRun.status === "running" || testRun.status === "pending") && (
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6 text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <h3 className="text-lg font-medium mb-2">
-                  {testRun.status === "pending" ? "Test Starting..." : "Test Running..."}
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400">
-                  The AI persona is exploring your website. This usually takes 2-5 minutes.
-                </p>
-              </div>
+              <>
+                {/* Status Banner */}
+                <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg p-4 text-white shadow-lg">
+                  <div className="flex items-center gap-4">
+                    <div className="relative">
+                      <div className="animate-spin rounded-full h-10 w-10 border-3 border-white/30 border-t-white"></div>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="h-2 w-2 bg-white rounded-full animate-pulse"></div>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-lg font-bold">
+                          {testRun.status === "pending" ? "🚀 Test Starting..." : "🤖 AI Agent Running"}
+                        </h3>
+                        <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs font-medium animate-pulse">
+                          LIVE
+                        </span>
+                      </div>
+                      <p className="text-blue-100 text-sm">
+                        {testRun.status === "pending" 
+                          ? "Initializing browser session..." 
+                          : "Watch the AI persona navigate your website in real-time below"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Live Session View - Show if session ID available */}
+                {testRun.browserbaseSessionId && (
+                  <ErrorBoundary
+                    fallback={
+                      <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-6 text-center">
+                        <p className="text-yellow-800 dark:text-yellow-300">
+                          Live view temporarily unavailable. The test is still running in the background.
+                        </p>
+                      </div>
+                    }
+                  >
+                    <SessionReplayPlayer 
+                      testId={testId} 
+                      browserbaseSessionId={testRun.browserbaseSessionId}
+                      isLive={true}
+                    />
+                  </ErrorBoundary>
+                )}
+              </>
             )}
 
             {/* Failed State */}
             {testRun.status === "failed" && (
               <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-6">
-                <h3 className="text-lg font-medium text-red-800 dark:text-red-300 mb-2">
-                  Test Failed
-                </h3>
-                <p className="text-red-600">{testRun.errorMessage || "An unknown error occurred"}</p>
+                <div className="flex items-start gap-4">
+                  <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                    <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-red-800 dark:text-red-300 mb-2">
+                      Test Failed
+                    </h3>
+                    <p className="text-red-600 dark:text-red-400">{testRun.errorMessage || "An unknown error occurred"}</p>
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* Embedded Session Replay */}
+            {/* Completed Session Replay */}
             {testRun.browserbaseSessionId && testRun.status === "completed" && (
               <ErrorBoundary
                 fallback={

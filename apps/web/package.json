@@ -12,8 +12,7 @@
     "better-auth": "^1.1.10",
     "next": "14.2.21",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "rrweb-player": "1.0.0-alpha.4"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

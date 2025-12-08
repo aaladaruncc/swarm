@@ -119,7 +119,7 @@ testsRoutes.get("/:id/screenshots", async (c) => {
   return c.json({ screenshots });
 });
 
-// GET /tests/:id/recording - Get session recording from Browserbase
+// GET /tests/:id/recording - Get session live view URL from Browserbase
 testsRoutes.get("/:id/recording", async (c) => {
   const user = c.get("user");
   const testId = c.req.param("id");
@@ -142,17 +142,17 @@ testsRoutes.get("/:id/recording", async (c) => {
       apiKey: process.env.BROWSERBASE_API_KEY!,
     });
 
-    // Fetch the recording from Browserbase (returns rrweb-compatible events)
-    const recording = await bb.sessions.recording.retrieve(testRun.browserbaseSessionId);
+    // Get the live view URL using the debug endpoint
+    const debugInfo = await bb.sessions.debug(testRun.browserbaseSessionId);
 
     return c.json({ 
-      recording,
+      liveViewUrl: debugInfo.debuggerFullscreenUrl,
       sessionId: testRun.browserbaseSessionId,
     });
   } catch (error) {
-    console.error(`Failed to fetch recording for session ${testRun.browserbaseSessionId}:`, error);
+    console.error(`Failed to fetch live view URL for session ${testRun.browserbaseSessionId}:`, error);
     return c.json({ 
-      error: "Failed to fetch recording",
+      error: "Failed to fetch session viewer",
       details: error instanceof Error ? error.message : "Unknown error"
     }, 500);
   }

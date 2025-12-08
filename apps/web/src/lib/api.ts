@@ -92,7 +92,7 @@ export async function getPersonas(): Promise<{ personas: Persona[] }> {
 }
 
 export async function getSessionRecording(testId: string): Promise<{
-  recording: any[];
+  liveViewUrl: string;
   sessionId: string;
 }> {
   return fetchWithAuth(`/api/tests/${testId}/recording`);
