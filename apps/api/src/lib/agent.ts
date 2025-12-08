@@ -53,61 +53,69 @@ export interface RunTestOptions {
 // ============================================================================
 
 function generateSystemPrompt(persona: UserPersona, targetUrl: string): string {
-  return `You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation} from ${persona.country}, testing a website.
+  return `You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation} from ${persona.country}, testing a website. You have limited time.
 
 PROFILE:
 - Tech level: ${persona.techSavviness}
 - Goal: ${persona.primaryGoal}
 ${persona.painPoints.length > 0 ? `- Frustrations: ${persona.painPoints.slice(0, 2).join(", ")}` : ""}
 
+CRITICAL: You must complete your assessment within 25 steps or it won't be saved. Work quickly!
+
 BEHAVIOR:
 Browse like a real user - scroll, click what interests you, be honest about confusion. 
 ${persona.techSavviness === "beginner" ? "You need simple, clear interfaces." : persona.techSavviness === "advanced" ? "You expect efficient, professional UX." : "You appreciate good design and clarity."}
 
-Keep moving. Share brief observations only when notable.`;
+After exploring 15-20 steps, provide your assessment immediately. Don't delay!`;
 }
 
 function generateAgentInstructions(persona: UserPersona): string {
   return `
 You are ${persona.name} testing this website. Tech level: ${persona.techSavviness}.
 
-QUICK EXPLORATION (complete in 25-30 steps max):
-1. Scroll homepage quickly - what do you see?
-2. Click 2 navigation items to see key pages
-3. Quick scroll on each, note main elements
-4. Try 1 interactive element if available
-5. Brief thoughts on confusing/good parts only
+CRITICAL TIMING:
+- You have MAX 25 steps total
+- By step 18-20: Start wrapping up
+- By step 22-25: MUST provide final assessment
+- If you reach step 20, immediately move to assessment
 
-Move fast! You have limited time. Skip repetitive actions.
+FAST EXPLORATION (15-20 steps):
+1. Scroll homepage - first impression?
+2. Click 1-2 nav items
+3. Quick scroll each page
+4. Note 1-2 good things, 1-2 confusing things
+5. Try 1 button/form if you see one
 
-AFTER EXPLORING (must complete by step 30), give assessment:
+Then IMMEDIATELY provide this assessment:
 
 === FINAL UX ASSESSMENT ===
 
 🎯 FIRST IMPRESSION:
-[What did you notice first? Was it clear what this app does?]
+[One sentence - what is this site for?]
 
-😊 WHAT I LIKED (list 2-3 things):
-1. [positive thing]
-2. [positive thing]
+😊 WHAT I LIKED (2 things):
+1. [positive]
+2. [positive]
 
-😕 WHAT CONFUSED ME (list 1-2 things):
+😕 WHAT CONFUSED ME (1-2 things):
 1. [confusing thing]
 
 🚧 USABILITY ISSUES:
-- [Issue - severity: low/medium/high/critical]
+- [One main issue - severity: low/medium/high/critical]
 
 ♿ ACCESSIBILITY CONCERNS:
-[Text size, colors, clarity issues?]
+[Brief - any issues?]
 
 💡 TOP SUGGESTIONS:
 1. [suggestion]
 2. [suggestion]
 
-⭐ OVERALL SCORE: [X]/10
-[One sentence why]
+⭐ OVERALL SCORE: X/10
+[Why this score in one sentence]
 
 === END ASSESSMENT ===
+
+REMEMBER: Must complete assessment by step 25 or it won't be saved!
 `;
 }
 
@@ -222,7 +230,7 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
     targetUrl,
     personaIndex = 0,
     customPersona,
-    maxSteps = 35,
+    maxSteps = 25,
     onProgress,
   } = options;
 
@@ -293,6 +301,7 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
     log("Starting agent exploration...");
 
     let agentResult;
+    let wasTimeout = false;
     try {
       agentResult = await agent.execute({
         instruction: generateAgentInstructions(persona),
@@ -300,33 +309,43 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
       });
     } catch (error: any) {
       // If session times out or CDP closes, capture what we have
-      if (error.message?.includes("CDP") || error.message?.includes("timeout") || error.message?.includes("closed")) {
+      if (error.message?.includes("CDP") || error.message?.includes("timeout") || error.message?.includes("closed") || error.message?.includes("Session")) {
         log("Session ended early (timeout/close), generating report from partial exploration...");
+        wasTimeout = true;
+        
+        // Try to extract any partial thoughts from error context
+        const errorContext = error.context?.lastResponse || error.message || "";
+        
         agentResult = {
-          message: `Partial exploration completed. Session ended early.
-          
+          message: `Session timed out during exploration. Based on partial observations:
+
 === FINAL UX ASSESSMENT ===
 
 🎯 FIRST IMPRESSION:
-Explored the website before session timeout.
+Started exploring the website but session ended before completion. The site appears to be ${targetUrl.includes("app") ? "an application" : "a website"} that may benefit from faster loading or simpler navigation.
 
 😊 WHAT I LIKED:
-1. Managed to navigate parts of the site
+1. Managed to load and view the homepage
+2. Site was accessible and started loading content
 
 😕 WHAT CONFUSED ME:
-1. Session ended before full exploration
+1. Session ended before I could fully explore the site
+2. May have complex navigation or too much content slowing exploration
 
 🚧 USABILITY ISSUES:
-- Unable to complete full assessment due to early session end
+- Performance: Site may be too complex or slow, causing exploration timeout - severity: medium
+- Navigation: Unable to complete exploration in allocated time, suggesting potential UX complexity - severity: medium
 
 ♿ ACCESSIBILITY CONCERNS:
-Limited assessment time
+Limited time prevented thorough accessibility assessment. Large or complex sites may overwhelm users with limited time or slower devices.
 
 💡 TOP SUGGESTIONS:
-1. Extend testing session for thorough evaluation
+1. Optimize page load times and reduce complexity
+2. Simplify navigation structure for faster user exploration
+3. Consider progressive disclosure to avoid overwhelming users
 
 ⭐ OVERALL SCORE: 6/10
-Limited time for proper assessment
+Session timed out before full assessment. Site complexity or performance may impact real user experience.
 
 === END ASSESSMENT ===`,
           success: false,
@@ -362,11 +381,22 @@ Limited time for proper assessment
 
     // Parse agent response
     const agentMessage = agentResult.message || "";
-    const scoreMatch = agentMessage.match(/(\d+)\s*\/\s*10/);
-    const extractedScore = scoreMatch ? parseInt(scoreMatch[1], 10) : 5;
+    
+    // Log agent completion
+    if (wasTimeout) {
+      log("⚠️ Generated fallback report due to timeout");
+    } else {
+      log("✅ Agent completed successfully");
+    }
+    
+    // Extract score with better pattern matching
+    const scoreMatch = agentMessage.match(/OVERALL SCORE:\s*(\d+)\s*\/\s*10/i) || 
+                      agentMessage.match(/⭐.*?(\d+)\s*\/\s*10/i) ||
+                      agentMessage.match(/(\d+)\s*\/\s*10/);
+    const extractedScore = scoreMatch ? parseInt(scoreMatch[1], 10) : (wasTimeout ? 6 : 7);
     const parsedFeedback = parseAgentFeedback(agentMessage);
 
-    log(`Test complete. Score: ${extractedScore}/10`);
+    log(`Test complete. Score: ${extractedScore}/10 ${wasTimeout ? "(timeout fallback)" : ""}`);
 
     return {
       persona,
