@@ -247,27 +247,54 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
 
   log(`Starting test for ${targetUrl} with persona: ${persona.name}`);
 
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    verbose: 1,
-    browserbaseSessionCreateParams: {
-      projectId: process.env.BROWSERBASE_PROJECT_ID,
-      // Extend session timeout to 15 minutes
-      timeout: 900, // 15 minutes in seconds
-    },
-  });
+  // Validate required environment variables
+  if (!process.env.BROWSERBASE_API_KEY) {
+    throw new Error("BROWSERBASE_API_KEY is not set");
+  }
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY is not set");
+  }
 
-  await stagehand.init();
+  log("Initializing Browserbase session...");
+
+  let stagehand;
+  try {
+    stagehand = new Stagehand({
+      env: "BROWSERBASE",
+      verbose: 1,
+      browserbaseSessionCreateParams: {
+        projectId: process.env.BROWSERBASE_PROJECT_ID,
+        // Extend session timeout to 15 minutes
+        timeout: 900, // 15 minutes in seconds
+      },
+    });
+
+    await stagehand.init();
+  } catch (initError: any) {
+    log(`❌ Failed to initialize Stagehand: ${initError.message}`);
+    throw new Error(`Browserbase initialization failed: ${initError.message}`);
+  }
 
   const sessionId = stagehand.browserbaseSessionId || `local-${Date.now()}`;
-  log(`Browserbase session: ${sessionId}`);
+  log(`✅ Browserbase session created: ${sessionId}`);
 
   const page = stagehand.context.pages()[0];
+  if (!page) {
+    throw new Error("Failed to get browser page from Stagehand context");
+  }
 
   try {
     // Navigate to target URL
     log(`Navigating to ${targetUrl}...`);
-    await page.goto(targetUrl, { waitUntil: "networkidle" });
+    try {
+      await page.goto(targetUrl, { waitUntil: "networkidle", timeoutMs: 30000 });
+      log("✅ Page loaded successfully");
+    } catch (navError: any) {
+      log(`⚠️ Navigation warning: ${navError.message}`);
+      // Try without waiting for networkidle
+      await page.goto(targetUrl, { timeoutMs: 30000 });
+      log("✅ Page loaded (without networkidle)");
+    }
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Initial screenshot
@@ -289,14 +316,22 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
 
     // Create agent with persona
     // Using Claude Haiku 4.5 CUA model for faster execution
-    const agent = stagehand.agent({
-      cua: true,
-      model: {
-        modelName: "anthropic/claude-haiku-4-5-20251001",
-        apiKey: process.env.ANTHROPIC_API_KEY,
-      },
-      systemPrompt: generateSystemPrompt(persona, targetUrl),
-    });
+    log("Creating AI agent...");
+    let agent;
+    try {
+      agent = stagehand.agent({
+        cua: true,
+        model: {
+          modelName: "anthropic/claude-haiku-4-5-20251001",
+          apiKey: process.env.ANTHROPIC_API_KEY,
+        },
+        systemPrompt: generateSystemPrompt(persona, targetUrl),
+      });
+      log("✅ Agent created successfully");
+    } catch (agentError: any) {
+      log(`❌ Failed to create agent: ${agentError.message}`);
+      throw new Error(`Agent creation failed: ${agentError.message}`);
+    }
 
     log("Starting agent exploration...");
 
@@ -416,8 +451,19 @@ Session timed out before full assessment. Site complexity or performance may imp
       recommendations: parsedFeedback.recommendations,
       screenshots,
     };
+  } catch (unexpectedError: any) {
+    log(`❌ Unexpected error during test: ${unexpectedError.message}`);
+    log(`Error stack: ${unexpectedError.stack}`);
+    throw new Error(`Test execution failed: ${unexpectedError.message}`);
   } finally {
-    await stagehand.close();
+    if (stagehand) {
+      try {
+        await stagehand.close();
+        log("✅ Browser session closed");
+      } catch (closeError: any) {
+        log(`⚠️ Error closing session: ${closeError.message}`);
+      }
+    }
   }
 }
 
