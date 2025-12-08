@@ -284,7 +284,8 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
 
     // Initial screenshot
     stepCount++;
-    const initialScreenshot = await page.screenshot({ encoding: "base64" });
+    const initialScreenshotBuffer = await page.screenshot();
+    const initialScreenshot = initialScreenshotBuffer.toString("base64");
     screenshots.push({
       stepNumber: stepCount,
       description: "initial-landing",
@@ -318,7 +319,8 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
     // Capture final screenshot
     stepCount++;
     try {
-      const finalScreenshot = await page.screenshot({ encoding: "base64" });
+      const finalScreenshotBuffer = await page.screenshot();
+      const finalScreenshot = finalScreenshotBuffer.toString("base64");
       screenshots.push({
         stepNumber: stepCount,
         description: "final-state",
