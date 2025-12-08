@@ -280,11 +280,11 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
     });
 
     // Create agent with persona
-    // Using Haiku for faster execution while maintaining quality
+    // Using Claude Haiku 4.5 CUA model for faster execution
     const agent = stagehand.agent({
       cua: true,
       model: {
-        modelName: "anthropic/claude-3-5-haiku-20241022",
+        modelName: "anthropic/claude-haiku-4-5-20251001",
         apiKey: process.env.ANTHROPIC_API_KEY,
       },
       systemPrompt: generateSystemPrompt(persona, targetUrl),
