@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { getTest, type TestRun, type Report, type Screenshot } from "@/lib/api";
 import { SessionReplayPlayer } from "@/components/SessionReplayPlayer";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export default function TestDetails() {
   const router = useRouter();
@@ -160,10 +161,51 @@ export default function TestDetails() {
 
             {/* Embedded Session Replay */}
             {testRun.browserbaseSessionId && testRun.status === "completed" && (
-              <SessionReplayPlayer 
-                testId={testId} 
-                browserbaseSessionId={testRun.browserbaseSessionId} 
-              />
+              <ErrorBoundary
+                fallback={
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+                    <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white">
+                      <div className="flex items-start gap-4">
+                        <div className="p-3 bg-white/10 rounded-lg">
+                          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <h2 className="text-xl font-bold mb-2">🎬 Session Replay</h2>
+                          <p className="text-purple-100 mb-1">
+                            Unable to load embedded replay player.
+                          </p>
+                          <p className="text-purple-200 text-sm">
+                            The replay player encountered an error. You can still watch the recording on Browserbase.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-6 bg-gray-50 dark:bg-gray-900">
+                      <p className="text-gray-700 dark:text-gray-300 mb-4">
+                        View the full session recording directly on Browserbase:
+                      </p>
+                      <a
+                        href={`https://browserbase.com/sessions/${testRun.browserbaseSessionId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all font-medium shadow-lg hover:shadow-xl"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                        View Full Session on Browserbase
+                      </a>
+                    </div>
+                  </div>
+                }
+              >
+                <SessionReplayPlayer 
+                  testId={testId} 
+                  browserbaseSessionId={testRun.browserbaseSessionId} 
+                />
+              </ErrorBoundary>
             )}
 
             {/* Report */}

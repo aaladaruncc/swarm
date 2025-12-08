@@ -15,6 +15,7 @@ export function SessionReplayPlayer({ testId, browserbaseSessionId }: SessionRep
   const [error, setError] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const isInitializing = useRef(false);
+  const isMounted = useRef(true);
 
   useEffect(() => {
     let mounted = true;
@@ -158,6 +159,7 @@ export function SessionReplayPlayer({ testId, browserbaseSessionId }: SessionRep
 
     return () => {
       mounted = false;
+      isMounted.current = false;
       isInitializing.current = false;
       
       // Properly cleanup player on unmount
@@ -170,6 +172,15 @@ export function SessionReplayPlayer({ testId, browserbaseSessionId }: SessionRep
           console.warn("Error destroying player on unmount:", e);
         }
         playerRef.current = null;
+      }
+      
+      // Clear container
+      if (containerRef.current) {
+        try {
+          containerRef.current.innerHTML = "";
+        } catch (e) {
+          console.warn("Error clearing container:", e);
+        }
       }
     };
   }, [testId]);
@@ -230,6 +241,11 @@ export function SessionReplayPlayer({ testId, browserbaseSessionId }: SessionRep
     );
   }
 
+  // Safety check - if component is unmounted, don't render
+  if (!isMounted.current && !loading) {
+    return null;
+  }
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
       <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-4 text-white">
@@ -265,6 +281,7 @@ export function SessionReplayPlayer({ testId, browserbaseSessionId }: SessionRep
       <div 
         className={`relative bg-gray-900 ${isExpanded ? 'h-[80vh]' : 'h-[400px] md:h-[500px]'} transition-all duration-300`}
         ref={containerRef}
+        suppressHydrationWarning
       >
         {loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
