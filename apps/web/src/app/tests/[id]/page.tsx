@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { getTest, type TestRun, type Report, type Screenshot } from "@/lib/api";
+import { SessionReplayPlayer } from "@/components/SessionReplayPlayer";
 
 export default function TestDetails() {
   const router = useRouter();
@@ -132,22 +133,6 @@ export default function TestDetails() {
                 )}
               </div>
 
-              {testRun.browserbaseSessionId && (
-                <div className="mt-4 pt-4 border-t">
-                  <a
-                    href={`https://browserbase.com/sessions/${testRun.browserbaseSessionId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Watch Session Replay
-                  </a>
-                </div>
-              )}
             </div>
 
             {/* Running/Pending State */}
@@ -173,30 +158,12 @@ export default function TestDetails() {
               </div>
             )}
 
-            {/* Session Replay */}
+            {/* Embedded Session Replay */}
             {testRun.browserbaseSessionId && testRun.status === "completed" && (
-              <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg shadow p-6 text-white">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl font-bold mb-2">🎬 Session Replay</h2>
-                    <p className="text-purple-100">
-                      Watch exactly how the AI persona navigated your website
-                    </p>
-                  </div>
-                  <a
-                    href={`https://browserbase.com/sessions/${testRun.browserbaseSessionId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-white text-purple-600 rounded-lg hover:bg-purple-50 transition-colors font-medium"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Watch Replay
-                  </a>
-                </div>
-              </div>
+              <SessionReplayPlayer 
+                testId={testId} 
+                browserbaseSessionId={testRun.browserbaseSessionId} 
+              />
             )}
 
             {/* Report */}

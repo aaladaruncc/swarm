@@ -5,6 +5,7 @@ import { eq, desc } from "drizzle-orm";
 import { db, schema } from "../db/index.js";
 import { runUserTestAgent, SAMPLE_PERSONAS } from "../lib/agent.js";
 import type { Session } from "../lib/auth.js";
+import Browserbase from "@browserbasehq/sdk";
 
 type Variables = {
   user: Session["user"];
@@ -116,6 +117,45 @@ testsRoutes.get("/:id/screenshots", async (c) => {
     .where(eq(schema.screenshots.testRunId, testId));
 
   return c.json({ screenshots });
+});
+
+// GET /tests/:id/recording - Get session recording from Browserbase
+testsRoutes.get("/:id/recording", async (c) => {
+  const user = c.get("user");
+  const testId = c.req.param("id");
+
+  const [testRun] = await db
+    .select()
+    .from(schema.testRuns)
+    .where(eq(schema.testRuns.id, testId));
+
+  if (!testRun || testRun.userId !== user.id) {
+    return c.json({ error: "Test not found" }, 404);
+  }
+
+  if (!testRun.browserbaseSessionId) {
+    return c.json({ error: "No session recording available" }, 404);
+  }
+
+  try {
+    const bb = new Browserbase({
+      apiKey: process.env.BROWSERBASE_API_KEY!,
+    });
+
+    // Fetch the recording from Browserbase (returns rrweb-compatible events)
+    const recording = await bb.sessions.recording.retrieve(testRun.browserbaseSessionId);
+
+    return c.json({ 
+      recording,
+      sessionId: testRun.browserbaseSessionId,
+    });
+  } catch (error) {
+    console.error(`Failed to fetch recording for session ${testRun.browserbaseSessionId}:`, error);
+    return c.json({ 
+      error: "Failed to fetch recording",
+      details: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
 });
 
 // GET /personas - Get available personas

@@ -91,4 +91,11 @@ export async function getPersonas(): Promise<{ personas: Persona[] }> {
   return fetchWithAuth("/api/tests/personas");
 }
 
+export async function getSessionRecording(testId: string): Promise<{
+  recording: any[];
+  sessionId: string;
+}> {
+  return fetchWithAuth(`/api/tests/${testId}/recording`);
+}
+
 export type { TestRun, Report, Screenshot, Persona };
