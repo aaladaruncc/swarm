@@ -37,7 +37,7 @@ DATABASE_URL=postgresql://localhost:5432/ux_testing  # or your Neon URL
 
 # API Keys
 OPENAI_API_KEY=sk-...        # Get from https://platform.openai.com
-ANTHROPIC_API_KEY=sk-ant-... # Get from https://console.anthropic.com
+GEMINI_API_KEY=AIza...       # Get from https://aistudio.google.com/apikey
 BROWSERBASE_API_KEY=...      # Get from https://browserbase.com
 BROWSERBASE_PROJECT_ID=...   # From Browserbase dashboard
 
@@ -147,10 +147,12 @@ on older devices. Clear instructions essential.
 ## 💰 Costs
 
 Per batch test (5 concurrent personas):
-- Persona Generation: $0.02-0.05
-- 5 AI Test Agents: $0.10-0.50
-- Report Aggregation: $0.02-0.05
-- **Total: $0.15-0.60 per batch**
+- Persona Generation: $0.02-0.05 (OpenAI)
+- 5 AI Test Agents: $0.05-0.20 (Gemini 2.5)
+- Report Aggregation: $0.02-0.05 (OpenAI)
+- **Total: ~$0.10-0.30 per batch**
+
+*Now 50% cheaper using Gemini 2.5 Computer Use!*
 
 Plus Browserbase session costs (check your plan).
 
@@ -161,6 +163,9 @@ Plus Browserbase session costs (check your plan).
 
 ### "Failed to generate personas"
 → Check OPENAI_API_KEY is set and valid
+
+### "GEMINI_API_KEY is not set"
+→ Get your API key from https://aistudio.google.com/apikey
 
 ### "Browserbase session failed"
 → Verify BROWSERBASE_API_KEY and PROJECT_ID

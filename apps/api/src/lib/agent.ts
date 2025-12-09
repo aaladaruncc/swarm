@@ -251,8 +251,8 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
   if (!process.env.BROWSERBASE_API_KEY) {
     throw new Error("BROWSERBASE_API_KEY is not set");
   }
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new Error("ANTHROPIC_API_KEY is not set");
+  if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
+    throw new Error("GEMINI_API_KEY or GOOGLE_API_KEY is not set");
   }
 
   log("Initializing Browserbase session...");
@@ -315,15 +315,15 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
     });
 
     // Create agent with persona
-    // Using Claude Haiku 4.5 CUA model for faster execution
+    // Using Gemini 2.5 Computer Use model for faster, cost-effective execution
     log("Creating AI agent...");
     let agent;
     try {
       agent = stagehand.agent({
         cua: true,
         model: {
-          modelName: "anthropic/claude-haiku-4-5-20251001",
-          apiKey: process.env.ANTHROPIC_API_KEY,
+          modelName: "google/gemini-2.5-computer-use-preview-10-2025",
+          apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
         },
         systemPrompt: generateSystemPrompt(persona, targetUrl),
       });
