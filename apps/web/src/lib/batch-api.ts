@@ -1,0 +1,155 @@
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
+interface GeneratedPersona {
+  name: string;
+  age: number;
+  country: string;
+  occupation: string;
+  incomeLevel: "low" | "medium" | "high";
+  techSavviness: "beginner" | "intermediate" | "advanced";
+  primaryGoal: string;
+  painPoints: string[];
+  context: string;
+  relevanceScore: number;
+}
+
+interface BatchTestRun {
+  id: string;
+  userId: string;
+  targetUrl: string;
+  userDescription: string;
+  generatedPersonas: GeneratedPersona[];
+  selectedPersonaIndices: number[];
+  status: string;
+  createdAt: string;
+  completedAt: string | null;
+  errorMessage: string | null;
+}
+
+interface TestRunWithReport {
+  testRun: {
+    id: string;
+    batchTestRunId: string;
+    userId: string;
+    targetUrl: string;
+    personaIndex: number;
+    personaData: GeneratedPersona;
+    personaName: string;
+    status: string;
+    browserbaseSessionId: string | null;
+    createdAt: string;
+    startedAt: string | null;
+    completedAt: string | null;
+    errorMessage: string | null;
+  };
+  report: {
+    id: string;
+    testRunId: string;
+    score: number | null;
+    summary: string | null;
+    fullReport: any;
+    positiveAspects: string[] | null;
+    usabilityIssues: any[] | null;
+    accessibilityNotes: string[] | null;
+    recommendations: string[] | null;
+    totalDuration: string | null;
+    createdAt: string;
+  } | null;
+}
+
+interface AggregatedReport {
+  id: string;
+  batchTestRunId: string;
+  overallScore: number | null;
+  executiveSummary: string | null;
+  commonIssues: Array<{
+    issue: string;
+    severity: "low" | "medium" | "high" | "critical";
+    affectedPersonas: string[];
+    recommendation: string;
+  }> | null;
+  personaSpecificInsights: Array<{
+    personaName: string;
+    keyFindings: string[];
+  }> | null;
+  recommendations: Array<{
+    priority: "high" | "medium" | "low";
+    recommendation: string;
+    impact: string;
+  }> | null;
+  strengthsAcrossPersonas: string[] | null;
+  fullAnalysis: string | null;
+  createdAt: string;
+}
+
+async function fetchWithAuth(path: string, options: RequestInit = {}) {
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: "Request failed" }));
+    throw new Error(error.error || "Request failed");
+  }
+
+  return response.json();
+}
+
+export async function generatePersonas(
+  targetUrl: string,
+  userDescription: string
+): Promise<{
+  personas: GeneratedPersona[];
+  reasoning: string;
+  recommendedIndices: number[];
+  selectionReasoning: string;
+}> {
+  return fetchWithAuth("/api/batch-tests/generate-personas", {
+    method: "POST",
+    body: JSON.stringify({ targetUrl, userDescription }),
+  });
+}
+
+export async function createBatchTest(
+  targetUrl: string,
+  userDescription: string,
+  generatedPersonas: GeneratedPersona[],
+  selectedPersonaIndices: number[]
+): Promise<{
+  batchTestRun: BatchTestRun;
+  message: string;
+}> {
+  return fetchWithAuth("/api/batch-tests", {
+    method: "POST",
+    body: JSON.stringify({
+      targetUrl,
+      userDescription,
+      generatedPersonas,
+      selectedPersonaIndices,
+    }),
+  });
+}
+
+export async function getBatchTests(): Promise<{ batchTests: BatchTestRun[] }> {
+  return fetchWithAuth("/api/batch-tests");
+}
+
+export async function getBatchTest(id: string): Promise<{
+  batchTestRun: BatchTestRun;
+  testRuns: TestRunWithReport[];
+  aggregatedReport: AggregatedReport | null;
+}> {
+  return fetchWithAuth(`/api/batch-tests/${id}`);
+}
+
+export type {
+  GeneratedPersona,
+  BatchTestRun,
+  TestRunWithReport,
+  AggregatedReport,
+};

@@ -4,106 +4,23 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
-import { createTest } from "@/lib/api";
-
-const PERSONAS = [
-  {
-    index: 0,
-    name: "Sarah",
-    age: 42,
-    occupation: "Busy Parent & Nurse",
-    techSavviness: "intermediate",
-    country: "United States",
-    description: "Multitasking constantly, needs fast and obvious interfaces",
-  },
-  {
-    index: 1,
-    name: "James",
-    age: 67,
-    occupation: "Retired Teacher",
-    techSavviness: "beginner",
-    country: "United Kingdom",
-    description: "Needs large text, clear instructions, concerned about mistakes",
-  },
-  {
-    index: 2,
-    name: "Alex",
-    age: 26,
-    occupation: "Software Developer",
-    techSavviness: "advanced",
-    country: "Canada",
-    description: "Expects efficiency, keyboard shortcuts, minimal friction",
-  },
-  {
-    index: 3,
-    name: "Maria",
-    age: 35,
-    occupation: "Small Business Owner",
-    techSavviness: "intermediate",
-    country: "Mexico",
-    description: "English is second language, prefers clear visuals over text",
-  },
-  {
-    index: 4,
-    name: "David",
-    age: 23,
-    occupation: "University Student",
-    techSavviness: "advanced",
-    country: "Nigeria",
-    description: "Budget phone, concerned about data usage and performance",
-  },
-  {
-    index: 5,
-    name: "Yuki",
-    age: 52,
-    occupation: "Office Manager",
-    techSavviness: "beginner",
-    country: "Japan",
-    description: "Nervous about technology, needs reassurance and guidance",
-  },
-  {
-    index: 6,
-    name: "Emma",
-    age: 29,
-    occupation: "Marketing Specialist",
-    techSavviness: "advanced",
-    country: "Australia",
-    description: "Early adopter, explores features, shares experiences socially",
-  },
-  {
-    index: 7,
-    name: "Carlos",
-    age: 58,
-    occupation: "Restaurant Manager",
-    techSavviness: "beginner",
-    country: "Spain",
-    description: "Goal-focused, learns by doing, prefers consistency",
-  },
-  {
-    index: 8,
-    name: "Aisha",
-    age: 31,
-    occupation: "Freelance Designer",
-    techSavviness: "advanced",
-    country: "Kenya",
-    description: "Design-conscious, notices details, values accessibility",
-  },
-  {
-    index: 9,
-    name: "Robert",
-    age: 71,
-    occupation: "Retired Veteran",
-    techSavviness: "beginner",
-    country: "United States",
-    description: "Vision/hearing/mobility issues, needs accessibility features",
-  },
-];
+import { generatePersonas, createBatchTest, type GeneratedPersona } from "@/lib/batch-api";
 
 export default function NewTest() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
+  
+  // Step 1: URL and Description
   const [url, setUrl] = useState("");
-  const [selectedPersona, setSelectedPersona] = useState(0);
+  const [userDescription, setUserDescription] = useState("");
+  
+  // Step 2: Generated Personas
+  const [personas, setPersonas] = useState<GeneratedPersona[]>([]);
+  const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
+  const [recommendedIndices, setRecommendedIndices] = useState<number[]>([]);
+  
+  // UI State
+  const [step, setStep] = useState<"describe" | "select" | "starting">("describe");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -120,16 +37,43 @@ export default function NewTest() {
     return null;
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleGeneratePersonas = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      const result = await createTest(url, selectedPersona);
-      router.push(`/tests/${result.testRun.id}`);
+      const result = await generatePersonas(url, userDescription);
+      setPersonas(result.personas);
+      setRecommendedIndices(result.recommendedIndices);
+      setSelectedIndices(result.recommendedIndices);
+      setStep("select");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create test");
+      setError(err instanceof Error ? err.message : "Failed to generate personas");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const togglePersonaSelection = (index: number) => {
+    if (selectedIndices.includes(index)) {
+      setSelectedIndices(selectedIndices.filter((i) => i !== index));
+    } else if (selectedIndices.length < 5) {
+      setSelectedIndices([...selectedIndices, index]);
+    }
+  };
+
+  const handleStartBatchTest = async () => {
+    setError("");
+    setLoading(true);
+    setStep("starting");
+
+    try {
+      const result = await createBatchTest(url, userDescription, personas, selectedIndices);
+      router.push(`/tests/${result.batchTestRun.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start batch test");
+      setStep("select");
     } finally {
       setLoading(false);
     }
@@ -139,117 +83,237 @@ export default function NewTest() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <header className="bg-white dark:bg-gray-800 shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-4">
-          <Link href="/dashboard" className="text-gray-500 hover:text-gray-700">
+          <Link href="/dashboard" className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
             ← Back
           </Link>
-          <h1 className="text-xl font-bold">New Test</h1>
+          <h1 className="text-xl font-bold">New AI-Powered UX Test</h1>
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-8">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-2xl font-bold mb-6">Create a New UX Test</h2>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Website URL
-              </label>
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://your-website.com"
-                className="w-full px-4 py-3 rounded-lg border dark:bg-gray-700 dark:border-gray-600"
-                required
-              />
-              <p className="mt-1 text-sm text-gray-500">
-                Enter the URL of the website you want to test
+      <main className="max-w-4xl mx-auto px-4 py-8">
+        {step === "describe" && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8">
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold mb-2">Define Your Target Users</h2>
+              <p className="text-gray-600 dark:text-gray-400">
+                Tell us about your website and target audience. Our AI will generate 10 diverse user personas,
+                then automatically run 5 concurrent tests to give you comprehensive UX insights.
               </p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-3">
-                Select a Persona
-              </label>
-              <div className="grid gap-4">
-                {PERSONAS.map((persona) => (
-                  <label
-                    key={persona.index}
-                    className={`flex items-start gap-4 p-4 rounded-lg border-2 cursor-pointer transition-colors ${
-                      selectedPersona === persona.index
-                        ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20"
-                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="persona"
-                      value={persona.index}
-                      checked={selectedPersona === persona.index}
-                      onChange={() => setSelectedPersona(persona.index)}
-                      className="mt-1"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{persona.name}</span>
-                        <span className="text-sm text-gray-500">
-                          {persona.age}yo, {persona.country}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {persona.occupation}
-                      </p>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {persona.description}
-                      </p>
-                      <span
-                        className={`inline-block mt-2 px-2 py-0.5 rounded text-xs ${
-                          persona.techSavviness === "beginner"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : persona.techSavviness === "advanced"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-blue-100 text-blue-800"
-                        }`}
-                      >
-                        {persona.techSavviness} tech user
-                      </span>
-                    </div>
-                  </label>
-                ))}
+            <form onSubmit={handleGeneratePersonas} className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Website URL
+                </label>
+                <input
+                  type="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://your-website.com"
+                  className="w-full px-4 py-3 rounded-lg border dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Describe Your Target Audience
+                </label>
+                <textarea
+                  value={userDescription}
+                  onChange={(e) => setUserDescription(e.target.value)}
+                  placeholder="Example: My website is for busy parents looking to plan healthy meals. They typically have limited time, varying cooking skills, and want quick, family-friendly recipes. Some are tech-savvy while others struggle with complex interfaces..."
+                  className="w-full px-4 py-3 rounded-lg border dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 min-h-[150px]"
+                  required
+                  minLength={10}
+                  maxLength={2000}
+                />
+                <p className="mt-2 text-sm text-gray-500">
+                  Be specific about: demographics, goals, pain points, tech comfort level, and any accessibility needs.
+                </p>
+              </div>
+
+              {error && (
+                <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-lg">
+                  {error}
+                </div>
+              )}
+
+              <div className="flex gap-4">
+                <Link
+                  href="/dashboard"
+                  className="px-6 py-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </Link>
+                <button
+                  type="submit"
+                  disabled={loading || !url || !userDescription}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      Generating Personas...
+                    </>
+                  ) : (
+                    <>
+                      ✨ Generate Personas with AI
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {step === "select" && (
+          <div className="space-y-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <h2 className="text-2xl font-bold mb-2">Review AI-Generated Personas</h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                We've generated 10 diverse personas based on your description. 
+                <strong className="text-blue-600 dark:text-blue-400"> We've pre-selected the 5 most relevant ones</strong>, 
+                but you can adjust the selection if needed.
+              </p>
+              <div className="flex items-center gap-2 text-sm">
+                <span className={`px-3 py-1 rounded-full ${selectedIndices.length === 5 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'}`}>
+                  {selectedIndices.length}/5 personas selected
+                </span>
               </div>
             </div>
 
+            <div className="grid md:grid-cols-2 gap-4">
+              {personas.map((persona, index) => {
+                const isSelected = selectedIndices.includes(index);
+                const isRecommended = recommendedIndices.includes(index);
+                
+                return (
+                  <div
+                    key={index}
+                    onClick={() => togglePersonaSelection(index)}
+                    className={`relative p-5 rounded-lg border-2 cursor-pointer transition-all ${
+                      isSelected
+                        ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20 shadow-md"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}
+                  >
+                    {isRecommended && (
+                      <div className="absolute top-2 right-2 px-2 py-1 bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-xs font-bold rounded-full shadow">
+                        ⭐ RECOMMENDED
+                      </div>
+                    )}
+                    
+                    <div className="flex items-start gap-3 mb-3">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}}
+                        className="mt-1 h-5 w-5 rounded border-gray-300"
+                        disabled={!isSelected && selectedIndices.length >= 5}
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-bold text-lg">{persona.name}</h3>
+                          <span className="text-sm text-gray-500">
+                            {persona.age}, {persona.country}
+                          </span>
+                        </div>
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {persona.occupation}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 mb-3">
+                      <p className="text-sm">
+                        <strong className="text-gray-700 dark:text-gray-300">Goal:</strong>{" "}
+                        <span className="text-gray-600 dark:text-gray-400">{persona.primaryGoal}</span>
+                      </p>
+                      
+                      <div>
+                        <strong className="text-sm text-gray-700 dark:text-gray-300">Pain Points:</strong>
+                        <ul className="mt-1 space-y-1">
+                          {persona.painPoints.slice(0, 2).map((point, i) => (
+                            <li key={i} className="text-xs text-gray-600 dark:text-gray-400 flex gap-1">
+                              <span>•</span>
+                              <span>{point}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className={`px-2 py-1 rounded text-xs font-medium ${
+                          persona.techSavviness === "beginner"
+                            ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
+                            : persona.techSavviness === "advanced"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                            : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                        }`}
+                      >
+                        {persona.techSavviness}
+                      </span>
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                        {persona.incomeLevel} income
+                      </span>
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+                        Relevance: {persona.relevanceScore}/10
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
             {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 text-red-600 p-4 rounded-lg">
+              <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-lg">
                 {error}
               </div>
             )}
 
-            <div className="flex gap-4">
-              <Link
-                href="/dashboard"
-                className="px-6 py-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-              >
-                Cancel
-              </Link>
-              <button
-                type="submit"
-                disabled={loading || !url}
-                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? "Starting Test..." : "Start Test"}
-              </button>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setStep("describe")}
+                  className="px-6 py-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  ← Back
+                </button>
+                <button
+                  onClick={handleStartBatchTest}
+                  disabled={loading || selectedIndices.length !== 5}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                >
+                  {selectedIndices.length !== 5 ? (
+                    `Select ${5 - selectedIndices.length} more persona${5 - selectedIndices.length !== 1 ? 's' : ''}`
+                  ) : (
+                    <>
+                      🚀 Start 5 Concurrent Tests
+                    </>
+                  )}
+                </button>
+              </div>
+              <p className="mt-4 text-sm text-gray-500 dark:text-gray-400 text-center">
+                This will run 5 AI agents simultaneously testing your website from different perspectives. 
+                Tests take 5-10 minutes total.
+              </p>
             </div>
-          </form>
-        </div>
+          </div>
+        )}
 
-        <div className="mt-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-          <p className="text-sm text-yellow-800 dark:text-yellow-300">
-            <strong>Note:</strong> Tests typically take 2-5 minutes to complete.
-            You can view the progress in real-time on the test details page.
-          </p>
-        </div>
+        {step === "starting" && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-6"></div>
+            <h2 className="text-2xl font-bold mb-2">Starting Your Batch Test...</h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              Launching 5 concurrent AI agents to test your website
+            </p>
+          </div>
+        )}
       </main>
     </div>
   );
