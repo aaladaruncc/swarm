@@ -233,10 +233,10 @@ async function runBatchTestInBackground(
 
         console.log(`[${testRun.id}] Test completed. Score: ${result.overallExperience.score}/10`);
 
-        // Save the report
+        // Save the report (round score to integer)
         await db.insert(schema.reports).values({
           testRunId: testRun.id,
-          score: result.overallExperience.score,
+          score: Math.round(result.overallExperience.score),
           summary: result.overallExperience.summary,
           fullReport: result as any,
           positiveAspects: result.positiveAspects,
@@ -311,10 +311,10 @@ async function runBatchTestInBackground(
       targetUrl
     );
 
-    // Save aggregated report
+    // Save aggregated report (round score to integer)
     await db.insert(schema.aggregatedReports).values({
       batchTestRunId,
-      overallScore: aggregatedReport.overallScore,
+      overallScore: Math.round(aggregatedReport.overallScore),
       executiveSummary: aggregatedReport.executiveSummary,
       commonIssues: aggregatedReport.commonIssues as any,
       personaSpecificInsights: aggregatedReport.personaSpecificInsights as any,

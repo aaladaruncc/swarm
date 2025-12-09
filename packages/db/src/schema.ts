@@ -108,7 +108,7 @@ export const reports = pgTable("reports", {
   testRunId: uuid("test_run_id")
     .notNull()
     .references(() => testRuns.id, { onDelete: "cascade" }),
-  score: integer("score"),
+  score: integer("score"), // Stores score * 10 (e.g., 6.5 -> 65)
   summary: text("summary"),
   fullReport: jsonb("full_report"),
   positiveAspects: jsonb("positive_aspects").$type<string[]>(),
