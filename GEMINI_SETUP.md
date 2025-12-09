@@ -56,14 +56,14 @@ model: {
 
 ## Cost Comparison
 
-**Per 5-Persona Batch Test:**
+**Per 3-Persona Batch Test:**
 
 | Component | Claude Haiku | Gemini 2.5 | Savings |
 |-----------|--------------|------------|---------|
-| 5 AI Agents | $0.10-$0.50 | $0.05-$0.20 | ~50-60% |
+| 3 AI Agents | $0.06-$0.30 | $0.03-$0.12 | ~50-60% |
 | Persona Gen | $0.02-$0.05 | $0.02-$0.05 | Same (OpenAI) |
 | Aggregation | $0.02-$0.05 | $0.02-$0.05 | Same (OpenAI) |
-| **Total** | **$0.15-$0.60** | **$0.10-$0.30** | **~50% cheaper** |
+| **Total** | **$0.10-$0.40** | **$0.07-$0.22** | **~50% cheaper** |
 
 ## Testing the Change
 

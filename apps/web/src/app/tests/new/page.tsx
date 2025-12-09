@@ -58,7 +58,7 @@ export default function NewTest() {
   const togglePersonaSelection = (index: number) => {
     if (selectedIndices.includes(index)) {
       setSelectedIndices(selectedIndices.filter((i) => i !== index));
-    } else if (selectedIndices.length < 5) {
+    } else if (selectedIndices.length < 3) {
       setSelectedIndices([...selectedIndices, index]);
     }
   };
@@ -97,7 +97,7 @@ export default function NewTest() {
               <h2 className="text-3xl font-bold mb-2">Define Your Target Users</h2>
               <p className="text-gray-600 dark:text-gray-400">
                 Tell us about your website and target audience. Our AI will generate 10 diverse user personas,
-                then automatically run 5 concurrent tests to give you comprehensive UX insights.
+                then automatically run 3 concurrent tests to give you comprehensive UX insights.
               </p>
             </div>
 
@@ -174,12 +174,12 @@ export default function NewTest() {
               <h2 className="text-2xl font-bold mb-2">Review AI-Generated Personas</h2>
               <p className="text-gray-600 dark:text-gray-400 mb-4">
                 We've generated 10 diverse personas based on your description. 
-                <strong className="text-blue-600 dark:text-blue-400"> We've pre-selected the 5 most relevant ones</strong>, 
+                <strong className="text-blue-600 dark:text-blue-400"> We've pre-selected the 3 most relevant ones</strong>, 
                 but you can adjust the selection if needed.
               </p>
               <div className="flex items-center gap-2 text-sm">
-                <span className={`px-3 py-1 rounded-full ${selectedIndices.length === 5 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'}`}>
-                  {selectedIndices.length}/5 personas selected
+                <span className={`px-3 py-1 rounded-full ${selectedIndices.length === 3 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'}`}>
+                  {selectedIndices.length}/3 personas selected
                 </span>
               </div>
             </div>
@@ -285,20 +285,20 @@ export default function NewTest() {
                 </button>
                 <button
                   onClick={handleStartBatchTest}
-                  disabled={loading || selectedIndices.length !== 5}
+                  disabled={loading || selectedIndices.length !== 3}
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                 >
-                  {selectedIndices.length !== 5 ? (
-                    `Select ${5 - selectedIndices.length} more persona${5 - selectedIndices.length !== 1 ? 's' : ''}`
+                  {selectedIndices.length !== 3 ? (
+                    `Select ${3 - selectedIndices.length} more persona${3 - selectedIndices.length !== 1 ? 's' : ''}`
                   ) : (
                     <>
-                      🚀 Start 5 Concurrent Tests
+                      🚀 Start 3 Concurrent Tests
                     </>
                   )}
                 </button>
               </div>
               <p className="mt-4 text-sm text-gray-500 dark:text-gray-400 text-center">
-                This will run 5 AI agents simultaneously testing your website from different perspectives. 
+                This will run 3 AI agents simultaneously testing your website from different perspectives. 
                 Tests take 5-10 minutes total.
               </p>
             </div>
@@ -310,7 +310,7 @@ export default function NewTest() {
             <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-6"></div>
             <h2 className="text-2xl font-bold mb-2">Starting Your Batch Test...</h2>
             <p className="text-gray-600 dark:text-gray-400">
-              Launching 5 concurrent AI agents to test your website
+              Launching 3 concurrent AI agents to test your website
             </p>
           </div>
         )}

@@ -92,7 +92,7 @@ Make the personas feel like real people, not stereotypes.`;
 
 export function selectTopPersonas(
   personas: GeneratedPersona[],
-  count: number = 5
+  count: number = 3
 ): { selectedIndices: number[]; reasoning: string } {
   // Sort by relevance score (descending)
   const sortedWithIndices = personas

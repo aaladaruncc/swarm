@@ -90,7 +90,7 @@ export default function Dashboard() {
           <div>
             <h2 className="text-2xl font-bold">Your Batch Tests</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Each test runs 5 AI personas concurrently
+              Each test runs 3 AI personas concurrently
             </p>
           </div>
           <Link
@@ -117,7 +117,7 @@ export default function Dashboard() {
             <h3 className="text-xl font-bold mb-2">No Tests Yet</h3>
             <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
               Create your first AI-powered batch test to get comprehensive UX insights 
-              from 5 different user personas simultaneously!
+              from 3 different user personas simultaneously!
             </p>
             <Link
               href="/tests/new"
@@ -154,7 +154,7 @@ export default function Dashboard() {
 
                 <div className="flex items-center justify-between pt-4 border-t dark:border-gray-700">
                   <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-                    <span>👥 5 personas</span>
+                    <span>👥 3 personas</span>
                     <span>•</span>
                     <span>{new Date(test.createdAt).toLocaleDateString()}</span>
                     {test.completedAt && (

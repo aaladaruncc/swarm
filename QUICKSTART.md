@@ -85,16 +85,16 @@ Visit: **http://localhost:3000**
 - Click "Generate Personas with AI"
 - Wait 10-20 seconds
 - AI creates 10 diverse personas
-- Top 5 are automatically selected
+- Top 3 are automatically selected
 
 ### Step 3: Adjust Selection (Optional)
 - Review the 10 generated personas
-- Click to select/deselect (must have exactly 5)
+- Click to select/deselect (must have exactly 3)
 - See relevance scores and details
 
 ### Step 4: Run Tests
-- Click "Start 5 Concurrent Tests"
-- 5 AI agents test your site simultaneously
+- Click "Start 3 Concurrent Tests"
+- 3 AI agents test your site simultaneously
 - Takes 5-10 minutes
 - Watch real-time progress
 
@@ -146,11 +146,11 @@ on older devices. Clear instructions essential.
 
 ## 💰 Costs
 
-Per batch test (5 concurrent personas):
+Per batch test (3 concurrent personas):
 - Persona Generation: $0.02-0.05 (OpenAI)
-- 5 AI Test Agents: $0.05-0.20 (Gemini 2.5)
+- 3 AI Test Agents: $0.03-$0.12 (Gemini 2.5)
 - Report Aggregation: $0.02-0.05 (OpenAI)
-- **Total: ~$0.10-0.30 per batch**
+- **Total: ~$0.07-0.22 per batch**
 
 *Now 50% cheaper using Gemini 2.5 Computer Use!*
 

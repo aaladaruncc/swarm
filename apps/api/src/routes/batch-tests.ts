@@ -28,7 +28,7 @@ const createBatchTestSchema = z.object({
   targetUrl: z.string().url(),
   userDescription: z.string(),
   generatedPersonas: z.array(z.any()),
-  selectedPersonaIndices: z.array(z.number()).length(5),
+  selectedPersonaIndices: z.array(z.number()).length(3),
 });
 
 // ============================================================================
