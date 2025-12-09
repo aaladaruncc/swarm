@@ -19,6 +19,19 @@ export default function TestDetails() {
 
   const testId = params.id as string;
 
+  const loadTest = async () => {
+    try {
+      const data = await getBatchTest(testId);
+      setBatchTestRun(data.batchTestRun);
+      setTestRuns(data.testRuns);
+      setAggregatedReport(data.aggregatedReport);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load test");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!isPending && !session?.user) {
       router.push("/");
@@ -36,20 +49,8 @@ export default function TestDetails() {
       }, 5000);
       return () => clearInterval(interval);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, testId, batchTestRun?.status]);
-
-  const loadTest = async () => {
-    try {
-      const data = await getBatchTest(testId);
-      setBatchTestRun(data.batchTestRun);
-      setTestRuns(data.testRuns);
-      setAggregatedReport(data.aggregatedReport);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load test");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (isPending || !session?.user) {
     return (
