@@ -102,7 +102,8 @@ async function fetchWithAuth(path: string, options: RequestInit = {}) {
 
 export async function generatePersonas(
   targetUrl: string,
-  userDescription: string
+  userDescription: string,
+  agentCount: number = 3
 ): Promise<{
   personas: GeneratedPersona[];
   reasoning: string;
@@ -111,7 +112,7 @@ export async function generatePersonas(
 }> {
   return fetchWithAuth("/api/batch-tests/generate-personas", {
     method: "POST",
-    body: JSON.stringify({ targetUrl, userDescription }),
+    body: JSON.stringify({ targetUrl, userDescription, agentCount }),
   });
 }
 
@@ -119,7 +120,8 @@ export async function createBatchTest(
   targetUrl: string,
   userDescription: string,
   generatedPersonas: GeneratedPersona[],
-  selectedPersonaIndices: number[]
+  selectedPersonaIndices: number[],
+  agentCount?: number
 ): Promise<{
   batchTestRun: BatchTestRun;
   message: string;
@@ -131,6 +133,7 @@ export async function createBatchTest(
       userDescription,
       generatedPersonas,
       selectedPersonaIndices,
+      agentCount,
     }),
   });
 }

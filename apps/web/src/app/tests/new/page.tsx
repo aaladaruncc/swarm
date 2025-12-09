@@ -13,6 +13,7 @@ export default function NewTest() {
   // Step 1: URL and Description
   const [url, setUrl] = useState("");
   const [userDescription, setUserDescription] = useState("");
+  const [agentCount, setAgentCount] = useState(3); // Default to 3 agents
   
   // Step 2: Generated Personas
   const [personas, setPersonas] = useState<GeneratedPersona[]>([]);
@@ -43,7 +44,7 @@ export default function NewTest() {
     setLoading(true);
 
     try {
-      const result = await generatePersonas(url, userDescription);
+      const result = await generatePersonas(url, userDescription, agentCount);
       setPersonas(result.personas);
       setRecommendedIndices(result.recommendedIndices);
       setSelectedIndices(result.recommendedIndices);
@@ -58,7 +59,7 @@ export default function NewTest() {
   const togglePersonaSelection = (index: number) => {
     if (selectedIndices.includes(index)) {
       setSelectedIndices(selectedIndices.filter((i) => i !== index));
-    } else if (selectedIndices.length < 3) {
+    } else if (selectedIndices.length < agentCount) {
       setSelectedIndices([...selectedIndices, index]);
     }
   };
@@ -69,7 +70,7 @@ export default function NewTest() {
     setStep("starting");
 
     try {
-      const result = await createBatchTest(url, userDescription, personas, selectedIndices);
+      const result = await createBatchTest(url, userDescription, personas, selectedIndices, agentCount);
       router.push(`/tests/${result.batchTestRun.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start batch test");
@@ -97,7 +98,7 @@ export default function NewTest() {
               <h2 className="text-3xl font-bold mb-2">Define Your Target Users</h2>
               <p className="text-gray-600 dark:text-gray-400">
                 Tell us about your website and target audience. Our AI will generate 10 diverse user personas,
-                then automatically run 3 concurrent tests to give you comprehensive UX insights.
+                then run concurrent tests to give you comprehensive UX insights.
               </p>
             </div>
 
@@ -132,6 +133,38 @@ export default function NewTest() {
                 <p className="mt-2 text-sm text-gray-500">
                   Be specific about: demographics, goals, pain points, tech comfort level, and any accessibility needs.
                 </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Number of Concurrent Agents: <strong className="text-blue-600">{agentCount}</strong>
+                </label>
+                <div className="space-y-3">
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    value={agentCount}
+                    onChange={(e) => setAgentCount(parseInt(e.target.value))}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-600"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>1 (Safest)</span>
+                    <span>2</span>
+                    <span>3 (Balanced)</span>
+                    <span>4</span>
+                    <span>5 (Fastest)</span>
+                  </div>
+                </div>
+                <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <p className="text-sm text-blue-800 dark:text-blue-300">
+                    {agentCount === 1 && "⚡ Single agent - slowest but zero rate limit risk"}
+                    {agentCount === 2 && "⚡ 2 agents - safe with minimal rate limit risk"}
+                    {agentCount === 3 && "⚡ 3 agents - balanced speed and safety (recommended)"}
+                    {agentCount === 4 && "⚡ 4 agents - faster but slight rate limit risk"}
+                    {agentCount === 5 && "⚡ 5 agents - fastest but higher rate limit risk"}
+                  </p>
+                </div>
               </div>
 
               {error && (
@@ -174,12 +207,15 @@ export default function NewTest() {
               <h2 className="text-2xl font-bold mb-2">Review AI-Generated Personas</h2>
               <p className="text-gray-600 dark:text-gray-400 mb-4">
                 We've generated 10 diverse personas based on your description. 
-                <strong className="text-blue-600 dark:text-blue-400"> We've pre-selected the 3 most relevant ones</strong>, 
+                <strong className="text-blue-600 dark:text-blue-400"> We've pre-selected the {agentCount} most relevant ones</strong>, 
                 but you can adjust the selection if needed.
               </p>
-              <div className="flex items-center gap-2 text-sm">
-                <span className={`px-3 py-1 rounded-full ${selectedIndices.length === 3 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'}`}>
-                  {selectedIndices.length}/3 personas selected
+              <div className="flex items-center gap-3 text-sm flex-wrap">
+                <span className={`px-3 py-1 rounded-full ${selectedIndices.length === agentCount ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'}`}>
+                  {selectedIndices.length}/{agentCount} personas selected
+                </span>
+                <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                  {agentCount} concurrent agents
                 </span>
               </div>
             </div>
@@ -285,21 +321,21 @@ export default function NewTest() {
                 </button>
                 <button
                   onClick={handleStartBatchTest}
-                  disabled={loading || selectedIndices.length !== 3}
+                  disabled={loading || selectedIndices.length !== agentCount}
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                 >
-                  {selectedIndices.length !== 3 ? (
-                    `Select ${3 - selectedIndices.length} more persona${3 - selectedIndices.length !== 1 ? 's' : ''}`
+                  {selectedIndices.length !== agentCount ? (
+                    `Select ${agentCount - selectedIndices.length} more persona${agentCount - selectedIndices.length !== 1 ? 's' : ''}`
                   ) : (
                     <>
-                      🚀 Start 3 Concurrent Tests
+                      🚀 Start {agentCount} Concurrent Test{agentCount !== 1 ? 's' : ''}
                     </>
                   )}
                 </button>
               </div>
               <p className="mt-4 text-sm text-gray-500 dark:text-gray-400 text-center">
-                This will run 3 AI agents simultaneously testing your website from different perspectives. 
-                Tests take 5-10 minutes total.
+                This will run {agentCount} AI agent{agentCount !== 1 ? 's' : ''} {agentCount > 1 ? 'simultaneously ' : ''}testing your website from different perspectives. 
+                Tests take 5-10 minutes total. {agentCount > 3 && '⚠️ Higher concurrency may risk rate limits.'}
               </p>
             </div>
           </div>
@@ -310,7 +346,10 @@ export default function NewTest() {
             <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-6"></div>
             <h2 className="text-2xl font-bold mb-2">Starting Your Batch Test...</h2>
             <p className="text-gray-600 dark:text-gray-400">
-              Launching 3 concurrent AI agents to test your website
+              Launching {agentCount} {agentCount > 1 ? 'concurrent ' : ''}AI agent{agentCount !== 1 ? 's' : ''} to test your website
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
+              Queue system active - preventing rate limits
             </p>
           </div>
         )}
