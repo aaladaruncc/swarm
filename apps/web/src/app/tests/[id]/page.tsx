@@ -8,18 +8,33 @@ import { getTest, type TestRun, type Report, type Screenshot } from "@/lib/api";
 import { SessionReplayPlayer } from "@/components/SessionReplayPlayer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ArrowLeft, ExternalLink, Clock, User, Calendar, CheckCircle2, AlertTriangle, XCircle, Lightbulb } from "lucide-react";
+import { getBatchTest, type TestRunWithReport, type AggregatedReport, type BatchTestRun } from "@/lib/batch-api";
 
 export default function TestDetails() {
   const router = useRouter();
   const params = useParams();
   const { data: session, isPending } = useSession();
-  const [testRun, setTestRun] = useState<TestRun | null>(null);
-  const [report, setReport] = useState<Report | null>(null);
-  const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
+  const [batchTestRun, setBatchTestRun] = useState<BatchTestRun | null>(null);
+  const [testRuns, setTestRuns] = useState<TestRunWithReport[]>([]);
+  const [aggregatedReport, setAggregatedReport] = useState<AggregatedReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedView, setSelectedView] = useState<"aggregated" | number>("aggregated");
 
   const testId = params.id as string;
+
+  const loadTest = async () => {
+    try {
+      const data = await getBatchTest(testId);
+      setBatchTestRun(data.batchTestRun);
+      setTestRuns(data.testRuns);
+      setAggregatedReport(data.aggregatedReport);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load test");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!isPending && !session?.user) {
@@ -125,6 +140,25 @@ export default function TestDetails() {
     );
   };
 
+  const getSeverityColor = (severity: string) => {
+    const colors: Record<string, string> = {
+      critical: "border-red-500 bg-red-50 dark:bg-red-900/20",
+      high: "border-orange-500 bg-orange-50 dark:bg-orange-900/20",
+      medium: "border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20",
+      low: "border-gray-500 bg-gray-50 dark:bg-gray-900/20",
+    };
+    return colors[severity] || colors.low;
+  };
+
+  const getPriorityColor = (priority: string) => {
+    const colors: Record<string, string> = {
+      high: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+      medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
+      low: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300",
+    };
+    return colors[priority] || colors.low;
+  };
+
   return (
     <div className="min-h-screen bg-white text-neutral-900 font-sans selection:bg-neutral-900 selection:text-white pb-24">
       <header className="border-b border-neutral-100 bg-white sticky top-0 z-10">
@@ -151,15 +185,15 @@ export default function TestDetails() {
                 <div>
                   <h1 className="text-4xl font-light tracking-tight mb-2">Test Results</h1>
                   <a
-                    href={testRun.targetUrl}
+                    href={batchTestRun.targetUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-neutral-500 hover:text-neutral-900 transition-colors flex items-center gap-2 text-lg font-light"
                   >
-                    {testRun.targetUrl} <ExternalLink size={16} />
+                    {batchTestRun.targetUrl} ↗
                   </a>
                 </div>
-                {getStatusBadge(testRun.status)}
+                {getStatusBadge(batchTestRun.status)}
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 py-6 border-y border-neutral-100">
@@ -223,8 +257,6 @@ export default function TestDetails() {
                     <p className="text-red-700 text-sm font-light">{testRun.errorMessage || "An unknown error occurred during the simulation."}</p>
                   </div>
                 </div>
-              </div>
-            )}
 
             {/* Live View / Replay */}
             {testRun.browserbaseSessionId && (
@@ -283,7 +315,6 @@ export default function TestDetails() {
                     ) : (
                       <p className="text-neutral-400 text-sm italic">No specific positives noted.</p>
                     )}
-                  </div>
 
                   {/* Issues */}
                   {(report.usabilityIssues?.length > 0 || report.accessibilityNotes?.length > 0) && (

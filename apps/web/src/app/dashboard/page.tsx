@@ -7,6 +7,8 @@ import { useSession } from "@/lib/auth-client";
 import { getTests, deleteTests, type TestRun } from "@/lib/api";
 import { Plus, ArrowRight, Loader2, Archive, Trash2 } from "lucide-react";
 import { CreateTestModal } from "@/components/dashboard/create-test-modal";
+import { useSession, signOut } from "@/lib/auth-client";
+import { getBatchTests, type BatchTestRun } from "@/lib/batch-api";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -14,6 +16,7 @@ export default function Dashboard() {
   const [tests, setTests] = useState<TestRun[]>([]);
   const [selectedTests, setSelectedTests] = useState<string[]>([]);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [batchTests, setBatchTests] = useState<BatchTestRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [isArchiving, setIsArchiving] = useState(false);
   const [error, setError] = useState("");
@@ -33,8 +36,8 @@ export default function Dashboard() {
 
   const loadTests = async () => {
     try {
-      const data = await getTests();
-      setTests(data.tests);
+      const data = await getBatchTests();
+      setBatchTests(data.batchTests);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load tests");
     } finally {

@@ -4,108 +4,24 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
-import { createTest } from "@/lib/api";
-import { Loader2, ArrowLeft, Globe, User, Shield, Zap, Info } from "lucide-react";
-import { motion } from "framer-motion";
-
-const PERSONAS = [
-  {
-    index: 0,
-    name: "Sarah",
-    age: 42,
-    occupation: "Busy Parent & Nurse",
-    techSavviness: "intermediate",
-    country: "United States",
-    description: "Multitasking constantly, needs fast and obvious interfaces",
-  },
-  {
-    index: 1,
-    name: "James",
-    age: 67,
-    occupation: "Retired Teacher",
-    techSavviness: "beginner",
-    country: "United Kingdom",
-    description: "Needs large text, clear instructions, concerned about mistakes",
-  },
-  {
-    index: 2,
-    name: "Alex",
-    age: 26,
-    occupation: "Software Developer",
-    techSavviness: "advanced",
-    country: "Canada",
-    description: "Expects efficiency, keyboard shortcuts, minimal friction",
-  },
-  {
-    index: 3,
-    name: "Maria",
-    age: 35,
-    occupation: "Small Business Owner",
-    techSavviness: "intermediate",
-    country: "Mexico",
-    description: "English is second language, prefers clear visuals over text",
-  },
-  {
-    index: 4,
-    name: "David",
-    age: 23,
-    occupation: "University Student",
-    techSavviness: "advanced",
-    country: "Nigeria",
-    description: "Budget phone, concerned about data usage and performance",
-  },
-  {
-    index: 5,
-    name: "Yuki",
-    age: 52,
-    occupation: "Office Manager",
-    techSavviness: "beginner",
-    country: "Japan",
-    description: "Nervous about technology, needs reassurance and guidance",
-  },
-  {
-    index: 6,
-    name: "Emma",
-    age: 29,
-    occupation: "Marketing Specialist",
-    techSavviness: "advanced",
-    country: "Australia",
-    description: "Early adopter, explores features, shares experiences socially",
-  },
-  {
-    index: 7,
-    name: "Carlos",
-    age: 58,
-    occupation: "Restaurant Manager",
-    techSavviness: "beginner",
-    country: "Spain",
-    description: "Goal-focused, learns by doing, prefers consistency",
-  },
-  {
-    index: 8,
-    name: "Aisha",
-    age: 31,
-    occupation: "Freelance Designer",
-    techSavviness: "advanced",
-    country: "Kenya",
-    description: "Design-conscious, notices details, values accessibility",
-  },
-  {
-    index: 9,
-    name: "Robert",
-    age: 71,
-    occupation: "Retired Veteran",
-    techSavviness: "beginner",
-    country: "United States",
-    description: "Vision/hearing/mobility issues, needs accessibility features",
-  },
-];
+import { generatePersonas, createBatchTest, type GeneratedPersona } from "@/lib/batch-api";
 
 export default function NewTest() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
+  
+  // Step 1: URL and Description
   const [url, setUrl] = useState("");
-  const [selectedPersona, setSelectedPersona] = useState(0);
+  const [userDescription, setUserDescription] = useState("");
+  const [agentCount, setAgentCount] = useState(3); // Default to 3 agents
+  
+  // Step 2: Generated Personas
+  const [personas, setPersonas] = useState<GeneratedPersona[]>([]);
+  const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
+  const [recommendedIndices, setRecommendedIndices] = useState<number[]>([]);
+  
+  // UI State
+  const [step, setStep] = useState<"describe" | "select" | "starting">("describe");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -122,16 +38,44 @@ export default function NewTest() {
     return null;
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleGeneratePersonas = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      const result = await createTest(url, selectedPersona);
-      router.push(`/tests/${result.testRun.id}`);
+      const result = await generatePersonas(url, userDescription, agentCount);
+      setPersonas(result.personas);
+      setRecommendedIndices(result.recommendedIndices);
+      setSelectedIndices(result.recommendedIndices);
+      setStep("select");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create test");
+      setError(err instanceof Error ? err.message : "Failed to generate personas");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const togglePersonaSelection = (index: number) => {
+    if (selectedIndices.includes(index)) {
+      setSelectedIndices(selectedIndices.filter((i) => i !== index));
+    } else if (selectedIndices.length < agentCount) {
+      setSelectedIndices([...selectedIndices, index]);
+    }
+  };
+
+  const handleStartBatchTest = async () => {
+    setError("");
+    setLoading(true);
+    setStep("starting");
+
+    try {
+      const result = await createBatchTest(url, userDescription, personas, selectedIndices, agentCount);
+      router.push(`/tests/${result.batchTestRun.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start batch test");
+      setStep("select");
+    } finally {
       setLoading(false);
     }
   };
@@ -185,6 +129,14 @@ export default function NewTest() {
               <p className="text-xs text-neutral-400 font-light">
                 The agent will begin its session at this URL. Ensure the environment is accessible.
               </p>
+              <div className="flex items-center gap-3 text-sm flex-wrap">
+                <span className={`px-3 py-1 rounded-full ${selectedIndices.length === agentCount ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'}`}>
+                  {selectedIndices.length}/{agentCount} personas selected
+                </span>
+                <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                  {agentCount} concurrent agents
+                </span>
+              </div>
             </div>
           </section>
 

@@ -236,10 +236,10 @@ async function runTestInBackground(testRunId: string, targetUrl: string, persona
 
     console.log(`[${testRunId}] Agent completed, saving report...`);
 
-    // Save the report
+    // Save the report (round score to integer)
     await db.insert(schema.reports).values({
       testRunId,
-      score: result.overallExperience.score,
+      score: Math.round(result.overallExperience.score),
       summary: result.overallExperience.summary,
       fullReport: result as any,
       positiveAspects: result.positiveAspects,

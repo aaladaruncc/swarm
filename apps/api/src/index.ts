@@ -5,6 +5,7 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { authRoutes } from "./routes/auth.js";
 import { testsRoutes } from "./routes/tests.js";
+import { batchTestsRoutes } from "./routes/batch-tests.js";
 import { authMiddleware } from "./middleware/auth.js";
 
 const app = new Hono();
@@ -37,7 +38,9 @@ app.route("/api/auth", authRoutes);
 
 // Protected routes
 app.use("/api/tests/*", authMiddleware);
+app.use("/api/batch-tests/*", authMiddleware);
 app.route("/api/tests", testsRoutes);
+app.route("/api/batch-tests", batchTestsRoutes);
 
 // Start server
 const port = parseInt(process.env.PORT || "8080", 10);
