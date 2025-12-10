@@ -1,6 +1,6 @@
 {
-  "buildCommand": "pnpm install && pnpm --filter @ux-testing/web build",
-  "devCommand": "pnpm --filter @ux-testing/web dev",
-  "installCommand": "pnpm install --no-frozen-lockfile",
+  "buildCommand": "npm install --prefix apps/web --legacy-peer-deps && cd apps/web && npm run build",
+  "devCommand": "cd apps/web && npm run dev",
+  "installCommand": "npm install --legacy-peer-deps",
   "outputDirectory": "apps/web/.next"
 }
