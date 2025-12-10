@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray, and } from "drizzle-orm";
 import { db, schema } from "../db/index.js";
 import { runUserTestAgent, SAMPLE_PERSONAS } from "../lib/agent.js";
 import type { Session } from "../lib/auth.js";
@@ -58,6 +58,27 @@ testsRoutes.post("/", zValidator("json", createTestSchema), async (c) => {
     testRun,
     message: "Test started",
   });
+});
+
+// DELETE /tests - Delete/Archive multiple tests
+testsRoutes.delete("/", zValidator("json", z.object({ ids: z.array(z.string()) })), async (c) => {
+  const user = c.get("user");
+  const { ids } = c.req.valid("json");
+
+  if (ids.length === 0) {
+    return c.json({ message: "No tests selected" });
+  }
+
+  // Delete test runs belonging to the user
+  await db.delete(schema.testRuns)
+    .where(
+      and(
+        inArray(schema.testRuns.id, ids),
+        eq(schema.testRuns.userId, user.id)
+      )
+    );
+
+  return c.json({ message: "Tests archived successfully" });
 });
 
 // GET /tests/:id - Get a specific test

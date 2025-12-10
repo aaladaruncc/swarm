@@ -53,20 +53,20 @@ export interface RunTestOptions {
 // ============================================================================
 
 function generateSystemPrompt(persona: UserPersona, targetUrl: string): string {
-  return `You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation} from ${persona.country}, testing a website. You have limited time.
+  return `You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation} from ${persona.country}, testing a website. You have limited time (5 minutes).
 
 PROFILE:
 - Tech level: ${persona.techSavviness}
 - Goal: ${persona.primaryGoal}
 ${persona.painPoints.length > 0 ? `- Frustrations: ${persona.painPoints.slice(0, 2).join(", ")}` : ""}
 
-CRITICAL: You must complete your assessment within 25 steps or it won't be saved. Work quickly!
+CRITICAL: You must complete your assessment within 15 steps or it won't be saved. Work quickly!
 
 BEHAVIOR:
 Browse like a real user - scroll, click what interests you, be honest about confusion. 
 ${persona.techSavviness === "beginner" ? "You need simple, clear interfaces." : persona.techSavviness === "advanced" ? "You expect efficient, professional UX." : "You appreciate good design and clarity."}
 
-After exploring 15-20 steps, provide your assessment immediately. Don't delay!`;
+After exploring 10-12 steps, provide your assessment immediately. Don't delay!`;
 }
 
 function generateAgentInstructions(persona: UserPersona): string {
@@ -74,12 +74,12 @@ function generateAgentInstructions(persona: UserPersona): string {
 You are ${persona.name} testing this website. Tech level: ${persona.techSavviness}.
 
 CRITICAL TIMING:
-- You have MAX 25 steps total
-- By step 18-20: Start wrapping up
-- By step 22-25: MUST provide final assessment
-- If you reach step 20, immediately move to assessment
+- You have MAX 15 steps total (approx 5 minutes)
+- By step 10-12: Start wrapping up
+- By step 13-15: MUST provide final assessment
+- If you reach step 12, immediately move to assessment
 
-FAST EXPLORATION (15-20 steps):
+FAST EXPLORATION (10-12 steps):
 1. Scroll homepage - first impression?
 2. Click 1-2 nav items
 3. Quick scroll each page
@@ -115,7 +115,7 @@ Then IMMEDIATELY provide this assessment:
 
 === END ASSESSMENT ===
 
-REMEMBER: Must complete assessment by step 25 or it won't be saved!
+REMEMBER: Must complete assessment by step 15 or it won't be saved!
 `;
 }
 
@@ -146,53 +146,56 @@ function parseAgentFeedback(agentMessage: string): {
 
   // Extract summary
   const firstImpressionMatch = agentMessage.match(
-    /(?:FIRST IMPRESSION|First Impression)[:\s]*([^\n]+(?:\n(?![A-Z🎯😊😕🚧♿💡⭐])[^\n]+)*)/i
+    /(?:(?:\*\*|##)?\s*(?:FIRST IMPRESSION|First Impression)[:\s]*)(?:\*\*)?([^\n]+(?:\n(?![A-Z*#🎯😊😕🚧♿💡⭐])[^\n]+)*)/i
   );
   if (firstImpressionMatch) {
     result.summary = firstImpressionMatch[1].trim();
   } else {
-    const sentences = agentMessage
-      .split(/[.!?]+/)
-      .filter((s) => s.trim().length > 10)
-      .slice(0, 3);
-    result.summary = sentences.join(". ").trim() + ".";
+    // Fallback: Try to find the start of the assessment block
+    const assessmentStart = agentMessage.indexOf("=== FINAL UX ASSESSMENT ===");
+    if (assessmentStart !== -1) {
+        const afterStart = agentMessage.substring(assessmentStart + 27);
+        const firstLine = afterStart.split('\n').find(l => l.trim().length > 0 && !l.includes('FIRST IMPRESSION'));
+        if (firstLine) result.summary = firstLine.trim();
+    }
+    
+    if (!result.summary) {
+        const sentences = agentMessage
+        .split(/[.!?]+/)
+        .filter((s) => s.trim().length > 10)
+        .slice(0, 3);
+        result.summary = sentences.join(". ").trim() + ".";
+    }
   }
+
+  // Helper to extract list items more robustly
+  const extractList = (regex: RegExp) => {
+    const match = agentMessage.match(regex);
+    if (!match) return [];
+    // Match bullet points, numbered lists, or lines starting with markdown bold
+    return (match[1].match(/(?:^|\n)\s*(?:[-•\d.*]+)\s*([^\n]+)/g) || [])
+      .map(item => item.replace(/^(?:^|\n)\s*(?:[-•\d.*]+)\s*/, "").trim())
+      .filter(Boolean);
+  };
 
   // Extract positive aspects
-  const likedMatch = agentMessage.match(
-    /(?:WHAT I LIKED|What I Liked|LIKED)[:\s]*([^\n]+(?:\n(?:[-•\d])[^\n]+)*)/i
-  );
-  if (likedMatch) {
-    const items = likedMatch[1].match(/[-•\d.]\s*([^\n]+)/g);
-    if (items) {
-      result.positiveAspects = items
-        .map((item) => item.replace(/^[-•\d.]\s*/, "").trim())
-        .filter(Boolean);
-    }
-  }
+  result.positiveAspects = extractList(/(?:(?:\*\*|##)?\s*(?:WHAT I LIKED|What I Liked|LIKED)[:\s]*)(?:\*\*)?([^\n]+(?:\n(?:[-•\d*])[^\n]+)*)/i);
 
   // Extract confusion points
-  const confusedMatch = agentMessage.match(
-    /(?:WHAT CONFUSED ME|What Confused|CONFUSED|CONFUSION)[:\s]*([^\n]+(?:\n(?:[-•\d])[^\n]+)*)/i
-  );
-  if (confusedMatch) {
-    const items = confusedMatch[1].match(/[-•\d.]\s*([^\n]+)/g);
-    if (items) {
-      result.accessibilityNotes = items
-        .map((item) => item.replace(/^[-•\d.]\s*/, "").trim())
-        .filter(Boolean);
-    }
-  }
+  result.accessibilityNotes = extractList(/(?:(?:\*\*|##)?\s*(?:WHAT CONFUSED ME|What Confused|CONFUSED|CONFUSION)[:\s]*)(?:\*\*)?([^\n]+(?:\n(?:[-•\d*])[^\n]+)*)/i);
+
+  // Extract recommendations
+  result.recommendations = extractList(/(?:(?:\*\*|##)?\s*(?:SUGGESTIONS|Suggestions|RECOMMENDATIONS|Recommendations|MY TOP SUGGESTIONS)[:\s]*)(?:\*\*)?([^\n]+(?:\n(?:[-•\d*])[^\n]+)*)/i);
 
   // Extract usability issues
   const issuesMatch = agentMessage.match(
-    /(?:USABILITY ISSUES|Usability Issues|ISSUES FOUND)[:\s]*([^\n]+(?:\n(?:[-•\d])[^\n]+)*)/i
+    /(?:(?:\*\*|##)?\s*(?:USABILITY ISSUES|Usability Issues|ISSUES FOUND)[:\s]*)(?:\*\*)?([^\n]+(?:\n(?:[-•\d*])[^\n]+)*)/i
   );
   if (issuesMatch) {
-    const items = issuesMatch[1].match(/[-•\d.]\s*([^\n]+)/g);
+    const items = issuesMatch[1].match(/(?:^|\n)\s*(?:[-•\d.*]+)\s*([^\n]+)/g);
     if (items) {
       items.forEach((item) => {
-        const cleanItem = item.replace(/^[-•\d.]\s*/, "").trim();
+        const cleanItem = item.replace(/^(?:^|\n)\s*(?:[-•\d.*]+)\s*/, "").trim();
         const severityMatch = cleanItem.match(/\b(low|medium|high|critical)\b/i);
         result.usabilityIssues.push({
           severity:
@@ -202,19 +205,6 @@ function parseAgentFeedback(agentMessage: string): {
           recommendation: "Address this issue to improve user experience",
         });
       });
-    }
-  }
-
-  // Extract recommendations
-  const recsMatch = agentMessage.match(
-    /(?:SUGGESTIONS|Suggestions|RECOMMENDATIONS|Recommendations|MY TOP SUGGESTIONS)[:\s]*([^\n]+(?:\n(?:[-•\d])[^\n]+)*)/i
-  );
-  if (recsMatch) {
-    const items = recsMatch[1].match(/[-•\d.]\s*([^\n]+)/g);
-    if (items) {
-      result.recommendations = items
-        .map((item) => item.replace(/^[-•\d.]\s*/, "").trim())
-        .filter(Boolean);
     }
   }
 
@@ -230,7 +220,8 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
     targetUrl,
     personaIndex = 0,
     customPersona,
-    maxSteps = 25,
+    // By default, limit to ~5 minutes (15 steps x 20s = 300s)
+    maxSteps = 15,
     onProgress,
   } = options;
 
@@ -264,8 +255,12 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
       verbose: 1,
       browserbaseSessionCreateParams: {
         projectId: process.env.BROWSERBASE_PROJECT_ID,
-        // Extend session timeout to 15 minutes
-        timeout: 900, // 15 minutes in seconds
+        // Extend session timeout to 15 minutes (buffer for 5 min run)
+        timeout: 900, 
+      },
+      model: "anthropic/claude-3-5-sonnet-latest",
+      modelClientOptions: {
+        apiKey: process.env.ANTHROPIC_API_KEY,
       },
     });
 
