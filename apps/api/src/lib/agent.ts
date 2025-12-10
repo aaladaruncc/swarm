@@ -403,12 +403,9 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
     try {
       agent = stagehand.agent({
         cua: true,
-        model: {
-          modelName: "google/gemini-2.5-computer-use-preview-10-2025",
-          apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-        },
+        model: "google/gemini-2.5-computer-use-preview-10-2025",
         systemPrompt: generateSystemPrompt(persona, targetUrl),
-      } as any); // Type assertion for Stagehand v3 compatibility
+      });
       log("✅ Agent created successfully");
     } catch (agentError: any) {
       log(`❌ Failed to create agent: ${agentError.message}`);
