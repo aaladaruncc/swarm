@@ -4,23 +4,18 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
-import { getTests, deleteTests, type TestRun } from "@/lib/api";
-import { Plus, ArrowRight, Loader2, Archive, Trash2 } from "lucide-react";
-import { CreateTestModal } from "@/components/dashboard/create-test-modal";
-import { useSession, signOut } from "@/lib/auth-client";
 import { getBatchTests, type BatchTestRun } from "@/lib/batch-api";
+import { Plus, Loader2, Trash2 } from "lucide-react";
 
 export default function Dashboard() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
-  const [tests, setTests] = useState<TestRun[]>([]);
+  const [batchTests, setBatchTests] = useState<BatchTestRun[]>([]);
   const [selectedTests, setSelectedTests] = useState<string[]>([]);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [batchTests, setBatchTests] = useState<BatchTestRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [isArchiving, setIsArchiving] = useState(false);
   const [error, setError] = useState("");
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   useEffect(() => {
     if (!isPending && !session?.user) {
@@ -45,15 +40,11 @@ export default function Dashboard() {
     }
   };
 
-  const handleTestCreated = (newTest: TestRun) => {
-    setTests((prev) => [newTest, ...prev]);
-  };
-
   const toggleSelectAll = () => {
-    if (selectedTests.length === tests.length) {
+    if (selectedTests.length === batchTests.length) {
       setSelectedTests([]);
     } else {
-      setSelectedTests(tests.map(t => t.id));
+      setSelectedTests(batchTests.map(t => t.id));
     }
   };
 
@@ -77,10 +68,12 @@ export default function Dashboard() {
 
     setIsArchiving(true);
     try {
-      await deleteTests(selectedTests);
+      // TODO: Implement batch test deletion API
+      // await deleteBatchTests(selectedTests);
       // Remove locally
-      setTests(prev => prev.filter(t => !selectedTests.includes(t.id)));
+      setBatchTests(prev => prev.filter(t => !selectedTests.includes(t.id)));
       setSelectedTests([]);
+      setIsSelectionMode(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to archive tests");
     } finally {
@@ -99,20 +92,22 @@ export default function Dashboard() {
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       pending: "bg-neutral-100 text-neutral-600 border-neutral-200",
-      running: "bg-blue-50 text-blue-700 border-blue-200",
+      running_tests: "bg-blue-50 text-blue-700 border-blue-200",
+      aggregating: "bg-purple-50 text-purple-700 border-purple-200",
       completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
       failed: "bg-red-50 text-red-700 border-red-200",
     };
     
     const labels: Record<string, string> = {
       pending: "Queued",
-      running: "Running",
+      running_tests: "Running",
+      aggregating: "Aggregating",
       completed: "Success",
       failed: "Failed",
     };
 
     return (
-      <span className={`px-2.5 py-0.5 text-xs font-medium border ${styles[status] || styles.pending} rounded-none`}>
+      <span className={`px-2.5 py-0.5 text-xs font-medium border ${styles[status] || styles.pending}`}>
         {labels[status] || status}
       </span>
     );
@@ -153,13 +148,13 @@ export default function Dashboard() {
               Select
             </button>
           )}
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="group flex items-center justify-center gap-2 bg-neutral-900 text-white px-5 py-2.5 hover:bg-neutral-800 transition-all text-sm font-medium rounded-none shadow-lg hover:shadow-xl hover:-translate-y-0.5 duration-300"
+          <Link
+            href="/tests/new"
+            className="group flex items-center justify-center gap-2 bg-neutral-900 text-white px-5 py-2.5 hover:bg-neutral-800 transition-all text-sm font-medium shadow-lg hover:shadow-xl hover:-translate-y-0.5 duration-300"
           >
             <Plus size={16} />
             <span>New Simulation</span>
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -174,18 +169,18 @@ export default function Dashboard() {
           <div className="flex justify-center items-center h-full min-h-[400px]">
             <Loader2 className="animate-spin w-8 h-8 text-neutral-300" />
           </div>
-        ) : tests.length === 0 ? (
+        ) : batchTests.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-            <h3 className="text-lg font-medium text-neutral-900 mb-2">No active swarms</h3>
+            <h3 className="text-lg font-medium text-neutral-900 mb-2">No batch tests yet</h3>
             <p className="text-neutral-500 font-light text-sm max-w-sm mb-6">
-              Launch your first agent swarm simulation to start testing.
+              Launch your first multi-agent batch simulation to start testing.
             </p>
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex items-center justify-center gap-2 border border-neutral-200 bg-white text-neutral-900 px-5 py-2.5 hover:border-neutral-900 transition-all text-sm font-medium rounded-none"
+            <Link
+              href="/tests/new"
+              className="inline-flex items-center justify-center gap-2 border border-neutral-200 bg-white text-neutral-900 px-5 py-2.5 hover:border-neutral-900 transition-all text-sm font-medium"
             >
               Start Simulation
-            </button>
+            </Link>
           </div>
         ) : (
           <div className="bg-white h-full w-full">
@@ -197,27 +192,27 @@ export default function Dashboard() {
                       <th className="px-6 py-4 w-12">
                         <input 
                           type="checkbox" 
-                          className="rounded-none border-neutral-300 text-neutral-900 focus:ring-neutral-900 shadow-sm w-4 h-4"
-                          checked={tests.length > 0 && selectedTests.length === tests.length}
+                          className="border-neutral-300 text-neutral-900 focus:ring-neutral-900 shadow-sm w-4 h-4"
+                          checked={batchTests.length > 0 && selectedTests.length === batchTests.length}
                           onChange={toggleSelectAll}
                         />
                       </th>
                     )}
-                    <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs w-1/3">Target URL</th>
-                    <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs">Persona</th>
-                    <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs">Status</th>
-                    <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs">Date</th>
-                    <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs text-right">Action</th>
+                      <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs w-1/3">Target URL</th>
+                      <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs">Agents</th>
+                      <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs">Status</th>
+                      <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs">Date</th>
+                      <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200 bg-white">
-                  {tests.map((test) => (
+                  {batchTests.map((test) => (
                     <tr key={test.id} className={`group transition-colors ${selectedTests.includes(test.id) ? "bg-neutral-50" : "hover:bg-neutral-50/30"}`}>
                       {isSelectionMode && (
                         <td className="px-6 py-5">
                           <input 
                             type="checkbox" 
-                            className="rounded-none border-neutral-300 text-neutral-900 focus:ring-neutral-900 shadow-sm w-4 h-4"
+                            className="border-neutral-300 text-neutral-900 focus:ring-neutral-900 shadow-sm w-4 h-4"
                             checked={selectedTests.includes(test.id)}
                             onChange={() => toggleSelect(test.id)}
                           />
@@ -232,7 +227,7 @@ export default function Dashboard() {
                         </div>
                       </td>
                       <td className="px-6 py-5 text-neutral-600 font-light">
-                        {test.personaName || `Persona ${test.personaIndex}`}
+                        {test.selectedPersonaIndices?.length || 0} personas
                       </td>
                       <td className="px-6 py-5">
                         {getStatusBadge(test.status)}
@@ -243,7 +238,7 @@ export default function Dashboard() {
                       <td className="px-6 py-5 text-right">
                         <Link
                           href={`/tests/${test.id}`}
-                          className="inline-flex items-center justify-center bg-neutral-900 text-white px-4 py-1.5 text-xs font-medium hover:bg-neutral-800 transition-colors rounded-none shadow-sm"
+                          className="inline-flex items-center justify-center bg-neutral-900 text-white px-4 py-1.5 text-xs font-medium hover:bg-neutral-800 transition-colors shadow-sm"
                         >
                           View Results
                         </Link>
@@ -256,12 +251,6 @@ export default function Dashboard() {
           </div>
         )}
       </div>
-
-      <CreateTestModal 
-        isOpen={isCreateModalOpen} 
-        onClose={() => setIsCreateModalOpen(false)} 
-        onTestCreated={handleTestCreated}
-      />
     </div>
   );
 }
