@@ -7,6 +7,7 @@ import { signIn, signUp, useSession } from "@/lib/auth-client";
 import Link from "next/link";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { FlickeringGrid } from "@/components/ui/flickering-grid";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -90,7 +91,18 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex bg-white font-sans selection:bg-neutral-900 selection:text-white overflow-hidden">
+    <div className="min-h-screen flex bg-white font-sans selection:bg-neutral-900 selection:text-white overflow-hidden relative">
+      {/* Flickering Grid Background */}
+      <div className="absolute inset-0 opacity-[0.15] z-0">
+        <FlickeringGrid
+          squareSize={4}
+          gridGap={6}
+          flickerChance={0.15}
+          color="rgb(0, 0, 0)"
+          maxOpacity={0.2}
+        />
+      </div>
+
       {/* Left Column: Form */}
       <div className="w-full lg:w-1/2 flex flex-col justify-between p-8 lg:p-12 relative z-10 bg-white">
         {/* Header */}
@@ -110,10 +122,10 @@ export default function LoginPage() {
         {/* Main Content */}
         <div className="max-w-sm w-full mx-auto">
           <div className="mb-10">
-            <h1 className="text-3xl font-light tracking-tight mb-2 text-neutral-900">
+            <h1 className="text-4xl md:text-5xl font-serif font-normal tracking-tight mb-3 text-neutral-900">
               {isLogin ? "Welcome back" : "Join the simulation"}
             </h1>
-            <p className="text-neutral-500 font-light">
+            <p className="text-base md:text-lg text-neutral-600 font-sans font-light leading-relaxed">
               {isLogin ? "Enter your credentials to access the swarm." : "Deploy your first agent swarm today."}
             </p>
           </div>
@@ -121,12 +133,12 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-5">
             {!isLogin && (
               <div className="space-y-1">
-                <label className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Name</label>
+                <label className="text-xs font-sans font-light text-neutral-500 uppercase tracking-wide">Name</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-white border border-neutral-200 text-neutral-900 px-4 py-3 focus:border-neutral-900 focus:ring-0 outline-none transition-all placeholder:text-neutral-300 font-light rounded-none"
+                  className="w-full bg-white border border-neutral-200 text-neutral-900 px-4 py-3 focus:border-neutral-900 focus:ring-0 outline-none transition-all placeholder:text-neutral-300 font-sans font-light rounded-none"
                   placeholder="Ada Lovelace"
                   required={!isLogin}
                 />
@@ -134,12 +146,12 @@ export default function LoginPage() {
             )}
             
             <div className="space-y-1">
-              <label className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Email</label>
+              <label className="text-xs font-sans font-light text-neutral-500 uppercase tracking-wide">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-white border border-neutral-200 text-neutral-900 px-4 py-3 focus:border-neutral-900 focus:ring-0 outline-none transition-all placeholder:text-neutral-300 font-light rounded-none"
+                  className="w-full bg-white border border-neutral-200 text-neutral-900 px-4 py-3 focus:border-neutral-900 focus:ring-0 outline-none transition-all placeholder:text-neutral-300 font-sans font-light rounded-none"
                   placeholder="ada@example.com"
                 required
               />
@@ -147,16 +159,16 @@ export default function LoginPage() {
 
             <div className="space-y-1">
               <div className="flex justify-between items-center">
-                <label className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Password</label>
+                <label className="text-xs font-sans font-light text-neutral-500 uppercase tracking-wide">Password</label>
                 {isLogin && (
-                  <a href="#" className="text-xs text-neutral-400 hover:text-neutral-900 transition-colors">Forgot?</a>
+                  <a href="#" className="text-xs font-sans font-light text-neutral-400 hover:text-neutral-900 transition-colors">Forgot?</a>
                 )}
               </div>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-white border border-neutral-200 text-neutral-900 px-4 py-3 focus:border-neutral-900 focus:ring-0 outline-none transition-all placeholder:text-neutral-300 font-light rounded-none"
+                  className="w-full bg-white border border-neutral-200 text-neutral-900 px-4 py-3 focus:border-neutral-900 focus:ring-0 outline-none transition-all placeholder:text-neutral-300 font-sans font-light rounded-none"
                   placeholder="••••••••"
                 required
               />
@@ -166,7 +178,7 @@ export default function LoginPage() {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-3 rounded-lg bg-red-50 text-red-600 text-sm font-light border border-red-100"
+                className="p-3 rounded-none bg-red-50 text-red-600 text-sm font-sans font-light border border-red-100"
               >
                 {error}
               </motion.div>
@@ -176,7 +188,7 @@ export default function LoginPage() {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-3 rounded-lg bg-emerald-50 text-emerald-600 text-sm font-light border border-emerald-100"
+                className="p-3 rounded-none bg-emerald-50 text-emerald-600 text-sm font-sans font-light border border-emerald-100"
               >
                 {success}
               </motion.div>
@@ -185,7 +197,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-neutral-900 text-white py-3 hover:bg-neutral-800 transition-all font-medium flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
+              className="w-full bg-neutral-900 text-white py-3 hover:bg-neutral-800 transition-all font-sans font-light flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
             >
               {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -198,11 +210,11 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-8 text-center text-sm font-light text-neutral-500">
+          <div className="mt-8 text-center text-sm font-sans font-light text-neutral-500">
             {isLogin ? "Don't have an account? " : "Already have an account? "}
             <button
               onClick={() => setIsLogin(!isLogin)}
-              className="text-neutral-900 font-medium hover:underline decoration-neutral-200 underline-offset-4"
+              className="text-neutral-900 font-light hover:underline decoration-neutral-200 underline-offset-4"
             >
               {isLogin ? "Sign up" : "Log in"}
             </button>
@@ -210,24 +222,22 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <div className="text-xs text-neutral-400 font-light flex gap-6">
+        <div className="text-xs text-neutral-400 font-sans font-light flex gap-6">
           <a href="#" className="hover:text-neutral-900 transition-colors">Privacy</a>
           <a href="#" className="hover:text-neutral-900 transition-colors">Terms</a>
-          <span className="ml-auto">© 2024 Agent²</span>
+          <span className="ml-auto">© 2024 Vantage</span>
         </div>
       </div>
 
       {/* Right Column: Visual with 3D Effect */}
-      <div className="hidden lg:flex w-1/2 bg-neutral-100 relative items-center justify-center [perspective:2000px] overflow-hidden">
-        {/* Background Grid for Depth Perception */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [transform:scale(1.5)] origin-center opacity-50"></div>
+      <div className="hidden lg:flex w-1/2 bg-white relative items-center justify-center [perspective:2000px] overflow-hidden">
 
         {/* 3D Container */}
         <motion.div 
             initial={{ rotateY: -20, rotateX: 5, opacity: 0, scale: 0.9 }}
             animate={{ rotateY: -12, rotateX: 2, opacity: 1, scale: 0.95 }}
             transition={{ duration: 1.2, ease: "easeOut" }}
-            className="w-[90%] h-[90%] bg-white rounded-2xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] border border-neutral-200 relative overflow-hidden"
+            className="w-[90%] h-[90%] bg-white rounded-none shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] border border-neutral-200 relative overflow-hidden"
             style={{ transformStyle: 'preserve-3d' }}
         >
             <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-50"></div>
@@ -263,10 +273,10 @@ export default function LoginPage() {
             </div>
 
             <div className="absolute bottom-12 left-12 right-12 z-20">
-              <blockquote className="text-2xl font-light text-neutral-900 leading-snug mb-4 relative">
+              <blockquote className="text-xl md:text-2xl font-serif font-normal text-neutral-900 leading-relaxed mb-4 relative">
                 "The chaotic testing methodology of Agent² caught a critical race condition in our payment flow that three months of manual QA missed."
               </blockquote>
-              <cite className="not-italic text-sm font-medium text-neutral-500">
+              <cite className="not-italic text-sm font-sans font-light text-neutral-500">
                 — Sarah Chen, VP of Engineering at Nexus
               </cite>
             </div>

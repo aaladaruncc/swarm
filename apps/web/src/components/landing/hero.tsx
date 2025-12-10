@@ -2,79 +2,104 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowRight, ChevronRight, Terminal } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { Terminal, TypingAnimation, AnimatedSpan } from "@/components/ui/terminal";
+import { FlickeringGrid } from "@/components/ui/flickering-grid";
 
 export function Hero() {
   return (
-    <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden bg-white">
-      <div className="container mx-auto px-6 relative z-10">
-        <div className="max-w-5xl mx-auto">
-          {/* Badge */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="flex justify-start mb-8"
-          >
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-neutral-100 border border-neutral-200 text-neutral-600 text-sm font-medium">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neutral-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-neutral-500"></span>
-              </span>
-              v3.0 Public Beta
-            </div>
-          </motion.div>
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-white pt-32 pb-20">
+      {/* Subtle Flickering Grid Background */}
+      <div className="absolute inset-0 opacity-[0.15]">
+        <FlickeringGrid
+          squareSize={4}
+          gridGap={6}
+          flickerChance={0.15}
+          color="rgb(0, 0, 0)"
+          maxOpacity={0.2}
+        />
+      </div>
 
-          {/* Headline */}
+      <div className="container mx-auto px-6 relative z-10 w-full max-w-6xl">
+        <div className="text-center mb-16">
+          {/* Main Headline - Centered, Serif Style */}
           <motion.h1
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-7xl md:text-9xl font-semibold tracking-tighter text-neutral-900 mb-8 leading-[0.9]"
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="text-6xl md:text-8xl lg:text-9xl font-serif font-normal tracking-tight text-neutral-900 mb-6 leading-[1.1]"
           >
-            Break your app <br />
-            <span className="text-neutral-400 font-light italic">before they do.</span>
+            Test with
+            <br />
+            <span className="font-light italic" style={{ fontWeight: 300 }}>intelligence</span>
           </motion.h1>
 
           {/* Subheadline */}
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-xl md:text-2xl text-neutral-500 mb-12 max-w-2xl leading-relaxed font-light"
+            transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+            className="text-xl md:text-2xl text-neutral-600 mb-12 max-w-2xl mx-auto leading-relaxed font-sans font-light"
           >
-            Unleash a swarm of AI personas to stress-test your user experience. 
-            Find the bugs that only chaos can reveal.
+            Deploy AI personas to discover bugs, test accessibility, and validate user experiences at scale.
           </motion.p>
 
-          {/* CTA Buttons */}
+          {/* CTA Button */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex flex-col sm:flex-row items-start gap-4"
+            transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
+            className="flex justify-center"
           >
             <Link
               href="/login"
-              className="h-14 px-8 bg-neutral-900 text-white hover:bg-neutral-800 transition-all flex items-center gap-2 justify-center group text-lg font-medium"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-neutral-900 text-white hover:bg-neutral-800 transition-all text-lg font-light group"
             >
-              Start Testing 
+              Get Started
               <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
-            
-            <Link
-              href="https://github.com/browserbase/stagehand"
-              target="_blank"
-              className="h-14 px-8 bg-white border border-neutral-200 text-neutral-900 hover:bg-neutral-50 transition-all flex items-center gap-2 justify-center group text-lg font-medium"
-            >
-              <Terminal className="w-5 h-5" />
-              npm install stagehand
             </Link>
           </motion.div>
         </div>
+
+        {/* Interactive Terminal Demo - Centered */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, delay: 0.5, ease: "easeOut" }}
+          className="max-w-3xl mx-auto mt-20"
+        >
+          <Terminal className="bg-neutral-900 border-neutral-800 max-w-full">
+            <TypingAnimation className="text-emerald-400">
+              $ vantage run --agents=5 --url=https://example.com
+            </TypingAnimation>
+            <AnimatedSpan className="text-neutral-400">
+              [SYSTEM] Deploying 5 AI agents...
+            </AnimatedSpan>
+            <AnimatedSpan className="text-neutral-300">
+              ✓ Agent 1: Exploring checkout flow
+            </AnimatedSpan>
+            <AnimatedSpan className="text-neutral-400">
+              [AGENT-2] Testing form validation...
+            </AnimatedSpan>
+            <AnimatedSpan className="text-orange-400">
+              ⚠ Agent 3: Found accessibility issue
+            </AnimatedSpan>
+            <AnimatedSpan className="text-neutral-300">
+              ✓ Agent 4: Completed user journey
+            </AnimatedSpan>
+            <AnimatedSpan className="text-neutral-400">
+              [AGENT-5] Stress testing payment flow...
+            </AnimatedSpan>
+            <AnimatedSpan className="text-emerald-400">
+              ✓ Analysis complete. 3 issues found.
+            </AnimatedSpan>
+            <AnimatedSpan className="text-neutral-500 mt-4 pt-4 border-t border-neutral-800">
+              Found 3 issues • 5 personas tested • 12 minutes elapsed
+            </AnimatedSpan>
+          </Terminal>
+
+        </motion.div>
       </div>
-      
-      {/* Background decoration - subtle grid or noise could go here if needed, but keeping it clean for now */}
     </section>
   );
 }

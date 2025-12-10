@@ -57,11 +57,11 @@ export function Navbar() {
             alt="Vantage" 
             width={300} 
             height={90} 
-            className="h-20 w-auto object-contain"
+            className="h-16 w-auto object-contain"
           />
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6 text-base font-light text-neutral-600">
+        <nav className="hidden md:flex items-center gap-6 text-base font-sans font-light text-neutral-600">
           <a 
             href="#features" 
             onClick={(e) => smoothScrollTo(e, 'features')}

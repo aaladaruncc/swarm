@@ -244,10 +244,7 @@ export default function CreateSwarmPage() {
                       <span>Generating...</span>
                     </>
                   ) : (
-                    <>
-                      <Zap size={16} />
-                      <span>Generate Personas</span>
-                    </>
+                    <span>Generate Personas</span>
                   )}
                 </button>
               </div>

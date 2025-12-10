@@ -44,9 +44,17 @@ export function Features() {
     <section id="features" className="py-24 bg-white border-t border-neutral-100">
       <div className="container mx-auto px-6 max-w-7xl">
         <div className="text-center max-w-3xl mx-auto mb-20">
-          <h2 className="text-4xl font-light tracking-tight mb-6">Testing, evolved.</h2>
+          <h2 
+            className="text-4xl font-light tracking-tight mb-6"
+            style={{ 
+              fontFamily: "'Georgia', 'Times New Roman', 'Palatino', 'Book Antiqua', serif",
+              fontWeight: 400
+            }}
+          >
+            Testing, evolved.
+          </h2>
           <p className="text-lg font-light text-neutral-500">
-            Deterministic testing misses the chaos of reality. Agent<sup className="text-[10px]">2</sup> introduces 
+            Deterministic testing misses the chaos of reality. Vantage introduces 
             stochastic behavior modeling to uncover edge cases you didn't know existed.
           </p>
         </div>

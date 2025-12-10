@@ -69,10 +69,10 @@ export function DashboardSidebar() {
             <Image
               src={expanded ? "/images/vantage_regular.png" : "/images/vantage_small.png"}
               alt="Vantage"
-              width={expanded ? 180 : 40}
-              height={expanded ? 54 : 40}
+              width={expanded ? 180 : 56}
+              height={expanded ? 54 : 56}
               className={`object-contain ${
-                expanded ? "max-w-[80%] h-auto" : "w-10 h-10"
+                expanded ? "max-w-[80%] h-auto" : "w-14 h-14"
               }`}
             />
           </motion.div>
