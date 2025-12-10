@@ -5,8 +5,11 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "UX Testing Platform",
+  title: "Nomos",
   description: "AI-powered user experience testing with realistic personas",
+  icons: {
+    icon: "/images/nomos_favicon.png",
+  },
 };
 
 export default function RootLayout({

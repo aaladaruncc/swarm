@@ -85,13 +85,7 @@ export default function NewTest() {
     <div className="min-h-screen bg-white text-neutral-900 font-sans selection:bg-neutral-900 selection:text-white">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-neutral-100 h-16">
-        <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Link href="/dashboard" className="flex items-center gap-2 group">
-              <div className="w-5 h-5 bg-black rounded-sm"></div>
-              <span className="text-xl font-medium tracking-tight group-hover:opacity-70 transition-opacity">Agent<sup className="text-xs ml-0.5">2</sup></span>
-            </Link>
-          </div>
+        <div className="max-w-7xl mx-auto px-6 h-full flex items-center">
           <Link href="/dashboard" className="text-sm font-light text-neutral-500 hover:text-neutral-900 transition-colors flex items-center gap-2">
             <ArrowLeft size={16} />
             Back to Dashboard

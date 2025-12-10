@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { signIn, signUp, useSession } from "@/lib/auth-client";
 import Link from "next/link";
 import { ArrowRight, Loader2 } from "lucide-react";
@@ -20,10 +21,14 @@ export default function LoginPage() {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (session?.user) {
+    if (!isPending && session?.user) {
       router.push("/dashboard");
     }
-  }, [session, router]);
+  }, [session, isPending, router]);
+
+  if (session?.user) {
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,8 +98,13 @@ export default function LoginPage() {
           href="/" 
           className="flex items-center gap-2 group w-fit hover:opacity-70 transition-opacity"
         >
-          <div className="w-5 h-5 bg-black rounded-sm"></div>
-          <span className="text-xl font-medium tracking-tight">Agent<sup className="text-xs ml-0.5">2</sup></span>
+          <Image 
+            src="/images/nomos-agent.png" 
+            alt="Nomos" 
+            width={400} 
+            height={130}
+            className="h-24 w-auto object-contain"
+          />
         </Link>
 
         {/* Main Content */}

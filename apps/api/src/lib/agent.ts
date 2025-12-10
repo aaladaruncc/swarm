@@ -101,75 +101,34 @@ ${persona.painPoints.slice(0, 3).map((p, i) => `${i + 1}. ${p}`).join('\n')}
 
 ${explorationFocus}
 
-TESTING PROCESS (Complete in 12-15 steps):
+Then IMMEDIATELY provide this assessment in plain text format (NO markdown, NO asterisks, NO hash symbols, NO special formatting):
 
-PHASE 1 - FIRST IMPRESSIONS (Steps 1-3):
-1. Land on homepage - What is this? Who is it for? Is it immediately clear?
-2. Scroll to see full page - What stands out? Any immediate red flags?
-3. Note your gut reaction as a ${persona.occupation}
+FINAL UX ASSESSMENT
 
-PHASE 2 - NAVIGATION & CORE TASKS (Steps 4-10):
-4. Try to accomplish ONE key task relevant to this site type
-5. Navigate through 2-3 pages using the menu
-6. Test ONE interactive element (button, form, search, filter)
-7. Look for critical info (pricing, contact, features)
-8. Note SPECIFIC friction points with exact details
+FIRST IMPRESSION:
+[One sentence - what is this site for?]
 
-PHASE 3 - ASSESSMENT (Steps 11-15):
-Provide your detailed, ACTIONABLE assessment:
+WHAT I LIKED (2 things):
+1. [positive]
+2. [positive]
 
-=== FINAL UX ASSESSMENT ===
+WHAT CONFUSED ME (1-2 things):
+1. [confusing thing]
 
-🎯 FIRST IMPRESSION (2-3 sentences with specifics):
-[What is this site? Did I understand in 5 seconds? Include specific observations about layout, messaging, or design]
+USABILITY ISSUES:
+[One main issue - severity: low/medium/high/critical]
 
-😊 WHAT WORKED WELL (3-4 specific items with details):
-1. [Specific positive - e.g., "Clear hero section with '3 Steps to Start' - immediately understood the process"]
-2. [Include numbers, locations, exact elements]
-3. [Another specific positive]
-4. [One more if applicable]
+ACCESSIBILITY CONCERNS:
+[Brief - any issues?]
 
-😕 CONFUSION POINTS (2-3 specific items with context):
-1. [Specific confusion - e.g., "Clicked 'Products' but landed on page with 12 categories and no descriptions - spent 2 minutes looking for basic pricing"]
-2. [Include what you tried, what happened, what you expected]
-3. [Another if applicable]
+TOP SUGGESTIONS:
+1. [suggestion]
+2. [suggestion]
 
-🚧 USABILITY ISSUES (2-4 issues with SPECIFIC recommendations):
-1. [SEVERITY: critical] - [Exact issue with measurements/counts - e.g., "Submit button is 28px wide and blends with background (#f0f0f0 on #ffffff) - failed to find it 3 times"]
-   → FIX: [Actionable - e.g., "Make button minimum 120px wide, use high contrast color (#171717), add 'Submit' label in 14px font"]
+OVERALL SCORE: X/10
+[Why this score in one sentence]
 
-2. [SEVERITY: high/medium/low] - [Another specific issue with details]
-   → FIX: [Specific, measurable recommendation]
-
-3. [Continue with more if found - be thorough!]
-
-♿ ${persona.techSavviness === 'beginner' ? 'BEGINNER-SPECIFIC CONCERNS' : persona.techSavviness === 'advanced' ? 'ADVANCED USER CONCERNS' : 'ACCESSIBILITY & USABILITY NOTES'}:
-${persona.techSavviness === 'beginner' 
-  ? '[Text readability (font sizes), button visibility, fear of errors, need for confirmation messages]' 
-  : persona.techSavviness === 'advanced' 
-  ? '[Performance metrics, keyboard shortcuts, information density, power user features, technical polish]'
-  : '[Visual hierarchy, help availability, error messages, recovery from mistakes]'}
-
-💡 TOP 3 RECOMMENDATIONS (Prioritized with expected impact):
-1. [HIGH] [Specific fix] - Impact: [Quantify if possible - e.g., "Would help 60% of ${persona.techSavviness} users complete signup faster"]
-2. [MEDIUM] [Specific improvement] - Impact: [Expected benefit]
-3. [LOW] [Polish item] - Impact: [Expected benefit]
-
-⭐ OVERALL SCORE: X/10
-
-SCORE JUSTIFICATION (Be specific):
-- First Impression (clarity): X/10 - [Why? Cite specific elements]
-- Navigation (findability): X/10 - [Why? What worked/didn't work]
-- Task Completion (can I succeed): X/10 - [Why? What blocked or helped you]
-- Design & Trust (professional feel): X/10 - [Why? Specific design elements]
-- Performance (speed): X/10 - [Why? Loading times, responsiveness]
-
-WEIGHTED AVERAGE: X/10
-
-ONE-SENTENCE SUMMARY FOR STAKEHOLDERS:
-[Capture the core insight that would make a CEO/product manager take action]
-
-=== END ASSESSMENT ===
+END ASSESSMENT
 
 CRITICAL REMINDERS:
 - Provide SPECIFIC details (exact button text, page names, measurements)
@@ -405,6 +364,9 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
       agent = stagehand.agent({
         cua: true,
         model: "google/gemini-2.5-computer-use-preview-10-2025",
+        modelClientOptions: {
+            apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+        },
         systemPrompt: generateSystemPrompt(persona, targetUrl),
       } as any);
       log("✅ Agent created successfully");
@@ -434,35 +396,35 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
         agentResult = {
           message: `Session timed out during exploration. Based on partial observations:
 
-=== FINAL UX ASSESSMENT ===
+FINAL UX ASSESSMENT
 
-🎯 FIRST IMPRESSION:
+FIRST IMPRESSION:
 Started exploring the website but session ended before completion. The site appears to be ${targetUrl.includes("app") ? "an application" : "a website"} that may benefit from faster loading or simpler navigation.
 
-😊 WHAT I LIKED:
+WHAT I LIKED:
 1. Managed to load and view the homepage
 2. Site was accessible and started loading content
 
-😕 WHAT CONFUSED ME:
+WHAT CONFUSED ME:
 1. Session ended before I could fully explore the site
 2. May have complex navigation or too much content slowing exploration
 
-🚧 USABILITY ISSUES:
-- Performance: Site may be too complex or slow, causing exploration timeout - severity: medium
-- Navigation: Unable to complete exploration in allocated time, suggesting potential UX complexity - severity: medium
+USABILITY ISSUES:
+Performance: Site may be too complex or slow, causing exploration timeout - severity: medium
+Navigation: Unable to complete exploration in allocated time, suggesting potential UX complexity - severity: medium
 
-♿ ACCESSIBILITY CONCERNS:
+ACCESSIBILITY CONCERNS:
 Limited time prevented thorough accessibility assessment. Large or complex sites may overwhelm users with limited time or slower devices.
 
-💡 TOP SUGGESTIONS:
+TOP SUGGESTIONS:
 1. Optimize page load times and reduce complexity
 2. Simplify navigation structure for faster user exploration
 3. Consider progressive disclosure to avoid overwhelming users
 
-⭐ OVERALL SCORE: 6/10
+OVERALL SCORE: 6/10
 Session timed out before full assessment. Site complexity or performance may impact real user experience.
 
-=== END ASSESSMENT ===`,
+END ASSESSMENT`,
           success: false,
         };
       } else {

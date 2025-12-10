@@ -150,9 +150,47 @@ export async function getBatchTest(id: string): Promise<{
   return fetchWithAuth(`/api/batch-tests/${id}`);
 }
 
+interface Swarm {
+  id: string;
+  userId: string;
+  name: string;
+  description: string | null;
+  personas: GeneratedPersona[];
+  agentCount: number;
+  createdAt: string;
+}
+
+export async function getSwarms(): Promise<{ swarms: Swarm[] }> {
+  return fetchWithAuth("/api/swarms");
+}
+
+export async function createSwarm(
+  name: string,
+  description: string,
+  personas: GeneratedPersona[],
+  agentCount: number
+): Promise<{ swarm: Swarm }> {
+  return fetchWithAuth("/api/swarms", {
+    method: "POST",
+    body: JSON.stringify({
+      name,
+      description,
+      personas,
+      agentCount,
+    }),
+  });
+}
+
+export async function deleteSwarm(id: string): Promise<{ message: string; id: string }> {
+  return fetchWithAuth(`/api/swarms/${id}`, {
+    method: "DELETE",
+  });
+}
+
 export type {
   GeneratedPersona,
   BatchTestRun,
   TestRunWithReport,
   AggregatedReport,
+  Swarm,
 };

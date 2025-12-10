@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { getBatchTest, type TestRunWithReport, type AggregatedReport, type BatchTestRun } from "@/lib/batch-api";
+import ReactMarkdown from "react-markdown";
 import { ArrowLeft, Loader2, ExternalLink, Download } from "lucide-react";
 import { pdf } from '@react-pdf/renderer';
 import { AggregatedReportPDF } from '@/components/pdf/AggregatedReportPDF';
@@ -417,10 +418,20 @@ export default function TestDetails() {
                     {aggregatedReport.fullAnalysis && (
                       <div className="border border-neutral-200 p-8">
                         <h2 className="text-xl font-medium mb-6">Detailed Analysis</h2>
-                        <div className="prose prose-neutral max-w-none">
-                          <p className="whitespace-pre-wrap text-neutral-700 font-light leading-relaxed">
+                        <div className="prose prose-neutral max-w-none text-neutral-700 font-light leading-relaxed">
+                          <ReactMarkdown
+                            components={{
+                              h3: ({ children }) => <h3 className="text-lg font-medium mt-6 mb-3 text-neutral-900">{children}</h3>,
+                              p: ({ children }) => <p className="mb-4">{children}</p>,
+                              ul: ({ children }) => <ul className="list-disc list-inside mb-4 space-y-1">{children}</ul>,
+                              ol: ({ children }) => <ol className="list-decimal list-inside mb-4 space-y-1">{children}</ol>,
+                              li: ({ children }) => <li className="ml-4">{children}</li>,
+                              strong: ({ children }) => <strong className="font-medium">{children}</strong>,
+                              em: ({ children }) => <em className="italic">{children}</em>,
+                            }}
+                          >
                             {aggregatedReport.fullAnalysis}
-                          </p>
+                          </ReactMarkdown>
                         </div>
                       </div>
                     )}
