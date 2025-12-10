@@ -5,7 +5,10 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { getBatchTest, type TestRunWithReport, type AggregatedReport, type BatchTestRun } from "@/lib/batch-api";
-import { ArrowLeft, Loader2, ExternalLink } from "lucide-react";
+import { ArrowLeft, Loader2, ExternalLink, Download } from "lucide-react";
+import { pdf } from '@react-pdf/renderer';
+import { AggregatedReportPDF } from '@/components/pdf/AggregatedReportPDF';
+import { PersonaReportPDF } from '@/components/pdf/PersonaReportPDF';
 
 export default function TestDetails() {
   const router = useRouter();
@@ -17,8 +20,62 @@ export default function TestDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedView, setSelectedView] = useState<"aggregated" | number>("aggregated");
+  const [exportingPDF, setExportingPDF] = useState(false);
 
   const testId = params.id as string;
+
+  const handleExportAggregatedPDF = async () => {
+    if (!batchTestRun || !aggregatedReport) return;
+    
+    setExportingPDF(true);
+    try {
+      const blob = await pdf(
+        <AggregatedReportPDF 
+          batchTestRun={batchTestRun}
+          aggregatedReport={aggregatedReport}
+          agentCount={testRuns.length}
+        />
+      ).toBlob();
+      
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `aggregated-report-${new Date().toISOString().split('T')[0]}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to generate PDF:', err);
+      setError('Failed to export PDF');
+    } finally {
+      setExportingPDF(false);
+    }
+  };
+
+  const handleExportPersonaPDF = async (index: number) => {
+    if (!testRuns[index] || !batchTestRun) return;
+    
+    setExportingPDF(true);
+    try {
+      const blob = await pdf(
+        <PersonaReportPDF 
+          testRun={testRuns[index]}
+          targetUrl={batchTestRun.targetUrl}
+        />
+      ).toBlob();
+      
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${testRuns[index].testRun.personaName}-report-${new Date().toISOString().split('T')[0]}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to generate PDF:', err);
+      setError('Failed to export PDF');
+    } finally {
+      setExportingPDF(false);
+    }
+  };
 
   const loadTest = async () => {
     try {
@@ -106,11 +163,31 @@ export default function TestDetails() {
   return (
     <div className="min-h-screen bg-white text-neutral-900 font-sans selection:bg-neutral-900 selection:text-white pb-24">
       <header className="border-b border-neutral-100 bg-white sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/dashboard" className="text-neutral-500 hover:text-neutral-900 transition-colors flex items-center gap-2 text-sm font-medium">
             <ArrowLeft size={16} />
             Back to Dashboard
           </Link>
+          
+          {batchTestRun?.status === "completed" && aggregatedReport && (
+            <button
+              onClick={selectedView === "aggregated" ? handleExportAggregatedPDF : () => typeof selectedView === "number" && handleExportPersonaPDF(selectedView)}
+              disabled={exportingPDF}
+              className="flex items-center gap-2 bg-neutral-900 text-white px-4 py-2 hover:bg-neutral-800 transition-all text-xs font-medium disabled:opacity-50"
+            >
+              {exportingPDF ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>Generating...</span>
+                </>
+              ) : (
+                <>
+                  <Download size={14} />
+                  <span>Export PDF</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
       </header>
 
