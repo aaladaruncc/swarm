@@ -33,7 +33,7 @@ export type PersonaGenerationResult = z.infer<typeof PersonaGenerationResultSche
 
 export async function generatePersonas(
   userDescription: string,
-  targetUrl: string
+  targetUrl?: string
 ): Promise<PersonaGenerationResult> {
   console.log(`Generating personas for: "${userDescription}" (URL: ${targetUrl || "none"})`);
 
