@@ -12,7 +12,7 @@
   "dependencies": {
     "@ai-sdk/openai": "^2.0.80",
     "@browserbasehq/sdk": "^2.6.0",
-    "@browserbasehq/stagehand": "latest",
+    "@browserbasehq/stagehand": "3.0.3",
     "@hono/node-server": "^1.13.7",
     "@hono/zod-validator": "^0.4.2",
     "@ux-testing/db": "workspace:*",

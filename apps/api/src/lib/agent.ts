@@ -53,38 +53,53 @@ export interface RunTestOptions {
 // ============================================================================
 
 function generateSystemPrompt(persona: UserPersona, targetUrl: string): string {
-  return `You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation} from ${persona.country}, testing a website. You have limited time (5 minutes).
+  const techBehavior = persona.techSavviness === "beginner" 
+    ? `You struggle with technical jargon and complex interfaces. You need clear instructions, large buttons, and obvious next steps. You're worried about making mistakes and losing your progress.` 
+    : persona.techSavviness === "advanced"
+    ? `You expect efficiency, keyboard shortcuts, and professional UX. You notice slow loading times, unnecessary clicks, and poor information architecture. You compare this to best-in-class products.`
+    : `You can figure things out but appreciate intuitive design. You notice when things are confusing but can usually work around issues. You want things to be straightforward and visually clear.`;
 
-PROFILE:
-- Tech level: ${persona.techSavviness}
-- Goal: ${persona.primaryGoal}
-${persona.painPoints.length > 0 ? `- Frustrations: ${persona.painPoints.slice(0, 2).join(", ")}` : ""}
+  return `You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation} from ${persona.country}.
 
-CRITICAL: You must complete your assessment within 15 steps or it won't be saved. Work quickly!
+YOUR PROFILE:
+- Tech Experience: ${persona.techSavviness}
+- Primary Goal: ${persona.primaryGoal}
+- Key Pain Points: ${persona.painPoints.slice(0, 3).join("; ")}
+- Context: ${persona.context || "Testing this website for usability"}
 
-BEHAVIOR:
-Browse like a real user - scroll, click what interests you, be honest about confusion. 
-${persona.techSavviness === "beginner" ? "You need simple, clear interfaces." : persona.techSavviness === "advanced" ? "You expect efficient, professional UX." : "You appreciate good design and clarity."}
+YOUR BEHAVIOR & EXPECTATIONS:
+${techBehavior}
 
-After exploring 10-12 steps, provide your assessment immediately. Don't delay!`;
+YOUR TASK:
+Test this website as yourself - a REAL ${persona.occupation} who ${persona.primaryGoal.toLowerCase()}. 
+
+Be SPECIFIC and ACTIONABLE in your observations:
+❌ BAD: "Navigation is confusing"
+✅ GOOD: "The main menu has 8 top-level items with unclear labels like 'Solutions' and 'Resources' - I couldn't find pricing or contact info"
+
+❌ BAD: "Forms are hard to use"  
+✅ GOOD: "The signup form has 12 required fields with small labels (8px font). No progress indicator. Lost my data when I clicked back"
+
+CRITICAL: Complete assessment in 12-15 steps. Work efficiently!`;
 }
 
 function generateAgentInstructions(persona: UserPersona): string {
+  const explorationFocus = persona.techSavviness === "beginner"
+    ? `Focus on: Are instructions clear? Can you find what you need? Are buttons obvious? Do you feel safe clicking things?`
+    : persona.techSavviness === "advanced" 
+    ? `Focus on: Loading speed, information architecture, workflow efficiency, professional polish, mobile responsiveness.`
+    : `Focus on: Visual clarity, intuitive navigation, ease of completing tasks, overall user-friendliness.`;
+
   return `
-You are ${persona.name} testing this website. Tech level: ${persona.techSavviness}.
+You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation}. Tech level: ${persona.techSavviness}.
 
-CRITICAL TIMING:
-- You have MAX 15 steps total (approx 5 minutes)
-- By step 10-12: Start wrapping up
-- By step 13-15: MUST provide final assessment
-- If you reach step 12, immediately move to assessment
+YOUR CONTEXT:
+${persona.primaryGoal}
 
-FAST EXPLORATION (10-12 steps):
-1. Scroll homepage - first impression?
-2. Click 1-2 nav items
-3. Quick scroll each page
-4. Note 1-2 good things, 1-2 confusing things
-5. Try 1 button/form if you see one
+Pain points you care about:
+${persona.painPoints.slice(0, 3).map((p, i) => `${i + 1}. ${p}`).join('\n')}
+
+${explorationFocus}
 
 Then IMMEDIATELY provide this assessment in plain text format (NO markdown, NO asterisks, NO hash symbols, NO special formatting):
 
@@ -115,7 +130,11 @@ OVERALL SCORE: X/10
 
 END ASSESSMENT
 
-REMEMBER: Must complete assessment by step 15 or it won't be saved!
+CRITICAL REMINDERS:
+- Provide SPECIFIC details (exact button text, page names, measurements)
+- Give ACTIONABLE recommendations (not "improve UX" but "reduce form from 12 to 5 fields")
+- Think as a ${persona.age}yo ${persona.occupation} with ${persona.techSavviness} tech skills
+- Complete by step 15 maximum!
 `;
 }
 
@@ -187,24 +206,56 @@ function parseAgentFeedback(agentMessage: string): {
   // Extract recommendations
   result.recommendations = extractList(/(?:(?:\*\*|##)?\s*(?:SUGGESTIONS|Suggestions|RECOMMENDATIONS|Recommendations|MY TOP SUGGESTIONS)[:\s]*)(?:\*\*)?([^\n]+(?:\n(?:[-•\d*])[^\n]+)*)/i);
 
-  // Extract usability issues
-  const issuesMatch = agentMessage.match(
-    /(?:(?:\*\*|##)?\s*(?:USABILITY ISSUES|Usability Issues|ISSUES FOUND)[:\s]*)(?:\*\*)?([^\n]+(?:\n(?:[-•\d*])[^\n]+)*)/i
+  // Extract usability issues with enhanced parsing for severity and recommendations
+  const issuesSection = agentMessage.match(
+    /(?:USABILITY ISSUES|🚧)[:\s]*\n([\s\S]*?)(?=\n(?:♿|💡|⭐|===))/i
   );
-  if (issuesMatch) {
-    const items = issuesMatch[1].match(/(?:^|\n)\s*(?:[-•\d.*]+)\s*([^\n]+)/g);
-    if (items) {
-      items.forEach((item) => {
-        const cleanItem = item.replace(/^(?:^|\n)\s*(?:[-•\d.*]+)\s*/, "").trim();
-        const severityMatch = cleanItem.match(/\b(low|medium|high|critical)\b/i);
+  
+  if (issuesSection) {
+    const issueBlocks = issuesSection[1].split(/\n(?=\d+\.)/);
+    
+    issueBlocks.forEach((block) => {
+      if (block.trim().length < 10) return;
+      
+      // Extract severity - look for [SEVERITY: X] or just [X]
+      const severityMatch = block.match(/\[?SEVERITY[:\s]*(critical|high|medium|low)\]?/i) || 
+                           block.match(/\[(critical|high|medium|low)\]/i);
+      const severity = (severityMatch?.[1]?.toLowerCase() as "low" | "medium" | "high" | "critical") || "medium";
+      
+      // Extract description (everything before → or FIX: or RECOMMENDATION:)
+      const descMatch = block.match(/(?:\d+\.\s*)?(?:\[.*?\]\s*-?\s*)?(.*?)(?:\n?\s*(?:→|FIX:|RECOMMENDATION:))/is);
+      const description = (descMatch?.[1] || block.split('\n')[0].replace(/^\d+\.\s*/, '')).trim();
+      
+      // Extract recommendation (after → or FIX: or RECOMMENDATION:)
+      const recMatch = block.match(/(?:→|FIX:|RECOMMENDATION:)\s*(.+?)(?:\n\n|\n\d+\.|$)/is);
+      const recommendation = recMatch?.[1]?.trim() || "Review and address this usability concern";
+      
+      if (description.length > 10) {
         result.usabilityIssues.push({
-          severity:
-            (severityMatch?.[1]?.toLowerCase() as "low" | "medium" | "high" | "critical") ||
-            "medium",
-          description: cleanItem.replace(/\s*[-–]\s*(low|medium|high|critical)\s*/i, ""),
-          recommendation: "Address this issue to improve user experience",
+          severity,
+          description: description.substring(0, 500),
+          recommendation: recommendation.substring(0, 500),
         });
-      });
+      }
+    });
+  }
+  
+  // Fallback to simpler parsing if structured format not found
+  if (result.usabilityIssues.length === 0) {
+    const simpleMatch = agentMessage.match(/(?:USABILITY ISSUES|🚧)[:\s]*([^\n]+(?:\n(?:[-•\d])[^\n]+)*)/i);
+    if (simpleMatch) {
+      const items = simpleMatch[1].match(/[-•\d.]\s*([^\n]+)/g);
+      if (items) {
+        items.forEach((item) => {
+          const cleanItem = item.replace(/^[-•\d.]\s*/, "").trim();
+          const severityMatch = cleanItem.match(/\b(low|medium|high|critical)\b/i);
+          result.usabilityIssues.push({
+            severity: (severityMatch?.[1]?.toLowerCase() as any) || "medium",
+            description: cleanItem.replace(/\s*[-–]\s*(low|medium|high|critical)\s*/i, ""),
+            recommendation: "Address this issue to improve user experience",
+          });
+        });
+      }
     }
   }
 
@@ -249,28 +300,23 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
   log("Initializing Browserbase session...");
 
   let stagehand;
-  try {
-    stagehand = new Stagehand({
-      env: "BROWSERBASE",
-      verbose: 1,
-      browserbaseSessionCreateParams: {
-        projectId: process.env.BROWSERBASE_PROJECT_ID,
-        // Extend session timeout to 15 minutes (buffer for 5 min run)
-        timeout: 900, 
-      },
-      model: {
-        modelName: "anthropic/claude-3-5-sonnet-latest",
-        apiKey: process.env.ANTHROPIC_API_KEY,
-      },
-    });
+    try {
+      stagehand = new Stagehand({
+        env: "BROWSERBASE",
+        verbose: 1,
+        browserbaseSessionCreateParams: {
+          projectId: process.env.BROWSERBASE_PROJECT_ID,
+          timeout: 900,
+        },
+      });
 
-    await stagehand.init();
-  } catch (initError: any) {
-    log(`❌ Failed to initialize Stagehand: ${initError.message}`);
-    throw new Error(`Browserbase initialization failed: ${initError.message}`);
-  }
+      await stagehand.init();
+    } catch (initError: any) {
+      log(`❌ Failed to initialize Stagehand: ${initError.message}`);
+      throw new Error(`Browserbase initialization failed: ${initError.message}`);
+    }
 
-  const sessionId = stagehand.browserbaseSessionId || `local-${Date.now()}`;
+  const sessionId = stagehand.browserbaseSessionID || `local-${Date.now()}`;
   log(`✅ Browserbase session created: ${sessionId}`);
 
   const page = stagehand.context.pages()[0];
@@ -314,6 +360,7 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
     log("Creating AI agent...");
     let agent;
     try {
+      // Type assertion needed because Stagehand types don't include 'cua' property yet
       agent = stagehand.agent({
         cua: true,
         model: "google/gemini-2.5-computer-use-preview-10-2025",
@@ -321,7 +368,7 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
             apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
         },
         systemPrompt: generateSystemPrompt(persona, targetUrl),
-      });
+      } as any);
       log("✅ Agent created successfully");
     } catch (agentError: any) {
       log(`❌ Failed to create agent: ${agentError.message}`);
