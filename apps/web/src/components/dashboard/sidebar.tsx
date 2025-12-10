@@ -32,9 +32,9 @@ export function DashboardSidebar() {
     },
     {
       name: "Swarms",
-      href: "#", // Disabled/Non-functional as requested
+      href: "/dashboard/swarms",
       icon: LayoutGrid,
-      disabled: true
+      disabled: false
     }
   ];
 
@@ -45,40 +45,38 @@ export function DashboardSidebar() {
 
   return (
     <motion.aside
-      initial={{ width: 140 }}
-      animate={{ width: expanded ? 300 : 140 }}
+      initial={{ width: 80 }}
+      animate={{ width: expanded ? 260 : 80 }}
       transition={{ duration: 0.2, ease: "easeInOut" }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
         setProfileOpen(false);
       }}
-      className="h-screen bg-neutral-50 border-r border-neutral-200 flex flex-col sticky top-0 z-20 overflow-hidden"
+      className="h-screen bg-white border-r border-neutral-200 flex flex-col sticky top-0 z-20 overflow-hidden"
     >
       {/* Header / Logo */}
-      <div className="h-28 flex items-center px-6 border-b border-neutral-200">
-        <div className="flex items-center gap-3 overflow-hidden min-w-max">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={expanded ? "expanded" : "collapsed"}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.25, ease: "easeInOut" }}
-              className="flex-shrink-0"
-            >
-              <Image
-                src={expanded ? "/images/nomos-agent.png" : "/images/nomos_small.png"}
-                alt="Nomos"
-                width={expanded ? 300 : 80}
-                height={expanded ? 90 : 80}
-                className={`object-contain ${
-                  expanded ? "w-auto h-20" : "w-20 h-20"
-                }`}
-              />
-            </motion.div>
-          </AnimatePresence>
-        </div>
+      <div className="h-28 flex items-center justify-center border-b border-neutral-200 w-full">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={expanded ? "expanded" : "collapsed"}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.25, ease: "easeInOut" }}
+            className="flex justify-center items-center w-full"
+          >
+            <Image
+              src={expanded ? "/images/nomos-agent.png" : "/images/nomos_small.png"}
+              alt="Nomos"
+              width={expanded ? 180 : 40}
+              height={expanded ? 54 : 40}
+              className={`object-contain ${
+                expanded ? "max-w-[80%] h-auto" : "w-10 h-10"
+              }`}
+            />
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {/* Navigation */}
@@ -89,24 +87,26 @@ export function DashboardSidebar() {
             <Link
               key={item.name}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group relative ${
+              className={`flex items-center ${expanded ? "gap-3 px-3" : "justify-center px-0"} py-3 rounded-none transition-colors group relative ${
                 isActive 
-                  ? "bg-white text-neutral-900 shadow-sm border border-neutral-100" 
+                  ? "bg-neutral-100 text-neutral-900 border border-neutral-200" 
                   : item.disabled 
                     ? "text-neutral-300 cursor-not-allowed" 
                     : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
               }`}
               onClick={(e) => item.disabled && e.preventDefault()}
             >
-              <item.icon size={20} className={`flex-shrink-0 ${isActive ? "text-neutral-900" : item.disabled ? "text-neutral-300" : "text-neutral-600 group-hover:text-neutral-900"}`} />
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: expanded ? 1 : 0 }}
-                transition={{ duration: 0.1 }}
-                className="text-sm font-medium whitespace-nowrap overflow-hidden"
-              >
-                {item.name}
-              </motion.span>
+              <item.icon size={22} className={`flex-shrink-0 ${isActive ? "text-neutral-900" : item.disabled ? "text-neutral-300" : "text-neutral-600 group-hover:text-neutral-900"}`} />
+              {expanded && (
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.1 }}
+                  className="text-sm font-medium whitespace-nowrap overflow-hidden"
+                >
+                  {item.name}
+                </motion.span>
+              )}
             </Link>
           );
         })}
@@ -116,26 +116,28 @@ export function DashboardSidebar() {
       <div className="p-3 border-t border-neutral-200 relative">
         <button
           onClick={() => expanded && setProfileOpen(!profileOpen)}
-          className={`w-full flex items-center gap-3 p-2 transition-colors ${
-            profileOpen ? "bg-white shadow-sm border border-neutral-100" : "hover:bg-neutral-100"
+          className={`w-full flex items-center ${expanded ? "gap-3 p-2" : "justify-center p-2"} transition-colors ${
+            profileOpen ? "bg-neutral-100 border border-neutral-200" : "hover:bg-neutral-100"
           }`}
         >
-          <div className="w-8 h-8 bg-gradient-to-br from-neutral-700 via-neutral-900 to-black flex items-center justify-center flex-shrink-0 text-white font-medium text-sm rounded-none shadow-sm border border-neutral-800">
-            {session?.user?.name?.[0]?.toUpperCase() || <User size={16} />}
+          <div className="w-9 h-9 bg-gradient-to-br from-neutral-700 via-neutral-900 to-black flex items-center justify-center flex-shrink-0 text-white font-medium text-sm rounded-none shadow-sm border border-neutral-800">
+            {session?.user?.name?.[0]?.toUpperCase() || <User size={18} />}
           </div>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: expanded ? 1 : 0 }}
-            transition={{ duration: 0.1 }}
-            className="flex-1 text-left overflow-hidden whitespace-nowrap"
-          >
-            <div className="text-sm font-medium text-neutral-900 truncate">
-              {session?.user?.name || "User"}
-            </div>
-            <div className="text-xs text-neutral-500 truncate">
-              {session?.user?.email}
-            </div>
-          </motion.div>
+          {expanded && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.1 }}
+              className="flex-1 text-left overflow-hidden whitespace-nowrap"
+            >
+              <div className="text-sm font-medium text-neutral-900 truncate">
+                {session?.user?.name || "User"}
+              </div>
+              <div className="text-xs text-neutral-500 truncate">
+                {session?.user?.email}
+              </div>
+            </motion.div>
+          )}
         </button>
 
         {/* Profile Popup Menu */}
@@ -145,13 +147,13 @@ export function DashboardSidebar() {
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="absolute bottom-full left-3 right-3 mb-2 bg-white border border-neutral-200 rounded-xl shadow-xl overflow-hidden z-50"
+              className="absolute bottom-full left-3 right-3 mb-2 bg-white border border-neutral-200 rounded-none shadow-xl overflow-hidden z-50"
             >
               <div className="p-1">
                 <Link 
                   href="/dashboard/settings"
                   onClick={() => setProfileOpen(false)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 rounded-lg transition-colors text-left"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 rounded-none transition-colors text-left"
                 >
                   <Settings size={16} />
                   Settings
@@ -159,7 +161,7 @@ export function DashboardSidebar() {
                 <div className="h-px bg-neutral-100 my-1" />
                 <button 
                   onClick={handleSignOut}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors text-left"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-none transition-colors text-left"
                 >
                   <LogOut size={16} />
                   Sign Out

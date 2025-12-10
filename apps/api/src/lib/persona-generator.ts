@@ -35,12 +35,13 @@ export async function generatePersonas(
   userDescription: string,
   targetUrl: string
 ): Promise<PersonaGenerationResult> {
-  console.log(`Generating personas for: "${userDescription}" (URL: ${targetUrl})`);
+  console.log(`Generating personas for: "${userDescription}" (URL: ${targetUrl || "none"})`);
 
-  const prompt = `You are a UX research expert. Based on the user's description of their target audience, generate 10 diverse, realistic user personas that represent potential users of their website.
+  const urlContext = targetUrl ? `Target Website: ${targetUrl}\n` : "";
+  
+  const prompt = `You are a UX research expert. Based on the user's description of their target audience, generate 10 diverse, realistic user personas that represent potential users.
 
-Target Website: ${targetUrl}
-User's Target Audience Description: ${userDescription}
+${urlContext}User's Target Audience Description: ${userDescription}
 
 Create 10 distinct personas that:
 1. Cover a diverse range of demographics (age, location, occupation, income)
@@ -80,8 +81,22 @@ Make the personas feel like real people, not stereotypes.`;
 
     console.log(`✅ Generated ${result.object.personas.length} personas`);
     return result.object;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to generate personas:", error);
+    
+    // If the error contains the response text, try to extract it manually
+    if (error?.text) {
+      try {
+        const parsed = JSON.parse(error.text);
+        if (parsed.properties && parsed.properties.personas) {
+          console.log("Extracting data from nested properties structure");
+          return parsed.properties as PersonaGenerationResult;
+        }
+      } catch (parseError) {
+        // Ignore parse errors
+      }
+    }
+    
     throw new Error("Failed to generate personas: " + (error instanceof Error ? error.message : "Unknown error"));
   }
 }

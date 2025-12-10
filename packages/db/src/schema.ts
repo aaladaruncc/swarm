@@ -171,6 +171,19 @@ export const screenshots = pgTable("screenshots", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Swarms - Reusable groups of personas
+export const swarms = pgTable("swarms", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  personas: jsonb("personas").$type<any[]>(), // Array of persona objects
+  agentCount: integer("agent_count").notNull().default(3),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // ============================================================================
 // TYPE EXPORTS
 // ============================================================================
@@ -195,3 +208,6 @@ export type NewAggregatedReport = typeof aggregatedReports.$inferInsert;
 
 export type Screenshot = typeof screenshots.$inferSelect;
 export type NewScreenshot = typeof screenshots.$inferInsert;
+
+export type Swarm = typeof swarms.$inferSelect;
+export type NewSwarm = typeof swarms.$inferInsert;

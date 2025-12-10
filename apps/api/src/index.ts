@@ -6,6 +6,7 @@ import { logger } from "hono/logger";
 import { authRoutes } from "./routes/auth.js";
 import { testsRoutes } from "./routes/tests.js";
 import { batchTestsRoutes } from "./routes/batch-tests.js";
+import { swarmsRoutes } from "./routes/swarms.js";
 import { authMiddleware } from "./middleware/auth.js";
 
 const app = new Hono();
@@ -39,8 +40,10 @@ app.route("/api/auth", authRoutes);
 // Protected routes
 app.use("/api/tests/*", authMiddleware);
 app.use("/api/batch-tests/*", authMiddleware);
+app.use("/api/swarms/*", authMiddleware);
 app.route("/api/tests", testsRoutes);
 app.route("/api/batch-tests", batchTestsRoutes);
+app.route("/api/swarms", swarmsRoutes);
 
 // Start server
 const port = parseInt(process.env.PORT || "8080", 10);

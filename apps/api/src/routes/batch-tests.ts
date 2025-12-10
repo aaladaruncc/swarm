@@ -21,7 +21,7 @@ const batchTestsRoutes = new Hono<{ Variables: Variables }>();
 // ============================================================================
 
 const generatePersonasSchema = z.object({
-  targetUrl: z.string().url(),
+  targetUrl: z.string().url().optional().or(z.literal("")),
   userDescription: z.string().min(10).max(2000),
   agentCount: z.number().min(1).max(5).optional().default(3),
 });
