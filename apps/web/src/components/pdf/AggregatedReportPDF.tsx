@@ -124,7 +124,7 @@ export const AggregatedReportPDF = ({
         <View style={pdfStyles.section}>
           <Text style={pdfStyles.h2}>Prioritized Recommendations</Text>
           {aggregatedReport.recommendations.map((rec, i) => (
-            <View key={i} style={{ marginBottom: 14, paddingBottom: 14, borderBottom: i < aggregatedReport.recommendations.length - 1 ? '1 solid #F5F5F5' : 'none' }}>
+            <View key={i} style={{ marginBottom: 14, paddingBottom: 14, borderBottom: i < (aggregatedReport.recommendations?.length ?? 0) - 1 ? '1 solid #F5F5F5' : 'none' }}>
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
                 <View style={[
                   pdfStyles.badge,
