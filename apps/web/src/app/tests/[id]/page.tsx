@@ -4,11 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
-import { getTest, type TestRun, type Report, type Screenshot } from "@/lib/api";
-import { SessionReplayPlayer } from "@/components/SessionReplayPlayer";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { ArrowLeft, ExternalLink, Clock, User, Calendar, CheckCircle2, AlertTriangle, XCircle, Lightbulb } from "lucide-react";
 import { getBatchTest, type TestRunWithReport, type AggregatedReport, type BatchTestRun } from "@/lib/batch-api";
+import { ArrowLeft, Loader2, ExternalLink } from "lucide-react";
 
 export default function TestDetails() {
   const router = useRouter();
@@ -38,82 +35,27 @@ export default function TestDetails() {
 
   useEffect(() => {
     if (!isPending && !session?.user) {
-      router.push("/login");
+      router.push("/");
     }
   }, [session, isPending, router]);
 
   useEffect(() => {
     if (session?.user && testId) {
-      if (testId.startsWith("mock-")) {
-        // Handle mock test locally
-        loadMockTest();
-      } else {
-        loadTest();
-        const interval = setInterval(() => {
-          if (testRun?.status === "running" || testRun?.status === "pending") {
-            loadTest();
-          }
-        }, 5000);
-        return () => clearInterval(interval);
-      }
+      loadTest();
+      const interval = setInterval(() => {
+        if (batchTestRun?.status && ["running_tests", "aggregating"].includes(batchTestRun.status)) {
+          loadTest();
+        }
+      }, 5000);
+      return () => clearInterval(interval);
     }
-  }, [session, testId, testRun?.status]);
-
-  const loadMockTest = () => {
-    // Simulate a completed test run for the mock persona
-    setTestRun({
-      id: testId,
-      userId: session?.user?.id || "mock-user",
-      targetUrl: "https://example.com",
-      status: "completed",
-      personaIndex: 999,
-      personaName: "TEST",
-      createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // 5 mins ago
-      completedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-
-    setReport({
-      id: "mock-report",
-      testRunId: testId,
-      score: 8,
-      summary: "This is a mock simulation result for testing the UI. The layout and components are identical to a real report.",
-      positiveAspects: ["Fast loading times", "Clear call to action", "Responsive design"],
-      usabilityIssues: [
-        { severity: "medium", description: "Navigation menu is slightly hidden on mobile", recommendation: "Increase contrast" }
-      ],
-      accessibilityNotes: ["Good alt text usage"],
-      recommendations: ["Consider adding a dark mode toggle"],
-      totalDuration: "0m 45s",
-      fullReport: {},
-      createdAt: new Date().toISOString(),
-    });
-
-    setScreenshots([
-      { id: "s1", testRunId: testId, stepNumber: 1, description: "Initial Load", base64Data: "", createdAt: new Date().toISOString() },
-      { id: "s2", testRunId: testId, stepNumber: 2, description: "Navigation Interaction", base64Data: "", createdAt: new Date().toISOString() }
-    ]);
-    
-    setLoading(false);
-  };
-
-  const loadTest = async () => {
-    try {
-      const data = await getTest(testId);
-      setTestRun(data.testRun);
-      setReport(data.report);
-      setScreenshots(data.screenshots);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load test");
-    } finally {
-      setLoading(false);
-    }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, testId, batchTestRun?.status]);
 
   if (isPending || !session?.user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white text-neutral-900">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-900"></div>
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <Loader2 className="animate-spin w-8 h-8 text-neutral-300" />
       </div>
     );
   }
@@ -121,20 +63,22 @@ export default function TestDetails() {
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       pending: "bg-neutral-100 text-neutral-600 border-neutral-200",
-      running: "bg-blue-50 text-blue-700 border-blue-100",
-      completed: "bg-emerald-50 text-emerald-700 border-emerald-100",
-      failed: "bg-red-50 text-red-700 border-red-100",
+      running_tests: "bg-blue-50 text-blue-700 border-blue-200",
+      aggregating: "bg-purple-50 text-purple-700 border-purple-200",
+      completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      failed: "bg-red-50 text-red-700 border-red-200",
     };
     
     const labels: Record<string, string> = {
       pending: "Queued",
-      running: "Running",
+      running_tests: "Running",
+      aggregating: "Aggregating",
       completed: "Success",
       failed: "Failed",
     };
 
     return (
-      <span className={`px-3 py-1 text-xs font-medium border ${styles[status] || styles.pending} rounded-none uppercase tracking-wider`}>
+      <span className={`px-2.5 py-0.5 text-xs font-medium border ${styles[status] || styles.pending}`}>
         {labels[status] || status}
       </span>
     );
@@ -142,19 +86,19 @@ export default function TestDetails() {
 
   const getSeverityColor = (severity: string) => {
     const colors: Record<string, string> = {
-      critical: "border-red-500 bg-red-50 dark:bg-red-900/20",
-      high: "border-orange-500 bg-orange-50 dark:bg-orange-900/20",
-      medium: "border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20",
-      low: "border-gray-500 bg-gray-50 dark:bg-gray-900/20",
+      critical: "border-l-red-600 bg-red-50",
+      high: "border-l-orange-600 bg-orange-50",
+      medium: "border-l-yellow-600 bg-yellow-50",
+      low: "border-l-neutral-600 bg-neutral-50",
     };
     return colors[severity] || colors.low;
   };
 
   const getPriorityColor = (priority: string) => {
     const colors: Record<string, string> = {
-      high: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
-      medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
-      low: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300",
+      high: "bg-red-50 text-red-700 border-red-200",
+      medium: "bg-yellow-50 text-yellow-700 border-yellow-200",
+      low: "bg-neutral-50 text-neutral-700 border-neutral-200",
     };
     return colors[priority] || colors.low;
   };
@@ -173,230 +117,358 @@ export default function TestDetails() {
       <main className="max-w-7xl mx-auto px-6 py-12">
         {loading ? (
           <div className="flex justify-center py-24">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-900"></div>
+            <Loader2 className="animate-spin w-8 h-8 text-neutral-300" />
           </div>
         ) : error ? (
-          <div className="bg-red-50 text-red-600 p-4 border border-red-100 text-sm font-light">{error}</div>
-        ) : testRun ? (
-          <div className="space-y-12">
+          <div className="p-6 bg-red-50 text-red-600 border border-red-200 text-sm font-light">
+            <span className="font-medium">Error:</span> {error}
+          </div>
+        ) : batchTestRun ? (
+          <div className="space-y-8">
             {/* Header */}
-            <div>
+            <div className="border border-neutral-200 p-8">
               <div className="flex items-start justify-between mb-6">
-                <div>
-                  <h1 className="text-4xl font-light tracking-tight mb-2">Test Results</h1>
+                <div className="flex-1">
+                  <h1 className="text-3xl font-light tracking-tight mb-3">Batch Test Results</h1>
                   <a
                     href={batchTestRun.targetUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-neutral-500 hover:text-neutral-900 transition-colors flex items-center gap-2 text-lg font-light"
+                    className="text-neutral-600 hover:text-neutral-900 text-sm font-light flex items-center gap-2 group"
                   >
-                    {batchTestRun.targetUrl} ↗
+                    <span>{batchTestRun.targetUrl}</span>
+                    <ExternalLink size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                   </a>
                 </div>
                 {getStatusBadge(batchTestRun.status)}
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 py-6 border-y border-neutral-100">
-                <div className="space-y-1">
-                  <span className="text-xs font-medium text-neutral-400 uppercase tracking-wide flex items-center gap-2">
-                    <User size={14} /> Persona
-                  </span>
-                  <p className="font-medium">{testRun.personaName || `Persona ${testRun.personaIndex}`}</p>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-xs font-medium text-neutral-400 uppercase tracking-wide flex items-center gap-2">
-                    <Calendar size={14} /> Created
-                  </span>
-                  <p className="font-light">{new Date(testRun.createdAt).toLocaleString()}</p>
-                </div>
-                {testRun.completedAt && (
-                  <div className="space-y-1">
-                    <span className="text-xs font-medium text-neutral-400 uppercase tracking-wide flex items-center gap-2">
-                      <CheckCircle2 size={14} /> Completed
-                    </span>
-                    <p className="font-light">{new Date(testRun.completedAt).toLocaleString()}</p>
+              <div className="bg-neutral-50 border border-neutral-100 p-4 mb-4">
+                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">Target Audience</p>
+                <p className="text-sm text-neutral-700 font-light">{batchTestRun.userDescription}</p>
+              </div>
+
+              {/* Persona Status Grid */}
+              <div className="flex flex-wrap gap-3">
+                {testRuns.map((tr, i) => (
+                  <div key={i} className="flex items-center gap-2 px-3 py-1.5 border border-neutral-200 text-xs">
+                    <div className={`h-1.5 w-1.5 rounded-full ${
+                      tr.testRun.status === "completed" ? "bg-emerald-500" :
+                      tr.testRun.status === "running" ? "bg-blue-500 animate-pulse" :
+                      tr.testRun.status === "failed" ? "bg-red-500" : "bg-neutral-300"
+                    }`} />
+                    <span className="font-medium">{tr.testRun.personaName}</span>
                   </div>
-                )}
-                {report?.totalDuration && (
-                  <div className="space-y-1">
-                    <span className="text-xs font-medium text-neutral-400 uppercase tracking-wide flex items-center gap-2">
-                      <Clock size={14} /> Duration
-                    </span>
-                    <p className="font-light">{report.totalDuration}</p>
-                  </div>
-                )}
+                ))}
               </div>
             </div>
 
             {/* Running State */}
-            {(testRun.status === "running" || testRun.status === "pending") && (
-              <div className="border border-blue-100 bg-blue-50/50 p-6">
-                <div className="flex items-center gap-4">
-                  <div className="relative">
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
-                  </div>
-                  <div>
-                    <h3 className="text-blue-900 font-medium mb-1">
-                      {testRun.status === "pending" ? "Initializing simulation..." : "Agent is running"}
-                    </h3>
-                    <p className="text-blue-700 text-sm font-light">
-                      This may take a few minutes. You can leave this page and come back later.
-                    </p>
-                  </div>
+            {["running_tests", "aggregating"].includes(batchTestRun.status) && (
+              <div className="border border-neutral-200 p-8 flex items-center gap-6">
+                <Loader2 className="w-10 h-10 animate-spin text-neutral-400 shrink-0" />
+                <div className="flex-1">
+                  <h3 className="text-lg font-medium mb-1">
+                    {batchTestRun.status === "aggregating" ? "Aggregating Results" : "Tests Running"}
+                  </h3>
+                  <p className="text-neutral-500 font-light text-sm">
+                    {batchTestRun.status === "aggregating"
+                      ? "AI is analyzing all test results to create a comprehensive report"
+                      : `${testRuns.filter(t => t.testRun.status === "completed").length}/${testRuns.length} agents completed`}
+                  </p>
                 </div>
               </div>
             )}
 
             {/* Failed State */}
-            {testRun.status === "failed" && (
-              <div className="border border-red-100 bg-red-50/50 p-6">
-                <div className="flex items-start gap-4">
-                  <XCircle className="text-red-600 mt-0.5" size={20} />
-                  <div>
-                    <h3 className="text-red-900 font-medium mb-1">Simulation Failed</h3>
-                    <p className="text-red-700 text-sm font-light">{testRun.errorMessage || "An unknown error occurred during the simulation."}</p>
-                  </div>
-                </div>
-
-            {/* Live View / Replay */}
-            {testRun.browserbaseSessionId && (
-              <div className="space-y-4">
-                <h3 className="text-xl font-light">Session Replay</h3>
-                <div className="relative border border-neutral-200 bg-neutral-50 aspect-video flex items-center justify-center overflow-hidden">
-                   <div className="absolute inset-0 z-10 backdrop-blur-md bg-white/30 flex items-center justify-center">
-                      <div className="bg-neutral-900 text-white px-4 py-2 rounded-none text-sm font-medium uppercase tracking-wider shadow-lg">
-                        Coming Soon
-                      </div>
-                   </div>
-                   <ErrorBoundary fallback={<div className="p-8 text-neutral-500">Replay unavailable</div>}>
-                      <SessionReplayPlayer 
-                        testId={testId} 
-                        browserbaseSessionId={testRun.browserbaseSessionId}
-                        isLive={testRun.status === "running"}
-                      />
-                   </ErrorBoundary>
-                </div>
+            {batchTestRun.status === "failed" && (
+              <div className="border border-red-200 bg-red-50 p-6">
+                <h3 className="text-lg font-medium text-red-800 mb-2">Batch Test Failed</h3>
+                <p className="text-red-600 text-sm font-light">
+                  {batchTestRun.errorMessage || "An unknown error occurred"}
+                </p>
               </div>
             )}
 
-            {/* Report */}
-            {report && (
-              <div className="grid md:grid-cols-3 gap-12">
-                {/* Score Column */}
-                <div className="md:col-span-1 space-y-6">
-                  <div className="border border-neutral-200 p-8 text-center">
-                    <div className="text-sm font-medium text-neutral-400 uppercase tracking-wide mb-2">Usability Score</div>
-                    <div className="text-6xl font-light text-neutral-900 mb-4">{report.score}/10</div>
-                    <div className="h-1.5 w-full bg-neutral-100 overflow-hidden">
-                      <div className="h-full bg-neutral-900 transition-all duration-1000" style={{ width: `${(report.score || 0) * 10}%` }}></div>
-                    </div>
+            {/* Completed - Show Reports */}
+            {batchTestRun.status === "completed" && aggregatedReport && (
+              <>
+                {/* View Tabs */}
+                <div className="border-b border-neutral-200 overflow-x-auto">
+                  <div className="flex gap-1 min-w-max">
+                    <button
+                      onClick={() => setSelectedView("aggregated")}
+                      className={`px-6 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
+                        selectedView === "aggregated"
+                          ? "border-b-2 border-neutral-900 text-neutral-900"
+                          : "text-neutral-500 hover:text-neutral-900"
+                      }`}
+                    >
+                      Aggregated Report
+                    </button>
+                    {testRuns.map((tr, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setSelectedView(index)}
+                        className={`px-6 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
+                          selectedView === index
+                            ? "border-b-2 border-neutral-900 text-neutral-900"
+                            : "text-neutral-500 hover:text-neutral-900"
+                        }`}
+                      >
+                        {tr.testRun.personaName}
+                      </button>
+                    ))}
                   </div>
-                  
-                  {report.summary && (
-                    <div className="text-sm text-neutral-600 font-light leading-relaxed">
-                      {report.summary}
-                    </div>
-                  )}
                 </div>
 
-                {/* Details Column */}
-                <div className="md:col-span-2 space-y-12">
-                  {/* Positive */}
-                  <div>
-                    <h3 className="text-lg font-medium mb-4 flex items-center gap-2 text-emerald-700">
-                      <CheckCircle2 size={18} /> What Worked Well
-                    </h3>
-                    {report.positiveAspects && report.positiveAspects.length > 0 ? (
-                      <ul className="space-y-3">
-                        {report.positiveAspects.map((item, i) => (
-                          <li key={i} className="text-neutral-600 font-light text-sm pl-4 border-l border-emerald-200">{item}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-neutral-400 text-sm italic">No specific positives noted.</p>
+                {/* Aggregated Report View */}
+                {selectedView === "aggregated" && (
+                  <div className="space-y-8">
+                    {/* Overall Score */}
+                    <div className="border border-neutral-200 p-8">
+                      <h2 className="text-xl font-medium mb-6">Overall UX Score</h2>
+                      <div className="flex items-center gap-8">
+                        <div className="text-6xl font-light text-neutral-900">
+                          {aggregatedReport.overallScore}<span className="text-3xl text-neutral-400">/10</span>
+                        </div>
+                        <div className="flex-1">
+                          <div className="h-2 bg-neutral-100 overflow-hidden">
+                            <div
+                              className="h-full bg-neutral-900 transition-all"
+                              style={{ width: `${(aggregatedReport.overallScore || 0) * 10}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      {aggregatedReport.executiveSummary && (
+                        <p className="mt-6 text-neutral-600 font-light leading-relaxed whitespace-pre-wrap">
+                          {aggregatedReport.executiveSummary}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Common Issues */}
+                    {aggregatedReport.commonIssues && aggregatedReport.commonIssues.length > 0 && (
+                      <div className="border border-neutral-200 p-8">
+                        <h2 className="text-xl font-medium mb-6">Common Issues</h2>
+                        <div className="space-y-4">
+                          {aggregatedReport.commonIssues.map((issue, i) => (
+                            <div key={i} className={`border-l-4 p-4 ${getSeverityColor(issue.severity)}`}>
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="font-medium">{issue.issue}</h3>
+                                <span className="text-xs px-2 py-1 bg-white border border-neutral-200 uppercase font-medium">
+                                  {issue.severity}
+                                </span>
+                              </div>
+                              <p className="text-sm text-neutral-600 font-light mb-3">
+                                {issue.recommendation}
+                              </p>
+                              <div className="flex flex-wrap gap-1">
+                                {issue.affectedPersonas.map((persona, j) => (
+                                  <span key={j} className="text-xs px-2 py-0.5 bg-white border border-neutral-200 font-light">
+                                    {persona}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     )}
 
-                  {/* Issues */}
-                  {(report.usabilityIssues?.length > 0 || report.accessibilityNotes?.length > 0) && (
-                    <div>
-                      <h3 className="text-lg font-medium mb-4 flex items-center gap-2 text-orange-700">
-                        <AlertTriangle size={18} /> Issues Detected
-                      </h3>
-                      <div className="space-y-6">
-                        {report.usabilityIssues?.map((issue, i) => (
-                          <div key={i} className="border border-neutral-100 p-4 bg-neutral-50/30">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className={`text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 border ${
-                                issue.severity === 'critical' ? 'border-red-200 text-red-700 bg-red-50' : 
-                                issue.severity === 'high' ? 'border-orange-200 text-orange-700 bg-orange-50' : 
-                                'border-yellow-200 text-yellow-700 bg-yellow-50'
-                              }`}>
-                                {issue.severity}
-                              </span>
-                            </div>
-                            <p className="text-neutral-800 text-sm mb-2">{issue.description}</p>
-                            {issue.recommendation && (
-                              <div className="text-neutral-500 text-xs font-light pl-3 border-l border-neutral-200">
-                                <span className="font-medium text-neutral-600">Fix:</span> {issue.recommendation}
+                    {/* Strengths */}
+                    {aggregatedReport.strengthsAcrossPersonas && aggregatedReport.strengthsAcrossPersonas.length > 0 && (
+                      <div className="border border-neutral-200 p-8">
+                        <h2 className="text-xl font-medium mb-6 text-emerald-700">What Works Well</h2>
+                        <ul className="space-y-2">
+                          {aggregatedReport.strengthsAcrossPersonas.map((strength, i) => (
+                            <li key={i} className="flex gap-3 text-sm font-light">
+                              <span className="text-emerald-600 shrink-0">✓</span>
+                              <span>{strength}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Recommendations */}
+                    {aggregatedReport.recommendations && aggregatedReport.recommendations.length > 0 && (
+                      <div className="border border-neutral-200 p-8">
+                        <h2 className="text-xl font-medium mb-6">Prioritized Recommendations</h2>
+                        <div className="space-y-4">
+                          {aggregatedReport.recommendations.map((rec, i) => (
+                            <div key={i} className="border-l-4 border-l-neutral-900 pl-6 py-2">
+                              <div className="flex items-start gap-3 mb-2">
+                                <span className={`text-xs px-2 py-1 font-medium uppercase border ${getPriorityColor(rec.priority)}`}>
+                                  {rec.priority}
+                                </span>
+                                <h3 className="font-medium flex-1">{rec.recommendation}</h3>
                               </div>
-                            )}
+                              <p className="text-sm text-neutral-600 font-light">
+                                {rec.impact}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Persona-Specific Insights */}
+                    {aggregatedReport.personaSpecificInsights && aggregatedReport.personaSpecificInsights.length > 0 && (
+                      <div className="border border-neutral-200 p-8">
+                        <h2 className="text-xl font-medium mb-6">Persona-Specific Insights</h2>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          {aggregatedReport.personaSpecificInsights.map((insight, i) => (
+                            <div key={i} className="p-5 bg-neutral-50 border border-neutral-100">
+                              <h3 className="font-medium mb-3">{insight.personaName}</h3>
+                              <ul className="space-y-2 text-sm font-light">
+                                {insight.keyFindings.map((finding, j) => (
+                                  <li key={j} className="text-neutral-600 flex gap-2">
+                                    <span className="shrink-0">•</span>
+                                    <span>{finding}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Full Analysis */}
+                    {aggregatedReport.fullAnalysis && (
+                      <div className="border border-neutral-200 p-8">
+                        <h2 className="text-xl font-medium mb-6">Detailed Analysis</h2>
+                        <div className="prose prose-neutral max-w-none">
+                          <p className="whitespace-pre-wrap text-neutral-700 font-light leading-relaxed">
+                            {aggregatedReport.fullAnalysis}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Individual Persona Report View */}
+                {typeof selectedView === "number" && testRuns[selectedView]?.report && (
+                  <div className="space-y-8">
+                    {/* Persona Profile */}
+                    <div className="bg-gradient-to-br from-neutral-900 to-neutral-800 text-white p-8">
+                      <h2 className="text-2xl font-light mb-4">{testRuns[selectedView].testRun.personaName}'s Experience</h2>
+                      {testRuns[selectedView].testRun.personaData && (
+                        <div className="grid md:grid-cols-3 gap-6 text-sm">
+                          <div>
+                            <p className="text-neutral-400 text-xs uppercase tracking-wide mb-1">Profile</p>
+                            <p className="font-medium">
+                              {testRuns[selectedView].testRun.personaData.age} years old
+                            </p>
+                            <p className="font-light">{testRuns[selectedView].testRun.personaData.occupation}</p>
                           </div>
-                        ))}
-                      </div>
+                          <div>
+                            <p className="text-neutral-400 text-xs uppercase tracking-wide mb-1">Location</p>
+                            <p className="font-light">{testRuns[selectedView].testRun.personaData.country}</p>
+                          </div>
+                          <div>
+                            <p className="text-neutral-400 text-xs uppercase tracking-wide mb-1">Tech Level</p>
+                            <p className="font-light capitalize">{testRuns[selectedView].testRun.personaData.techSavviness}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
 
-                  {/* Recommendations */}
-                  {report.recommendations && report.recommendations.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-medium mb-4 flex items-center gap-2 text-neutral-900">
-                        <Lightbulb size={18} /> Strategic Recommendations
-                      </h3>
-                      <ol className="space-y-4">
-                        {report.recommendations.map((rec, i) => (
-                          <li key={i} className="text-neutral-600 font-light text-sm flex gap-3">
-                            <span className="font-mono text-neutral-300 text-xs mt-0.5">0{i+1}</span>
-                            <span>{rec}</span>
-                          </li>
-                        ))}
-                      </ol>
+                    {/* Score */}
+                    <div className="border border-neutral-200 p-8">
+                      <h3 className="text-lg font-medium mb-4">Individual Score</h3>
+                      <div className="flex items-center gap-6">
+                        <div className="text-5xl font-light text-neutral-900">
+                          {testRuns[selectedView].report?.score}<span className="text-2xl text-neutral-400">/10</span>
+                        </div>
+                        <div className="flex-1">
+                          <div className="h-2 bg-neutral-100 overflow-hidden">
+                            <div
+                              className="h-full bg-neutral-900"
+                              style={{ width: `${(testRuns[selectedView].report?.score || 0) * 10}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      {testRuns[selectedView].report?.summary && (
+                        <p className="mt-4 text-neutral-600 font-light">{testRuns[selectedView].report.summary}</p>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
-            )}
 
-            {/* Screenshots */}
-            {screenshots.length > 0 && (
-              <div className="pt-12 border-t border-neutral-100">
-                <h3 className="text-xl font-light mb-6">Screenshots</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {screenshots.map((screenshot) => (
-                    <div key={screenshot.id} className="border border-neutral-200 bg-neutral-50 group">
-                      <div className="aspect-video relative overflow-hidden bg-neutral-100">
-                        {screenshot.base64Data && (
-                          <img
-                            src={`data:image/png;base64,${screenshot.base64Data}`}
-                            alt={screenshot.description || "Screenshot"}
-                            className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
-                          />
-                        )}
+                    {/* Positive Aspects */}
+                    {testRuns[selectedView].report?.positiveAspects && testRuns[selectedView].report.positiveAspects!.length > 0 && (
+                      <div className="border border-neutral-200 p-8">
+                        <h3 className="text-lg font-medium mb-4 text-emerald-700">What Worked</h3>
+                        <ul className="space-y-2">
+                          {testRuns[selectedView].report!.positiveAspects!.map((item, i) => (
+                            <li key={i} className="flex gap-3 text-sm font-light">
+                              <span className="text-emerald-600 shrink-0">✓</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                      <div className="p-3 border-t border-neutral-200">
-                        <div className="text-xs font-mono text-neutral-400 mb-1">Step {screenshot.stepNumber}</div>
-                        <p className="text-xs text-neutral-700 font-medium truncate" title={screenshot.description}>
-                          {screenshot.description}
-                        </p>
+                    )}
+
+                    {/* Confusion Points */}
+                    {testRuns[selectedView].report?.accessibilityNotes && testRuns[selectedView].report.accessibilityNotes!.length > 0 && (
+                      <div className="border border-neutral-200 p-8">
+                        <h3 className="text-lg font-medium mb-4 text-yellow-700">Confusion Points</h3>
+                        <ul className="space-y-2">
+                          {testRuns[selectedView].report!.accessibilityNotes!.map((item, i) => (
+                            <li key={i} className="flex gap-3 text-sm font-light">
+                              <span className="text-yellow-600 shrink-0">•</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                    )}
+
+                    {/* Usability Issues */}
+                    {testRuns[selectedView].report?.usabilityIssues && testRuns[selectedView].report.usabilityIssues!.length > 0 && (
+                      <div className="border border-neutral-200 p-8">
+                        <h3 className="text-lg font-medium mb-4 text-red-700">Usability Issues</h3>
+                        <div className="space-y-3">
+                          {testRuns[selectedView].report!.usabilityIssues!.map((issue: any, i: number) => (
+                            <div key={i} className={`border-l-4 p-4 ${getSeverityColor(issue.severity)}`}>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs px-2 py-1 bg-white border border-neutral-200 uppercase font-medium">
+                                  {issue.severity}
+                                </span>
+                              </div>
+                              <p className="text-sm mb-2 font-light">{issue.description}</p>
+                              {issue.recommendation && (
+                                <p className="text-sm text-neutral-600 font-light">{issue.recommendation}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Recommendations */}
+                    {testRuns[selectedView].report?.recommendations && testRuns[selectedView].report.recommendations!.length > 0 && (
+                      <div className="border border-neutral-200 p-8">
+                        <h3 className="text-lg font-medium mb-4">Recommendations</h3>
+                        <ol className="list-decimal list-inside space-y-2 text-sm font-light">
+                          {testRuns[selectedView].report!.recommendations!.map((rec, i) => (
+                            <li key={i}>{rec}</li>
+                          ))}
+                        </ol>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
         ) : (
           <div className="text-center py-24">
-            <p className="text-neutral-400 font-light">Test not found</p>
+            <p className="text-neutral-500 font-light">Test not found</p>
           </div>
         )}
       </main>
