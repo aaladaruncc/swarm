@@ -87,6 +87,13 @@ export async function createTest(targetUrl: string, personaIndex: number): Promi
   });
 }
 
+export async function deleteTests(ids: string[]): Promise<{ message: string }> {
+  return fetchWithAuth("/api/tests", {
+    method: "DELETE",
+    body: JSON.stringify({ ids }),
+  });
+}
+
 export async function getPersonas(): Promise<{ personas: Persona[] }> {
   return fetchWithAuth("/api/tests/personas");
 }
