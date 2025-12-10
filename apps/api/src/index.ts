@@ -38,9 +38,12 @@ app.get("/health", (c) => {
 app.route("/api/auth", authRoutes);
 
 // Protected routes
-app.use("/api/tests/*", authMiddleware);
-app.use("/api/batch-tests/*", authMiddleware);
-app.use("/api/swarms/*", authMiddleware);
+app.use("/api/tests", authMiddleware); // Match base path
+app.use("/api/tests/*", authMiddleware); // Match child paths
+app.use("/api/batch-tests", authMiddleware); // Match base path
+app.use("/api/batch-tests/*", authMiddleware); // Match child paths
+app.use("/api/swarms", authMiddleware); // Match base path
+app.use("/api/swarms/*", authMiddleware); // Match child paths
 app.route("/api/tests", testsRoutes);
 app.route("/api/batch-tests", batchTestsRoutes);
 app.route("/api/swarms", swarmsRoutes);
