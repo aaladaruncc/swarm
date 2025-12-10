@@ -258,8 +258,8 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
         // Extend session timeout to 15 minutes (buffer for 5 min run)
         timeout: 900, 
       },
-      model: "anthropic/claude-3-5-sonnet-latest",
-      modelClientOptions: {
+      model: {
+        modelName: "anthropic/claude-3-5-sonnet-latest",
         apiKey: process.env.ANTHROPIC_API_KEY,
       },
     });
@@ -316,9 +316,9 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
     try {
       agent = stagehand.agent({
         cua: true,
-        model: {
-          modelName: "google/gemini-2.5-computer-use-preview-10-2025",
-          apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+        model: "google/gemini-2.5-computer-use-preview-10-2025",
+        modelClientOptions: {
+            apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
         },
         systemPrompt: generateSystemPrompt(persona, targetUrl),
       });
