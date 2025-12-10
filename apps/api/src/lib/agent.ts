@@ -369,12 +369,12 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
     // Navigate to target URL
     log(`Navigating to ${targetUrl}...`);
     try {
-      await page.goto(targetUrl, { waitUntil: "networkidle", timeout: 30000 });
+      await page.goto(targetUrl, { waitUntil: "networkidle", timeoutMs: 30000 });
       log("✅ Page loaded successfully");
     } catch (navError: any) {
       log(`⚠️ Navigation warning: ${navError.message}`);
       // Try without waiting for networkidle
-      await page.goto(targetUrl, { timeout: 30000 });
+      await page.goto(targetUrl, { timeoutMs: 30000 });
       log("✅ Page loaded (without networkidle)");
     }
     await new Promise((resolve) => setTimeout(resolve, 2000));
