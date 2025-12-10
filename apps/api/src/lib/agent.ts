@@ -341,28 +341,23 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
   log("Initializing Browserbase session...");
 
   let stagehand;
-  try {
-    stagehand = new Stagehand({
-      env: "BROWSERBASE",
-      verbose: 1,
-      browserbaseSessionCreateParams: {
-        projectId: process.env.BROWSERBASE_PROJECT_ID,
-        // Extend session timeout to 15 minutes (buffer for 5 min run)
-        timeout: 900, 
-      },
-      model: "anthropic/claude-3-5-sonnet-latest",
-      modelClientOptions: {
-        apiKey: process.env.ANTHROPIC_API_KEY,
-      },
-    });
+    try {
+      stagehand = new Stagehand({
+        env: "BROWSERBASE",
+        verbose: 1,
+        browserbaseSessionCreateParams: {
+          projectId: process.env.BROWSERBASE_PROJECT_ID,
+          timeout: 900,
+        },
+      });
 
-    await stagehand.init();
-  } catch (initError: any) {
-    log(`❌ Failed to initialize Stagehand: ${initError.message}`);
-    throw new Error(`Browserbase initialization failed: ${initError.message}`);
-  }
+      await stagehand.init();
+    } catch (initError: any) {
+      log(`❌ Failed to initialize Stagehand: ${initError.message}`);
+      throw new Error(`Browserbase initialization failed: ${initError.message}`);
+    }
 
-  const sessionId = stagehand.browserbaseSessionId || `local-${Date.now()}`;
+  const sessionId = stagehand.browserbaseSessionID || `local-${Date.now()}`;
   log(`✅ Browserbase session created: ${sessionId}`);
 
   const page = stagehand.context.pages()[0];
@@ -374,12 +369,12 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
     // Navigate to target URL
     log(`Navigating to ${targetUrl}...`);
     try {
-      await page.goto(targetUrl, { waitUntil: "networkidle", timeoutMs: 30000 });
+      await page.goto(targetUrl, { waitUntil: "networkidle", timeout: 30000 });
       log("✅ Page loaded successfully");
     } catch (navError: any) {
       log(`⚠️ Navigation warning: ${navError.message}`);
       // Try without waiting for networkidle
-      await page.goto(targetUrl, { timeoutMs: 30000 });
+      await page.goto(targetUrl, { timeout: 30000 });
       log("✅ Page loaded (without networkidle)");
     }
     await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -410,10 +405,10 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
         cua: true,
         model: {
           modelName: "google/gemini-2.5-computer-use-preview-10-2025",
-          apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+          apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY,
         },
         systemPrompt: generateSystemPrompt(persona, targetUrl),
-      });
+      } as any); // Type assertion for Stagehand v3 compatibility
       log("✅ Agent created successfully");
     } catch (agentError: any) {
       log(`❌ Failed to create agent: ${agentError.message}`);
