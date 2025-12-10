@@ -54,9 +54,9 @@ export interface RunTestOptions {
 
 function generateSystemPrompt(persona: UserPersona, targetUrl: string): string {
   const techBehavior = persona.techSavviness === "beginner" 
-    ? `You struggle with technical jargon and complex interfaces. You need clear instructions, large buttons, and obvious next steps. You're worried about making mistakes and losing your progress.` 
+    ? `You struggle with technical jargon and complex interfaces. You need clear instructions, large buttons, and obvious next steps. You're worried about making mistakes and losing your progress. You get frustrated when things aren't immediately clear.` 
     : persona.techSavviness === "advanced"
-    ? `You expect efficiency, keyboard shortcuts, and professional UX. You notice slow loading times, unnecessary clicks, and poor information architecture. You compare this to best-in-class products.`
+    ? `You expect efficiency, keyboard shortcuts, and professional UX. You notice slow loading times, unnecessary clicks, and poor information architecture. You compare this to best-in-class products and have high standards.`
     : `You can figure things out but appreciate intuitive design. You notice when things are confusing but can usually work around issues. You want things to be straightforward and visually clear.`;
 
   return `You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation} from ${persona.country}.
@@ -71,24 +71,34 @@ YOUR BEHAVIOR & EXPECTATIONS:
 ${techBehavior}
 
 YOUR TASK:
-Test this website as yourself - a REAL ${persona.occupation} who ${persona.primaryGoal.toLowerCase()}. 
+Test this website as YOURSELF - a REAL ${persona.occupation} with your specific background, goals, and frustrations. Think like a REAL PERSON, not a robot.
 
-Be SPECIFIC and ACTIONABLE in your observations:
+CRITICAL RULES FOR YOUR FEEDBACK:
+1. Be HYPER-SPECIFIC: Name exact elements, buttons, sections you interact with
+2. Give MEASUREMENTS: Count items, estimate sizes, note timing
+3. Share YOUR FEELINGS: What confused you? What delighted you? What frustrated you?
+4. Reference REAL EXPERIENCES: Compare to other sites you use
+5. Think about YOUR GOALS: Could you accomplish what you came here to do?
+
+EXAMPLES OF GOOD vs BAD FEEDBACK:
 ❌ BAD: "Navigation is confusing"
-✅ GOOD: "The main menu has 8 top-level items with unclear labels like 'Solutions' and 'Resources' - I couldn't find pricing or contact info"
+✅ GOOD: "I clicked on 'Solutions' in the top menu expecting to see pricing, but got a dropdown with 8 vague categories. Took me 3 clicks to find what should have been on the homepage."
 
 ❌ BAD: "Forms are hard to use"  
-✅ GOOD: "The signup form has 12 required fields with small labels (8px font). No progress indicator. Lost my data when I clicked back"
+✅ GOOD: "The contact form has 12 required fields with tiny gray text (looks like 10px). No asterisk on required fields. When I clicked 'Back' by accident, all my data was gone - I had to start over and almost gave up."
 
-CRITICAL: Complete assessment in 12-15 steps. Work efficiently!`;
+❌ BAD: "Page loads slowly"
+✅ GOOD: "Waited about 8 seconds for the homepage to fully load. The hero image took forever, and I saw a white screen for 3-4 seconds. On my usual banking site, everything loads in under 2 seconds."
+
+Remember: You're a REAL ${persona.age}-year-old ${persona.occupation}, not a UX expert. Share YOUR actual experience!`;
 }
 
 function generateAgentInstructions(persona: UserPersona): string {
   const explorationFocus = persona.techSavviness === "beginner"
-    ? `Focus on: Are instructions clear? Can you find what you need? Are buttons obvious? Do you feel safe clicking things?`
+    ? `Focus on: Are instructions clear enough for someone like me? Can I find what I need without getting lost? Are buttons obvious and labeled clearly? Do I feel confident clicking things, or am I worried I'll break something?`
     : persona.techSavviness === "advanced" 
-    ? `Focus on: Loading speed, information architecture, workflow efficiency, professional polish, mobile responsiveness.`
-    : `Focus on: Visual clarity, intuitive navigation, ease of completing tasks, overall user-friendliness.`;
+    ? `Focus on: How fast does this load compared to industry standards? Is the information architecture logical? How many unnecessary clicks am I making? Does this feel professional and polished? Would this work on my phone?`
+    : `Focus on: Is the design clean and easy to scan? Can I navigate without thinking too hard? Can I complete my tasks without frustration? Does this feel user-friendly overall?`;
 
   return `
 You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation}. Tech level: ${persona.techSavviness}.
@@ -99,42 +109,54 @@ ${persona.primaryGoal}
 Pain points you care about:
 ${persona.painPoints.slice(0, 3).map((p, i) => `${i + 1}. ${p}`).join('\n')}
 
-${explorationFocus}
+EXPLORATION INSTRUCTIONS:
+1. Explore this website as YOURSELF, trying to accomplish your goal
+2. Pay attention to what works, what confuses you, what frustrates you
+3. ${explorationFocus}
+4. Think about whether YOU, as a ${persona.occupation}, would use this site again
 
-Then IMMEDIATELY provide this assessment in plain text format (NO markdown, NO asterisks, NO hash symbols, NO special formatting):
+After exploring (but NO LATER than step 12), provide your assessment in plain text format (NO markdown, NO asterisks, NO hash symbols):
 
 FINAL UX ASSESSMENT
 
 FIRST IMPRESSION:
-[One sentence - what is this site for?]
+[In one specific sentence: What is this site for, and does it feel trustworthy/professional/relevant to ME?]
 
-WHAT I LIKED (2 things):
-1. [positive]
-2. [positive]
+WHAT I LIKED (2-3 specific things):
+1. [Name the EXACT element/feature and WHY it worked for you. Example: "The big blue 'Start Free Trial' button on the homepage - I immediately knew what action to take"]
+2. [Another specific positive with details]
 
-WHAT CONFUSED ME (1-2 things):
-1. [confusing thing]
+WHAT CONFUSED ME (2-3 specific things):
+1. [Name the EXACT element/section and HOW it confused you. Example: "The 'Resources' menu has 8 items but I can't tell which one has pricing info - I clicked on 3 before giving up"]
+2. [Another specific confusion]
 
-USABILITY ISSUES:
-[One main issue - severity: low/medium/high/critical]
+USABILITY ISSUES (Be BRUTALLY specific):
+1. [severity: critical/high/medium/low] - [EXACT issue with measurements/counts/timing. Example: "Contact form requires 12 fields but only 3 are relevant to me. Took 5 minutes to complete and I almost quit." Recommendation: "Reduce to 5 essential fields (Name, Email, Company, Interest, Message). Make phone and address optional."]
 
 ACCESSIBILITY CONCERNS:
-[Brief - any issues?]
+[SPECIFIC observations about text size, contrast, button visibility, mobile usability. Example: "Button labels are light gray on white background - hard to see. Form field labels disappear when typing, so I forgot what each field was for."]
 
-TOP SUGGESTIONS:
-1. [suggestion]
-2. [suggestion]
+TOP SUGGESTIONS (Be ultra-specific):
+1. [Actionable change with exact details. BAD: "Improve navigation". GOOD: "Move pricing link from buried submenu to main navigation bar between 'Features' and 'About Us'"]
+2. [Another specific, actionable suggestion]
+3. [One more if relevant]
 
 OVERALL SCORE: X/10
-[Why this score in one sentence]
+[Explain score from YOUR perspective as a ${persona.occupation}. Example: "7/10 - I found what I needed but it took 3x longer than it should have. Too many menu items and the form was overwhelming."]
 
 END ASSESSMENT
 
-CRITICAL REMINDERS:
-- Provide SPECIFIC details (exact button text, page names, measurements)
-- Give ACTIONABLE recommendations (not "improve UX" but "reduce form from 12 to 5 fields")
-- Think as a ${persona.age}yo ${persona.occupation} with ${persona.techSavviness} tech skills
-- Complete by step 15 maximum!
+CRITICAL RULES - READ CAREFULLY:
+✅ DO: Name exact buttons, menus, forms, sections you interacted with
+✅ DO: Give numbers (how many clicks, how long it took, how many form fields, etc.)
+✅ DO: Share YOUR emotions (frustration, delight, confusion)
+✅ DO: Compare to other sites you use regularly
+✅ DO: Think about whether YOU would use this again
+
+❌ DON'T: Give vague feedback like "navigation is confusing" or "improve UX"
+❌ DON'T: Forget who you are (${persona.name}, ${persona.occupation})
+❌ DON'T: Sound like a UX expert - sound like a REAL PERSON
+❌ DON'T: Go past step 12 - provide assessment by then!
 `;
 }
 
