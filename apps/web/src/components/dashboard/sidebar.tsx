@@ -67,8 +67,8 @@ export function DashboardSidebar() {
             className="flex justify-center items-center w-full"
           >
             <Image
-              src={expanded ? "/images/nomos-agent.png" : "/images/nomos_small.png"}
-              alt="Nomos"
+              src={expanded ? "/images/vantage_regular.png" : "/images/vantage_small.png"}
+              alt="Vantage"
               width={expanded ? 180 : 40}
               height={expanded ? 54 : 40}
               className={`object-contain ${

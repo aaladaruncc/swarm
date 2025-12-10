@@ -53,8 +53,8 @@ export function Navbar() {
       <div className="w-full max-w-7xl mx-auto px-6 h-28 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           <Image 
-            src="/images/nomos-agent.png" 
-            alt="Nomos" 
+            src="/images/vantage_regular.png" 
+            alt="Vantage" 
             width={300} 
             height={90} 
             className="h-20 w-auto object-contain"

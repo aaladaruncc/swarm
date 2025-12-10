@@ -5,10 +5,10 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Nomos",
+  title: "Vantage",
   description: "AI-powered user experience testing with realistic personas",
   icons: {
-    icon: "/images/nomos_favicon.png",
+    icon: "/images/vantage_favicon.png",
   },
 };
 

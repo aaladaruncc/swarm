@@ -99,8 +99,8 @@ export default function LoginPage() {
           className="flex items-center gap-2 group w-fit hover:opacity-70 transition-opacity"
         >
           <Image 
-            src="/images/nomos-agent.png" 
-            alt="Nomos" 
+            src="/images/vantage_regular.png" 
+            alt="Vantage" 
             width={400} 
             height={130}
             className="h-24 w-auto object-contain"
