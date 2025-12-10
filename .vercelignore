@@ -1,5 +1,0 @@
-apps/api
-packages/db/drizzle
-node_modules
-.env
-*.log
