@@ -122,7 +122,9 @@ Be specific and actionable in your recommendations.`;
 4. Strengths: What's working well?
 5. Strategic Recommendations: Roadmap for improvements
 
-Write in a professional but accessible tone, as if presenting to stakeholders.`;
+Write in a professional but accessible tone, as if presenting to stakeholders.
+
+IMPORTANT: Write in plain text format. Do NOT use markdown formatting like hash symbols (#), asterisks (*), or other markdown syntax. Use plain text with clear paragraph breaks.`;
 
     const narrativeResult = await generateText({
       model: openai("gpt-4o"),

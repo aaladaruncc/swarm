@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useScroll, useMotionValueEvent, motion } from "framer-motion";
 import { useState } from "react";
 
@@ -49,13 +50,18 @@ export function Navbar() {
       }`}
       initial={{ y: 0 }}
     >
-      <div className="w-full max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-black rounded-sm"></div>
-          <span className="font-medium tracking-tight text-neutral-900">Agent<sup className="text-xs ml-0.5">2</sup></span>
-        </div>
+      <div className="w-full max-w-7xl mx-auto px-6 h-28 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2">
+          <Image 
+            src="/images/nomos-agent.png" 
+            alt="Nomos" 
+            width={300} 
+            height={90} 
+            className="h-20 w-auto object-contain"
+          />
+        </Link>
 
-        <nav className="hidden md:flex items-center gap-6 text-sm font-light text-neutral-600">
+        <nav className="hidden md:flex items-center gap-6 text-base font-light text-neutral-600">
           <a 
             href="#features" 
             onClick={(e) => smoothScrollTo(e, 'features')}

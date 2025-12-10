@@ -86,34 +86,34 @@ FAST EXPLORATION (10-12 steps):
 4. Note 1-2 good things, 1-2 confusing things
 5. Try 1 button/form if you see one
 
-Then IMMEDIATELY provide this assessment:
+Then IMMEDIATELY provide this assessment in plain text format (NO markdown, NO asterisks, NO hash symbols, NO special formatting):
 
-=== FINAL UX ASSESSMENT ===
+FINAL UX ASSESSMENT
 
-🎯 FIRST IMPRESSION:
+FIRST IMPRESSION:
 [One sentence - what is this site for?]
 
-😊 WHAT I LIKED (2 things):
+WHAT I LIKED (2 things):
 1. [positive]
 2. [positive]
 
-😕 WHAT CONFUSED ME (1-2 things):
+WHAT CONFUSED ME (1-2 things):
 1. [confusing thing]
 
-🚧 USABILITY ISSUES:
-- [One main issue - severity: low/medium/high/critical]
+USABILITY ISSUES:
+[One main issue - severity: low/medium/high/critical]
 
-♿ ACCESSIBILITY CONCERNS:
+ACCESSIBILITY CONCERNS:
 [Brief - any issues?]
 
-💡 TOP SUGGESTIONS:
+TOP SUGGESTIONS:
 1. [suggestion]
 2. [suggestion]
 
-⭐ OVERALL SCORE: X/10
+OVERALL SCORE: X/10
 [Why this score in one sentence]
 
-=== END ASSESSMENT ===
+END ASSESSMENT
 
 REMEMBER: Must complete assessment by step 15 or it won't be saved!
 `;
@@ -349,35 +349,35 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
         agentResult = {
           message: `Session timed out during exploration. Based on partial observations:
 
-=== FINAL UX ASSESSMENT ===
+FINAL UX ASSESSMENT
 
-🎯 FIRST IMPRESSION:
+FIRST IMPRESSION:
 Started exploring the website but session ended before completion. The site appears to be ${targetUrl.includes("app") ? "an application" : "a website"} that may benefit from faster loading or simpler navigation.
 
-😊 WHAT I LIKED:
+WHAT I LIKED:
 1. Managed to load and view the homepage
 2. Site was accessible and started loading content
 
-😕 WHAT CONFUSED ME:
+WHAT CONFUSED ME:
 1. Session ended before I could fully explore the site
 2. May have complex navigation or too much content slowing exploration
 
-🚧 USABILITY ISSUES:
-- Performance: Site may be too complex or slow, causing exploration timeout - severity: medium
-- Navigation: Unable to complete exploration in allocated time, suggesting potential UX complexity - severity: medium
+USABILITY ISSUES:
+Performance: Site may be too complex or slow, causing exploration timeout - severity: medium
+Navigation: Unable to complete exploration in allocated time, suggesting potential UX complexity - severity: medium
 
-♿ ACCESSIBILITY CONCERNS:
+ACCESSIBILITY CONCERNS:
 Limited time prevented thorough accessibility assessment. Large or complex sites may overwhelm users with limited time or slower devices.
 
-💡 TOP SUGGESTIONS:
+TOP SUGGESTIONS:
 1. Optimize page load times and reduce complexity
 2. Simplify navigation structure for faster user exploration
 3. Consider progressive disclosure to avoid overwhelming users
 
-⭐ OVERALL SCORE: 6/10
+OVERALL SCORE: 6/10
 Session timed out before full assessment. Site complexity or performance may impact real user experience.
 
-=== END ASSESSMENT ===`,
+END ASSESSMENT`,
           success: false,
         };
       } else {

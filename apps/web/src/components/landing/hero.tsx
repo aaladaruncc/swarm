@@ -2,91 +2,79 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowRight, Play, Users } from "lucide-react";
+import { ArrowRight, ChevronRight, Terminal } from "lucide-react";
 
 export function Hero() {
   return (
-    <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden">
-      {/* Background gradients */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-blue-100/50 dark:bg-blue-900/20 blur-[100px] rounded-full pointer-events-none -z-10" />
-      
-      <div className="container mx-auto px-4 md:px-6 relative z-10">
-        <div className="max-w-4xl mx-auto text-center">
+    <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden bg-white">
+      <div className="container mx-auto px-6 relative z-10">
+        <div className="max-w-5xl mx-auto">
+          {/* Badge */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 text-sm font-medium mb-6 border border-blue-100 dark:border-blue-800"
+            className="flex justify-start mb-8"
           >
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-            </span>
-            Introducing Stagehand V3
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-neutral-100 border border-neutral-200 text-neutral-600 text-sm font-medium">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neutral-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-neutral-500"></span>
+              </span>
+              v3.0 Public Beta
+            </div>
           </motion.div>
 
+          {/* Headline */}
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-5xl md:text-7xl font-bold tracking-tight text-gray-900 dark:text-white mb-6 leading-[1.1]"
+            className="text-7xl md:text-9xl font-semibold tracking-tighter text-neutral-900 mb-8 leading-[0.9]"
           >
-            Simulate realistic user sessions with{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">
-              AI Agent Swarms
-            </span>
+            Break your app <br />
+            <span className="text-neutral-400 font-light italic">before they do.</span>
           </motion.h1>
 
+          {/* Subheadline */}
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-xl text-gray-600 dark:text-gray-300 mb-10 max-w-2xl mx-auto leading-relaxed"
+            className="text-xl md:text-2xl text-neutral-500 mb-12 max-w-2xl leading-relaxed font-light"
           >
-            Generate synthetic feedback that feels real. Deploy diverse personas to explore, interact, and break your app before your users do.
+            Unleash a swarm of AI personas to stress-test your user experience. 
+            Find the bugs that only chaos can reveal.
           </motion.p>
 
+          {/* CTA Buttons */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            className="flex flex-col sm:flex-row items-start gap-4"
           >
             <Link
               href="/login"
-              className="w-full sm:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-semibold transition-all shadow-lg hover:shadow-blue-500/25 flex items-center justify-center gap-2 group"
+              className="h-14 px-8 bg-neutral-900 text-white hover:bg-neutral-800 transition-all flex items-center gap-2 justify-center group text-lg font-medium"
             >
-              Start Simulating
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              Start Testing 
+              <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
+            
             <Link
-              href="#how-it-works"
-              className="w-full sm:w-auto px-8 py-4 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 rounded-full font-semibold transition-all flex items-center justify-center gap-2"
+              href="https://github.com/browserbase/stagehand"
+              target="_blank"
+              className="h-14 px-8 bg-white border border-neutral-200 text-neutral-900 hover:bg-neutral-50 transition-all flex items-center gap-2 justify-center group text-lg font-medium"
             >
-              <Play className="w-4 h-4 fill-current" />
-              Watch Demo
+              <Terminal className="w-5 h-5" />
+              npm install stagehand
             </Link>
-          </motion.div>
-
-          {/* Social Proof / Stats */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.5 }}
-            className="mt-16 flex items-center justify-center gap-8 text-sm text-gray-500 dark:text-gray-400"
-          >
-            <div className="flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              <span>10k+ personas simulated</span>
-            </div>
-            <div className="w-1 h-1 bg-gray-300 rounded-full" />
-            <div>
-              Trusted by forward-thinking teams
-            </div>
           </motion.div>
         </div>
       </div>
+      
+      {/* Background decoration - subtle grid or noise could go here if needed, but keeping it clean for now */}
     </section>
   );
 }
-

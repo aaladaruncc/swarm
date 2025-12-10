@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -44,8 +45,8 @@ export function DashboardSidebar() {
 
   return (
     <motion.aside
-      initial={{ width: 80 }}
-      animate={{ width: expanded ? 240 : 80 }}
+      initial={{ width: 140 }}
+      animate={{ width: expanded ? 300 : 140 }}
       transition={{ duration: 0.2, ease: "easeInOut" }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
@@ -55,18 +56,28 @@ export function DashboardSidebar() {
       className="h-screen bg-neutral-50 border-r border-neutral-200 flex flex-col sticky top-0 z-20 overflow-hidden"
     >
       {/* Header / Logo */}
-      <div className="h-16 flex items-center px-6 border-b border-neutral-200">
+      <div className="h-28 flex items-center px-6 border-b border-neutral-200">
         <div className="flex items-center gap-3 overflow-hidden min-w-max">
-          <div className="w-5 h-5 bg-black rounded-sm flex-shrink-0 flex items-center justify-center">
-          </div>
-          <motion.span
-            initial={{ opacity: 0 }}
-            animate={{ opacity: expanded ? 1 : 0 }}
-            transition={{ duration: 0.1 }}
-            className="font-medium tracking-tight text-neutral-900 whitespace-nowrap"
-          >
-            Agent<sup className="text-xs ml-0.5">2</sup>
-          </motion.span>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={expanded ? "expanded" : "collapsed"}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
+              className="flex-shrink-0"
+            >
+              <Image
+                src={expanded ? "/images/nomos-agent.png" : "/images/nomos_small.png"}
+                alt="Nomos"
+                width={expanded ? 300 : 80}
+                height={expanded ? 90 : 80}
+                className={`object-contain ${
+                  expanded ? "w-auto h-20" : "w-20 h-20"
+                }`}
+              />
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
 
