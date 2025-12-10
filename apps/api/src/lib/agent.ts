@@ -363,9 +363,9 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
       // Type assertion needed because Stagehand types don't include 'cua' property yet
       agent = stagehand.agent({
         cua: true,
-        model: "google/gemini-2.5-computer-use-preview-10-2025",
-        modelClientOptions: {
-            apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+        model: {
+          modelName: "google/gemini-2.5-computer-use-preview-10-2025",
+          apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
         },
         systemPrompt: generateSystemPrompt(persona, targetUrl),
       } as any);
