@@ -53,69 +53,129 @@ export interface RunTestOptions {
 // ============================================================================
 
 function generateSystemPrompt(persona: UserPersona, targetUrl: string): string {
-  return `You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation} from ${persona.country}, testing a website. You have limited time (5 minutes).
+  const techBehavior = persona.techSavviness === "beginner" 
+    ? `You struggle with technical jargon and complex interfaces. You need clear instructions, large buttons, and obvious next steps. You're worried about making mistakes and losing your progress.` 
+    : persona.techSavviness === "advanced"
+    ? `You expect efficiency, keyboard shortcuts, and professional UX. You notice slow loading times, unnecessary clicks, and poor information architecture. You compare this to best-in-class products.`
+    : `You can figure things out but appreciate intuitive design. You notice when things are confusing but can usually work around issues. You want things to be straightforward and visually clear.`;
 
-PROFILE:
-- Tech level: ${persona.techSavviness}
-- Goal: ${persona.primaryGoal}
-${persona.painPoints.length > 0 ? `- Frustrations: ${persona.painPoints.slice(0, 2).join(", ")}` : ""}
+  return `You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation} from ${persona.country}.
 
-CRITICAL: You must complete your assessment within 15 steps or it won't be saved. Work quickly!
+YOUR PROFILE:
+- Tech Experience: ${persona.techSavviness}
+- Primary Goal: ${persona.primaryGoal}
+- Key Pain Points: ${persona.painPoints.slice(0, 3).join("; ")}
+- Context: ${persona.context || "Testing this website for usability"}
 
-BEHAVIOR:
-Browse like a real user - scroll, click what interests you, be honest about confusion. 
-${persona.techSavviness === "beginner" ? "You need simple, clear interfaces." : persona.techSavviness === "advanced" ? "You expect efficient, professional UX." : "You appreciate good design and clarity."}
+YOUR BEHAVIOR & EXPECTATIONS:
+${techBehavior}
 
-After exploring 10-12 steps, provide your assessment immediately. Don't delay!`;
+YOUR TASK:
+Test this website as yourself - a REAL ${persona.occupation} who ${persona.primaryGoal.toLowerCase()}. 
+
+Be SPECIFIC and ACTIONABLE in your observations:
+❌ BAD: "Navigation is confusing"
+✅ GOOD: "The main menu has 8 top-level items with unclear labels like 'Solutions' and 'Resources' - I couldn't find pricing or contact info"
+
+❌ BAD: "Forms are hard to use"  
+✅ GOOD: "The signup form has 12 required fields with small labels (8px font). No progress indicator. Lost my data when I clicked back"
+
+CRITICAL: Complete assessment in 12-15 steps. Work efficiently!`;
 }
 
 function generateAgentInstructions(persona: UserPersona): string {
+  const explorationFocus = persona.techSavviness === "beginner"
+    ? `Focus on: Are instructions clear? Can you find what you need? Are buttons obvious? Do you feel safe clicking things?`
+    : persona.techSavviness === "advanced" 
+    ? `Focus on: Loading speed, information architecture, workflow efficiency, professional polish, mobile responsiveness.`
+    : `Focus on: Visual clarity, intuitive navigation, ease of completing tasks, overall user-friendliness.`;
+
   return `
-You are ${persona.name} testing this website. Tech level: ${persona.techSavviness}.
+You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation}. Tech level: ${persona.techSavviness}.
 
-CRITICAL TIMING:
-- You have MAX 15 steps total (approx 5 minutes)
-- By step 10-12: Start wrapping up
-- By step 13-15: MUST provide final assessment
-- If you reach step 12, immediately move to assessment
+YOUR CONTEXT:
+${persona.primaryGoal}
 
-FAST EXPLORATION (10-12 steps):
-1. Scroll homepage - first impression?
-2. Click 1-2 nav items
-3. Quick scroll each page
-4. Note 1-2 good things, 1-2 confusing things
-5. Try 1 button/form if you see one
+Pain points you care about:
+${persona.painPoints.slice(0, 3).map((p, i) => `${i + 1}. ${p}`).join('\n')}
 
-Then IMMEDIATELY provide this assessment:
+${explorationFocus}
+
+TESTING PROCESS (Complete in 12-15 steps):
+
+PHASE 1 - FIRST IMPRESSIONS (Steps 1-3):
+1. Land on homepage - What is this? Who is it for? Is it immediately clear?
+2. Scroll to see full page - What stands out? Any immediate red flags?
+3. Note your gut reaction as a ${persona.occupation}
+
+PHASE 2 - NAVIGATION & CORE TASKS (Steps 4-10):
+4. Try to accomplish ONE key task relevant to this site type
+5. Navigate through 2-3 pages using the menu
+6. Test ONE interactive element (button, form, search, filter)
+7. Look for critical info (pricing, contact, features)
+8. Note SPECIFIC friction points with exact details
+
+PHASE 3 - ASSESSMENT (Steps 11-15):
+Provide your detailed, ACTIONABLE assessment:
 
 === FINAL UX ASSESSMENT ===
 
-🎯 FIRST IMPRESSION:
-[One sentence - what is this site for?]
+🎯 FIRST IMPRESSION (2-3 sentences with specifics):
+[What is this site? Did I understand in 5 seconds? Include specific observations about layout, messaging, or design]
 
-😊 WHAT I LIKED (2 things):
-1. [positive]
-2. [positive]
+😊 WHAT WORKED WELL (3-4 specific items with details):
+1. [Specific positive - e.g., "Clear hero section with '3 Steps to Start' - immediately understood the process"]
+2. [Include numbers, locations, exact elements]
+3. [Another specific positive]
+4. [One more if applicable]
 
-😕 WHAT CONFUSED ME (1-2 things):
-1. [confusing thing]
+😕 CONFUSION POINTS (2-3 specific items with context):
+1. [Specific confusion - e.g., "Clicked 'Products' but landed on page with 12 categories and no descriptions - spent 2 minutes looking for basic pricing"]
+2. [Include what you tried, what happened, what you expected]
+3. [Another if applicable]
 
-🚧 USABILITY ISSUES:
-- [One main issue - severity: low/medium/high/critical]
+🚧 USABILITY ISSUES (2-4 issues with SPECIFIC recommendations):
+1. [SEVERITY: critical] - [Exact issue with measurements/counts - e.g., "Submit button is 28px wide and blends with background (#f0f0f0 on #ffffff) - failed to find it 3 times"]
+   → FIX: [Actionable - e.g., "Make button minimum 120px wide, use high contrast color (#171717), add 'Submit' label in 14px font"]
 
-♿ ACCESSIBILITY CONCERNS:
-[Brief - any issues?]
+2. [SEVERITY: high/medium/low] - [Another specific issue with details]
+   → FIX: [Specific, measurable recommendation]
 
-💡 TOP SUGGESTIONS:
-1. [suggestion]
-2. [suggestion]
+3. [Continue with more if found - be thorough!]
+
+♿ ${persona.techSavviness === 'beginner' ? 'BEGINNER-SPECIFIC CONCERNS' : persona.techSavviness === 'advanced' ? 'ADVANCED USER CONCERNS' : 'ACCESSIBILITY & USABILITY NOTES'}:
+${persona.techSavviness === 'beginner' 
+  ? '[Text readability (font sizes), button visibility, fear of errors, need for confirmation messages]' 
+  : persona.techSavviness === 'advanced' 
+  ? '[Performance metrics, keyboard shortcuts, information density, power user features, technical polish]'
+  : '[Visual hierarchy, help availability, error messages, recovery from mistakes]'}
+
+💡 TOP 3 RECOMMENDATIONS (Prioritized with expected impact):
+1. [HIGH] [Specific fix] - Impact: [Quantify if possible - e.g., "Would help 60% of ${persona.techSavviness} users complete signup faster"]
+2. [MEDIUM] [Specific improvement] - Impact: [Expected benefit]
+3. [LOW] [Polish item] - Impact: [Expected benefit]
 
 ⭐ OVERALL SCORE: X/10
-[Why this score in one sentence]
+
+SCORE JUSTIFICATION (Be specific):
+- First Impression (clarity): X/10 - [Why? Cite specific elements]
+- Navigation (findability): X/10 - [Why? What worked/didn't work]
+- Task Completion (can I succeed): X/10 - [Why? What blocked or helped you]
+- Design & Trust (professional feel): X/10 - [Why? Specific design elements]
+- Performance (speed): X/10 - [Why? Loading times, responsiveness]
+
+WEIGHTED AVERAGE: X/10
+
+ONE-SENTENCE SUMMARY FOR STAKEHOLDERS:
+[Capture the core insight that would make a CEO/product manager take action]
 
 === END ASSESSMENT ===
 
-REMEMBER: Must complete assessment by step 15 or it won't be saved!
+CRITICAL REMINDERS:
+- Provide SPECIFIC details (exact button text, page names, measurements)
+- Give ACTIONABLE recommendations (not "improve UX" but "reduce form from 12 to 5 fields")
+- Think as a ${persona.age}yo ${persona.occupation} with ${persona.techSavviness} tech skills
+- Complete by step 15 maximum!
 `;
 }
 
@@ -187,24 +247,56 @@ function parseAgentFeedback(agentMessage: string): {
   // Extract recommendations
   result.recommendations = extractList(/(?:(?:\*\*|##)?\s*(?:SUGGESTIONS|Suggestions|RECOMMENDATIONS|Recommendations|MY TOP SUGGESTIONS)[:\s]*)(?:\*\*)?([^\n]+(?:\n(?:[-•\d*])[^\n]+)*)/i);
 
-  // Extract usability issues
-  const issuesMatch = agentMessage.match(
-    /(?:(?:\*\*|##)?\s*(?:USABILITY ISSUES|Usability Issues|ISSUES FOUND)[:\s]*)(?:\*\*)?([^\n]+(?:\n(?:[-•\d*])[^\n]+)*)/i
+  // Extract usability issues with enhanced parsing for severity and recommendations
+  const issuesSection = agentMessage.match(
+    /(?:USABILITY ISSUES|🚧)[:\s]*\n([\s\S]*?)(?=\n(?:♿|💡|⭐|===))/i
   );
-  if (issuesMatch) {
-    const items = issuesMatch[1].match(/(?:^|\n)\s*(?:[-•\d.*]+)\s*([^\n]+)/g);
-    if (items) {
-      items.forEach((item) => {
-        const cleanItem = item.replace(/^(?:^|\n)\s*(?:[-•\d.*]+)\s*/, "").trim();
-        const severityMatch = cleanItem.match(/\b(low|medium|high|critical)\b/i);
+  
+  if (issuesSection) {
+    const issueBlocks = issuesSection[1].split(/\n(?=\d+\.)/);
+    
+    issueBlocks.forEach((block) => {
+      if (block.trim().length < 10) return;
+      
+      // Extract severity - look for [SEVERITY: X] or just [X]
+      const severityMatch = block.match(/\[?SEVERITY[:\s]*(critical|high|medium|low)\]?/i) || 
+                           block.match(/\[(critical|high|medium|low)\]/i);
+      const severity = (severityMatch?.[1]?.toLowerCase() as "low" | "medium" | "high" | "critical") || "medium";
+      
+      // Extract description (everything before → or FIX: or RECOMMENDATION:)
+      const descMatch = block.match(/(?:\d+\.\s*)?(?:\[.*?\]\s*-?\s*)?(.*?)(?:\n?\s*(?:→|FIX:|RECOMMENDATION:))/is);
+      const description = (descMatch?.[1] || block.split('\n')[0].replace(/^\d+\.\s*/, '')).trim();
+      
+      // Extract recommendation (after → or FIX: or RECOMMENDATION:)
+      const recMatch = block.match(/(?:→|FIX:|RECOMMENDATION:)\s*(.+?)(?:\n\n|\n\d+\.|$)/is);
+      const recommendation = recMatch?.[1]?.trim() || "Review and address this usability concern";
+      
+      if (description.length > 10) {
         result.usabilityIssues.push({
-          severity:
-            (severityMatch?.[1]?.toLowerCase() as "low" | "medium" | "high" | "critical") ||
-            "medium",
-          description: cleanItem.replace(/\s*[-–]\s*(low|medium|high|critical)\s*/i, ""),
-          recommendation: "Address this issue to improve user experience",
+          severity,
+          description: description.substring(0, 500),
+          recommendation: recommendation.substring(0, 500),
         });
-      });
+      }
+    });
+  }
+  
+  // Fallback to simpler parsing if structured format not found
+  if (result.usabilityIssues.length === 0) {
+    const simpleMatch = agentMessage.match(/(?:USABILITY ISSUES|🚧)[:\s]*([^\n]+(?:\n(?:[-•\d])[^\n]+)*)/i);
+    if (simpleMatch) {
+      const items = simpleMatch[1].match(/[-•\d.]\s*([^\n]+)/g);
+      if (items) {
+        items.forEach((item) => {
+          const cleanItem = item.replace(/^[-•\d.]\s*/, "").trim();
+          const severityMatch = cleanItem.match(/\b(low|medium|high|critical)\b/i);
+          result.usabilityIssues.push({
+            severity: (severityMatch?.[1]?.toLowerCase() as any) || "medium",
+            description: cleanItem.replace(/\s*[-–]\s*(low|medium|high|critical)\s*/i, ""),
+            recommendation: "Address this issue to improve user experience",
+          });
+        });
+      }
     }
   }
 
