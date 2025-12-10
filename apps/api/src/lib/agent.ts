@@ -401,11 +401,12 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
     log("Creating AI agent...");
     let agent;
     try {
+      // Type assertion needed because Stagehand types don't include 'cua' property yet
       agent = stagehand.agent({
         cua: true,
         model: "google/gemini-2.5-computer-use-preview-10-2025",
         systemPrompt: generateSystemPrompt(persona, targetUrl),
-      });
+      } as any);
       log("✅ Agent created successfully");
     } catch (agentError: any) {
       log(`❌ Failed to create agent: ${agentError.message}`);
