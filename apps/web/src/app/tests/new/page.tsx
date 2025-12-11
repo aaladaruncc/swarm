@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
@@ -35,25 +35,24 @@ export default function NewTest() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  if (isPending) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <Loader2 className="animate-spin w-8 h-8 text-neutral-300" />
-      </div>
-    );
-  }
-
-  if (!session?.user) {
-    router.push("/");
-    return null;
-  }
+  const loadSwarms = useCallback(async () => {
+    setIsLoadingSwarms(true);
+    try {
+      const data = await getSwarms();
+      setSwarms(data.swarms);
+    } catch (err) {
+      console.error("Failed to load swarms:", err);
+    } finally {
+      setIsLoadingSwarms(false);
+    }
+  }, []);
 
   // Load swarms when URL is entered
   useEffect(() => {
     if (url && session?.user) {
       loadSwarms();
     }
-  }, [url, session]);
+  }, [url, session, loadSwarms]);
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -67,17 +66,19 @@ export default function NewTest() {
     };
   }, [showSwarmSelector]);
 
-  const loadSwarms = async () => {
-    setIsLoadingSwarms(true);
-    try {
-      const data = await getSwarms();
-      setSwarms(data.swarms);
-    } catch (err) {
-      console.error("Failed to load swarms:", err);
-    } finally {
-      setIsLoadingSwarms(false);
-    }
-  };
+  // Early returns after all hooks
+  if (isPending) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <Loader2 className="animate-spin w-8 h-8 text-neutral-300" />
+      </div>
+    );
+  }
+
+  if (!session?.user) {
+    router.push("/");
+    return null;
+  }
 
   const handleSelectSwarm = (swarm: Swarm) => {
     setSelectedSwarm(swarm);
@@ -173,6 +174,7 @@ export default function NewTest() {
           </Link>
         </div>
       </header>
+
 
       <main className="pt-32 pb-24 px-6 max-w-4xl mx-auto">
         {/* Step 1: Describe */}

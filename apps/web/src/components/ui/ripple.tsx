@@ -31,7 +31,7 @@ export const Ripple = React.memo(function Ripple({
         return (
           <div
             key={i}
-            className={`animate-ripple bg-neutral-900/5 absolute rounded-full border shadow-sm`}
+            className={`animate-ripple bg-neutral-900/10 absolute rounded-full border shadow-sm`}
             style={
               {
                 "--i": i,
@@ -41,7 +41,7 @@ export const Ripple = React.memo(function Ripple({
                 animationDelay,
                 borderStyle,
                 borderWidth: "1px",
-                borderColor: `rgba(0,0,0,0.05)`,
+                borderColor: `rgba(0,0,0,${Math.max(0.08, opacity * 0.3)})`,
                 top: "50%",
                 left: "50%",
                 transform: "translate(-50%, -50%) scale(1)",

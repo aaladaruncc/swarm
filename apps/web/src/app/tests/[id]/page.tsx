@@ -102,15 +102,24 @@ export default function TestDetails() {
   useEffect(() => {
     if (session?.user && testId) {
       loadTest();
-      const interval = setInterval(() => {
-        if (batchTestRun?.status && ["running_tests", "aggregating"].includes(batchTestRun.status)) {
-          loadTest();
-        }
-      }, 5000);
-      return () => clearInterval(interval);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, testId]);
+
+  // Poll for status updates when test is running or aggregating
+  useEffect(() => {
+    if (!batchTestRun) return;
+    
+    const status = batchTestRun.status;
+    const isActive = ["running_tests", "aggregating"].includes(status);
+    
+    if (!isActive) return;
+
+    const pollInterval = setInterval(() => {
+      loadTest();
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [batchTestRun?.status, testId]);
 
   if (isPending || !session?.user) {
     return (

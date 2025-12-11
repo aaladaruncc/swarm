@@ -46,7 +46,7 @@ export function LogoCarousel() {
         {/* Wrapper that will be animated - contains two identical sets */}
         {/* Animation moves -50% (half the total width) for seamless loop */}
         <div
-          className="flex gap-16 min-w-max items-center will-change-transform"
+          className="flex gap-8 min-w-max items-center will-change-transform"
           style={{
             animation: "scroll 30s linear infinite",
           }}

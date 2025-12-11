@@ -161,76 +161,246 @@ function parseAgentFeedback(agentMessage: string): {
     recommendations: [] as string[],
   };
 
-  if (!agentMessage) return result;
+  if (!agentMessage) {
+    result.summary = "No feedback provided.";
+    return result;
+  }
 
-  // Extract summary
-  const firstImpressionMatch = agentMessage.match(
-    /(?:(?:\*\*|##)?\s*(?:FIRST IMPRESSION|First Impression)[:\s]*)(?:\*\*)?([^\n]+(?:\n(?![A-Z*#🎯😊😕🚧♿💡⭐])[^\n]+)*)/i
-  );
-  if (firstImpressionMatch) {
-    result.summary = firstImpressionMatch[1].trim();
-  } else {
-    // Fallback: Try to find the start of the assessment block
-    const assessmentStart = agentMessage.indexOf("=== FINAL UX ASSESSMENT ===");
-    if (assessmentStart !== -1) {
-        const afterStart = agentMessage.substring(assessmentStart + 27);
-        const firstLine = afterStart.split('\n').find(l => l.trim().length > 0 && !l.includes('FIRST IMPRESSION'));
-        if (firstLine) result.summary = firstLine.trim();
+  // Clean the message - remove excessive reasoning/logs that might appear before the assessment
+  // Look for the start of the actual assessment
+  let cleanMessage = agentMessage;
+  
+  // Try to find where the actual assessment starts
+  const assessmentMarkers = [
+    /=== FINAL UX ASSESSMENT ===/i,
+    /FINAL UX ASSESSMENT/i,
+    /FIRST IMPRESSION:/i,
+    /OVERALL SCORE:/i,
+    /END ASSESSMENT/i,
+  ];
+  
+  let assessmentStart = -1;
+  for (const marker of assessmentMarkers) {
+    const match = cleanMessage.search(marker);
+    if (match !== -1) {
+      assessmentStart = match;
+      break;
     }
-    
-    if (!result.summary) {
-        const sentences = agentMessage
-        .split(/[.!?]+/)
-        .filter((s) => s.trim().length > 10)
-        .slice(0, 3);
-        result.summary = sentences.join(". ").trim() + ".";
+  }
+  
+  // If we found an assessment marker, extract from there
+  // Otherwise, try to find the last substantial block of text (likely the assessment)
+  if (assessmentStart !== -1) {
+    cleanMessage = cleanMessage.substring(assessmentStart);
+  } else {
+    // Look for the last occurrence of common assessment keywords
+    const lastAssessment = Math.max(
+      cleanMessage.lastIndexOf("FIRST IMPRESSION"),
+      cleanMessage.lastIndexOf("OVERALL SCORE"),
+      cleanMessage.lastIndexOf("WHAT I LIKED"),
+      cleanMessage.lastIndexOf("USABILITY ISSUES")
+    );
+    if (lastAssessment > cleanMessage.length * 0.3) {
+      cleanMessage = cleanMessage.substring(lastAssessment);
     }
   }
 
+  // Extract summary - try multiple patterns
+  const summaryPatterns = [
+    // Standard format
+    /(?:(?:\*\*|##)?\s*(?:FIRST IMPRESSION|First Impression)[:\s]*)(?:\*\*)?([^\n]+(?:\n(?![A-Z*#🎯😊😕🚧♿💡⭐])[^\n]+)*)/i,
+    // After assessment marker
+    /(?:=== FINAL UX ASSESSMENT ===|FINAL UX ASSESSMENT)[\s\n]+(?:FIRST IMPRESSION[:\s]*)?([^\n]+(?:\n(?![A-Z🎯😊😕🚧♿💡⭐])[^\n]+)*)/i,
+    // Direct first sentence after assessment start
+    /(?:FINAL UX ASSESSMENT|FIRST IMPRESSION)[:\s]*\n\s*([^\n]+)/i,
+  ];
+
+  for (const pattern of summaryPatterns) {
+    const match = cleanMessage.match(pattern);
+    if (match && match[1] && match[1].trim().length > 20) {
+      result.summary = match[1].trim();
+      // Clean up common artifacts
+      result.summary = result.summary
+        .replace(/^\[.*?\]\s*/, '')
+        .replace(/^\d+\.\s*/, '')
+        .replace(/^[-•]\s*/, '')
+        .trim();
+      break;
+    }
+  }
+
+  // If still no summary, intelligently extract from the text
+  if (!result.summary || result.summary.length < 20) {
+    // Try to find a meaningful first sentence/paragraph
+    const lines = cleanMessage.split('\n').filter(l => l.trim().length > 0);
+    
+    // Look for lines that seem like assessment content (not reasoning/logs)
+    const assessmentLines = lines.filter(line => {
+      const trimmed = line.trim();
+      // Skip lines that look like reasoning/logs
+      if (trimmed.match(/^(okay|now|i'm|i'll|click|navigate|going to|will|should|let me)/i)) return false;
+      if (trimmed.match(/^\[.*?\]/)) return false; // Skip bracketed reasoning
+      if (trimmed.length < 20) return false; // Too short
+      if (trimmed.match(/^(x=|y=|\d+,\s*\d+)/)) return false; // Skip coordinates
+      return true;
+    });
+    
+    if (assessmentLines.length > 0) {
+      // Take first 1-2 meaningful sentences
+      const firstLine = assessmentLines[0];
+      const sentences = firstLine.split(/[.!?]+/).filter(s => s.trim().length > 15);
+      if (sentences.length > 0) {
+        result.summary = sentences.slice(0, 2).join(". ").trim() + ".";
+      } else {
+        result.summary = firstLine.substring(0, 300).trim();
+        if (!result.summary.endsWith('.')) result.summary += ".";
+      }
+    } else {
+      // Last resort: extract first meaningful sentences from entire message
+      const allSentences = agentMessage
+        .split(/[.!?]+/)
+        .filter(s => {
+          const trimmed = s.trim();
+          return trimmed.length > 20 && 
+                 !trimmed.match(/^(okay|now|i'm|i'll|click|navigate)/i) &&
+                 !trimmed.match(/^\[.*?\]/);
+        })
+        .slice(0, 2);
+      
+      if (allSentences.length > 0) {
+        result.summary = allSentences.join(". ").trim() + ".";
+      } else {
+        // Absolute fallback: clean first 200 chars
+        result.summary = agentMessage
+          .replace(/\[.*?\]/g, '') // Remove bracketed reasoning
+          .replace(/^(okay|now|i'm|i'll|click|navigate).*?\./gi, '') // Remove reasoning sentences
+          .substring(0, 200)
+          .trim();
+        if (result.summary.length < 20) {
+          result.summary = "User experience assessment completed.";
+        } else if (!result.summary.endsWith('.')) {
+          result.summary += ".";
+        }
+      }
+    }
+  }
+  
+  // Ensure summary is never empty and is reasonable length
+  if (!result.summary || result.summary.length < 10) {
+    result.summary = "User experience assessment completed.";
+  }
+  if (result.summary.length > 500) {
+    result.summary = result.summary.substring(0, 497) + "...";
+  }
+
   // Helper to extract list items more robustly
-  const extractList = (regex: RegExp) => {
-    const match = agentMessage.match(regex);
-    if (!match) return [];
-    // Match bullet points, numbered lists, or lines starting with markdown bold
-    return (match[1].match(/(?:^|\n)\s*(?:[-•\d.*]+)\s*([^\n]+)/g) || [])
-      .map(item => item.replace(/^(?:^|\n)\s*(?:[-•\d.*]+)\s*/, "").trim())
-      .filter(Boolean);
+  const extractList = (regex: RegExp, fallbackPatterns?: RegExp[]) => {
+    // Try primary pattern
+    let match = cleanMessage.match(regex);
+    if (match && match[1]) {
+      // Match bullet points, numbered lists, or lines starting with markdown bold
+      const items = (match[1].match(/(?:^|\n)\s*(?:[-•\d.*]+)\s*([^\n]+)/g) || [])
+        .map(item => item.replace(/^(?:^|\n)\s*(?:[-•\d.*]+)\s*/, "").trim())
+        .filter(item => item.length > 5 && !item.match(/^(okay|now|i'm|i'll|click|navigate|going to)/i));
+      if (items.length > 0) return items;
+    }
+    
+    // Try fallback patterns if provided
+    if (fallbackPatterns) {
+      for (const fallbackPattern of fallbackPatterns) {
+        match = cleanMessage.match(fallbackPattern);
+        if (match && match[1]) {
+          const items = match[1]
+            .split(/\n/)
+            .map(line => line.replace(/^[-•\d.*]+\s*/, "").trim())
+            .filter(item => item.length > 5 && !item.match(/^(okay|now|i'm|i'll|click|navigate)/i));
+          if (items.length > 0) return items;
+        }
+      }
+    }
+    
+    return [];
   };
 
-  // Extract positive aspects
-  result.positiveAspects = extractList(/(?:(?:\*\*|##)?\s*(?:WHAT I LIKED|What I Liked|LIKED)[:\s]*)(?:\*\*)?([^\n]+(?:\n(?:[-•\d*])[^\n]+)*)/i);
+  // Extract positive aspects with multiple patterns
+  result.positiveAspects = extractList(
+    /(?:(?:\*\*|##)?\s*(?:WHAT I LIKED|What I Liked|LIKED)[:\s]*)(?:\*\*)?([^\n]+(?:\n(?:[-•\d*])[^\n]+)*)/i,
+    [
+      /(?:liked|positive|good|great|worked well)[:\s]*\n?([^\n]+(?:\n[-•\d][^\n]+)*)/i,
+      /(?:strengths|positives)[:\s]*\n?([^\n]+(?:\n[-•\d][^\n]+)*)/i,
+    ]
+  );
 
-  // Extract confusion points
-  result.accessibilityNotes = extractList(/(?:(?:\*\*|##)?\s*(?:WHAT CONFUSED ME|What Confused|CONFUSED|CONFUSION)[:\s]*)(?:\*\*)?([^\n]+(?:\n(?:[-•\d*])[^\n]+)*)/i);
+  // Extract confusion points with multiple patterns
+  result.accessibilityNotes = extractList(
+    /(?:(?:\*\*|##)?\s*(?:WHAT CONFUSED ME|What Confused|CONFUSED|CONFUSION)[:\s]*)(?:\*\*)?([^\n]+(?:\n(?:[-•\d*])[^\n]+)*)/i,
+    [
+      /(?:confused|confusion|unclear|didn't understand)[:\s]*\n?([^\n]+(?:\n[-•\d][^\n]+)*)/i,
+    ]
+  );
 
-  // Extract recommendations
-  result.recommendations = extractList(/(?:(?:\*\*|##)?\s*(?:SUGGESTIONS|Suggestions|RECOMMENDATIONS|Recommendations|MY TOP SUGGESTIONS)[:\s]*)(?:\*\*)?([^\n]+(?:\n(?:[-•\d*])[^\n]+)*)/i);
+  // Extract recommendations with multiple patterns
+  result.recommendations = extractList(
+    /(?:(?:\*\*|##)?\s*(?:SUGGESTIONS|Suggestions|RECOMMENDATIONS|Recommendations|MY TOP SUGGESTIONS)[:\s]*)(?:\*\*)?([^\n]+(?:\n(?:[-•\d*])[^\n]+)*)/i,
+    [
+      /(?:suggestions|recommendations|should|improve|fix)[:\s]*\n?([^\n]+(?:\n[-•\d][^\n]+)*)/i,
+    ]
+  );
 
   // Extract usability issues with enhanced parsing for severity and recommendations
-  const issuesSection = agentMessage.match(
-    /(?:USABILITY ISSUES|🚧)[:\s]*\n([\s\S]*?)(?=\n(?:♿|💡|⭐|===))/i
+  // Try multiple patterns to find issues section
+  let issuesSection = cleanMessage.match(
+    /(?:USABILITY ISSUES|🚧)[:\s]*\n([\s\S]*?)(?=\n(?:♿|💡|⭐|===|OVERALL|END|TOP SUGGESTIONS))/i
   );
   
-  if (issuesSection) {
-    const issueBlocks = issuesSection[1].split(/\n(?=\d+\.)/);
+  if (!issuesSection) {
+    // Try without newline requirement
+    issuesSection = cleanMessage.match(
+      /(?:USABILITY ISSUES|🚧)[:\s]*([\s\S]*?)(?=(?:♿|💡|⭐|===|OVERALL|END|TOP SUGGESTIONS))/i
+    );
+  }
+  
+  if (issuesSection && issuesSection[1]) {
+    const issuesText = issuesSection[1];
+    // Split by numbered items, bullets, or new paragraphs
+    const issueBlocks = issuesText.split(/\n(?=\d+\.|\n[-•]|\n[A-Z])/);
     
     issueBlocks.forEach((block) => {
-      if (block.trim().length < 10) return;
+      const trimmed = block.trim();
+      if (trimmed.length < 10) return;
       
-      // Extract severity - look for [SEVERITY: X] or just [X]
-      const severityMatch = block.match(/\[?SEVERITY[:\s]*(critical|high|medium|low)\]?/i) || 
-                           block.match(/\[(critical|high|medium|low)\]/i);
+      // Skip reasoning/logs
+      if (trimmed.match(/^(okay|now|i'm|i'll|click|navigate|going to|will|should|let me)/i)) return;
+      
+      // Extract severity - look for [SEVERITY: X] or just [X] or "severity: X"
+      const severityMatch = trimmed.match(/\[?SEVERITY[:\s]*(critical|high|medium|low)\]?/i) || 
+                           trimmed.match(/\[(critical|high|medium|low)\]/i) ||
+                           trimmed.match(/severity[:\s]*(critical|high|medium|low)/i) ||
+                           trimmed.match(/\b(critical|high|medium|low)\s*severity/i);
       const severity = (severityMatch?.[1]?.toLowerCase() as "low" | "medium" | "high" | "critical") || "medium";
       
       // Extract description (everything before → or FIX: or RECOMMENDATION:)
-      const descMatch = block.match(/(?:\d+\.\s*)?(?:\[.*?\]\s*-?\s*)?(.*?)(?:\n?\s*(?:→|FIX:|RECOMMENDATION:))/is);
-      const description = (descMatch?.[1] || block.split('\n')[0].replace(/^\d+\.\s*/, '')).trim();
+      let descMatch = trimmed.match(/(?:\d+\.\s*)?(?:\[.*?\]\s*-?\s*)?(.*?)(?:\n?\s*(?:→|FIX:|RECOMMENDATION:|severity))/is);
+      if (!descMatch) {
+        descMatch = trimmed.match(/(?:\d+\.\s*)?(?:\[.*?\]\s*-?\s*)?(.+?)(?:\n\n|\n\d+\.|$)/is);
+      }
+      let description = (descMatch?.[1] || trimmed.split('\n')[0].replace(/^\d+\.\s*/, '')).trim();
+      
+      // Clean description
+      description = description
+        .replace(/^\[.*?\]\s*/, '')
+        .replace(/\s*[-–]\s*(low|medium|high|critical)\s*severity.*$/i, '')
+        .replace(/\s*severity[:\s]*(low|medium|high|critical).*$/i, '')
+        .trim();
       
       // Extract recommendation (after → or FIX: or RECOMMENDATION:)
-      const recMatch = block.match(/(?:→|FIX:|RECOMMENDATION:)\s*(.+?)(?:\n\n|\n\d+\.|$)/is);
-      const recommendation = recMatch?.[1]?.trim() || "Review and address this usability concern";
+      const recMatch = trimmed.match(/(?:→|FIX:|RECOMMENDATION:)\s*(.+?)(?:\n\n|\n\d+\.|$)/is);
+      let recommendation = recMatch?.[1]?.trim() || "Review and address this usability concern";
       
-      if (description.length > 10) {
+      // Clean recommendation
+      recommendation = recommendation.replace(/^\[.*?\]\s*/, '').trim();
+      
+      if (description.length > 10 && !description.match(/^(okay|now|i'm|i'll|click)/i)) {
         result.usabilityIssues.push({
           severity,
           description: description.substring(0, 500),
@@ -242,18 +412,26 @@ function parseAgentFeedback(agentMessage: string): {
   
   // Fallback to simpler parsing if structured format not found
   if (result.usabilityIssues.length === 0) {
-    const simpleMatch = agentMessage.match(/(?:USABILITY ISSUES|🚧)[:\s]*([^\n]+(?:\n(?:[-•\d])[^\n]+)*)/i);
-    if (simpleMatch) {
+    const simpleMatch = cleanMessage.match(/(?:USABILITY ISSUES|🚧|issues?)[:\s]*([^\n]+(?:\n(?:[-•\d])[^\n]+)*)/i);
+    if (simpleMatch && simpleMatch[1]) {
       const items = simpleMatch[1].match(/[-•\d.]\s*([^\n]+)/g);
       if (items) {
         items.forEach((item) => {
           const cleanItem = item.replace(/^[-•\d.]\s*/, "").trim();
+          // Skip reasoning/logs
+          if (cleanItem.match(/^(okay|now|i'm|i'll|click|navigate)/i)) return;
+          if (cleanItem.length < 10) return;
+          
           const severityMatch = cleanItem.match(/\b(low|medium|high|critical)\b/i);
-          result.usabilityIssues.push({
-            severity: (severityMatch?.[1]?.toLowerCase() as any) || "medium",
-            description: cleanItem.replace(/\s*[-–]\s*(low|medium|high|critical)\s*/i, ""),
-            recommendation: "Address this issue to improve user experience",
-          });
+          const description = cleanItem.replace(/\s*[-–]\s*(low|medium|high|critical)\s*/i, "").trim();
+          
+          if (description.length > 10) {
+            result.usabilityIssues.push({
+              severity: (severityMatch?.[1]?.toLowerCase() as any) || "medium",
+              description: description.substring(0, 500),
+              recommendation: "Address this issue to improve user experience",
+            });
+          }
         });
       }
     }
@@ -484,7 +662,7 @@ END ASSESSMENT`,
       interactionLogs,
       overallExperience: {
         score: extractedScore,
-        summary: parsedFeedback.summary || agentMessage.substring(0, 500) || "Exploration completed",
+        summary: parsedFeedback.summary, // parseAgentFeedback now guarantees a non-empty summary
       },
       usabilityIssues: parsedFeedback.usabilityIssues,
       positiveAspects: parsedFeedback.positiveAspects,
