@@ -181,9 +181,25 @@ export async function createSwarm(
   });
 }
 
+export async function updateSwarm(
+  id: string,
+  data: Partial<Pick<Swarm, "name" | "description" | "personas" | "agentCount">>
+): Promise<{ swarm: Swarm }> {
+  return fetchWithAuth(`/api/swarms/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
 export async function deleteSwarm(id: string): Promise<{ message: string; id: string }> {
   return fetchWithAuth(`/api/swarms/${id}`, {
     method: "DELETE",
+  });
+}
+
+export async function terminateBatchTest(id: string): Promise<{ message: string; batchTestRun: BatchTestRun }> {
+  return fetchWithAuth(`/api/batch-tests/${id}/terminate`, {
+    method: "POST",
   });
 }
 

@@ -6,8 +6,8 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  LayoutGrid, 
-  Terminal, 
+  SquareTerminal, 
+  Bot, 
   User, 
   LogOut, 
   Settings, 
@@ -28,12 +28,12 @@ export function DashboardSidebar() {
     {
       name: "Playground",
       href: "/dashboard",
-      icon: Terminal
+      icon: SquareTerminal
     },
     {
       name: "Swarms",
       href: "/dashboard/swarms",
-      icon: LayoutGrid,
+      icon: Bot,
       disabled: false
     }
   ];
@@ -89,20 +89,20 @@ export function DashboardSidebar() {
               href={item.href}
               className={`flex items-center ${expanded ? "gap-3 px-3" : "justify-center px-0"} py-3 rounded-none transition-colors group relative ${
                 isActive 
-                  ? "bg-neutral-100 text-neutral-900 border border-neutral-200" 
+                  ? "bg-neutral-100 text-neutral-900" 
                   : item.disabled 
                     ? "text-neutral-300 cursor-not-allowed" 
-                    : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+                    : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
               }`}
               onClick={(e) => item.disabled && e.preventDefault()}
             >
-              <item.icon size={22} className={`flex-shrink-0 ${isActive ? "text-neutral-900" : item.disabled ? "text-neutral-300" : "text-neutral-600 group-hover:text-neutral-900"}`} />
+              <item.icon size={22} strokeWidth={1.5} className={`flex-shrink-0 ${isActive ? "text-neutral-900" : item.disabled ? "text-neutral-300" : "text-neutral-600 group-hover:text-neutral-900"}`} />
               {expanded && (
                 <motion.span
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.1 }}
-                  className="text-sm font-medium whitespace-nowrap overflow-hidden"
+                  className="text-sm font-normal whitespace-nowrap overflow-hidden"
                 >
                   {item.name}
                 </motion.span>
@@ -121,7 +121,7 @@ export function DashboardSidebar() {
           }`}
         >
           <div className="w-9 h-9 bg-gradient-to-br from-neutral-700 via-neutral-900 to-black flex items-center justify-center flex-shrink-0 text-white font-medium text-sm rounded-none shadow-sm border border-neutral-800">
-            {session?.user?.name?.[0]?.toUpperCase() || <User size={18} />}
+            {session?.user?.name?.[0]?.toUpperCase() || <User size={18} strokeWidth={1.5} />}
           </div>
           {expanded && (
             <motion.div
@@ -130,7 +130,7 @@ export function DashboardSidebar() {
               transition={{ duration: 0.1 }}
               className="flex-1 text-left overflow-hidden whitespace-nowrap"
             >
-              <div className="text-sm font-medium text-neutral-900 truncate">
+              <div className="text-sm font-normal text-neutral-900 truncate">
                 {session?.user?.name || "User"}
               </div>
               <div className="text-xs text-neutral-500 truncate">
@@ -155,7 +155,7 @@ export function DashboardSidebar() {
                   onClick={() => setProfileOpen(false)}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 rounded-none transition-colors text-left"
                 >
-                  <Settings size={16} />
+                  <Settings size={16} strokeWidth={1.5} />
                   Settings
                 </Link>
                 <div className="h-px bg-neutral-100 my-1" />
@@ -163,7 +163,7 @@ export function DashboardSidebar() {
                   onClick={handleSignOut}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-none transition-colors text-left"
                 >
-                  <LogOut size={16} />
+                  <LogOut size={16} strokeWidth={1.5} />
                   Sign Out
                 </button>
               </div>

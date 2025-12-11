@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { authRoutes } from "./routes/auth.js";
+import { userRoutes } from "./routes/user.js";
 import { testsRoutes } from "./routes/tests.js";
 import { batchTestsRoutes } from "./routes/batch-tests.js";
 import { swarmsRoutes } from "./routes/swarms.js";
@@ -36,6 +37,9 @@ app.get("/health", (c) => {
 
 // Auth routes (public)
 app.route("/api/auth", authRoutes);
+
+// User routes (protected inside)
+app.route("/api/user", userRoutes);
 
 // Protected routes
 app.use("/api/tests", authMiddleware); // Match base path

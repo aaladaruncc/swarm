@@ -7,7 +7,6 @@ import { Hero } from "@/components/landing/hero";
 import { LogoCarousel } from "@/components/landing/logo-carousel";
 import { Features } from "@/components/landing/features";
 import { InteractiveDemo } from "@/components/landing/demo/interactive-demo";
-import { ComplianceStats } from "@/components/landing/compliance-stats";
 import { Pricing } from "@/components/landing/pricing";
 import { FAQ } from "@/components/landing/faq";
 import { Footer } from "@/components/landing/footer";
@@ -15,13 +14,15 @@ import { Footer } from "@/components/landing/footer";
 export default function App() {
   useEffect(() => {
     const lenis = new Lenis({
-      duration: 1.2,
+      duration: 1.0,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       orientation: 'vertical',
       gestureOrientation: 'vertical',
       smoothWheel: true,
-      wheelMultiplier: 1,
-      touchMultiplier: 2,
+      wheelMultiplier: 1.8,
+      touchMultiplier: 2.5,
+      smoothTouch: true,
+      infinite: false,
     });
 
     function raf(time: number) {
@@ -46,9 +47,7 @@ export default function App() {
       <Hero />
 
       {/* --- SOCIAL PROOF --- */}
-      <div className="pt-20">
-        <LogoCarousel />
-      </div>
+      <LogoCarousel />
 
       {/* --- VALUE PROPOSITION (Features Accordion) --- */}
       <Features />
@@ -56,8 +55,6 @@ export default function App() {
       {/* --- INTERACTIVE DEMO / TERMINAL SECTION --- */}
       <InteractiveDemo />
 
-      {/* --- COMPLIANCE & STATS --- */}
-      <ComplianceStats />
 
       {/* --- BIG CTA (Pricing) --- */}
       <Pricing />

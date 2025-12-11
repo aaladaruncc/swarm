@@ -2,133 +2,241 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
-import { GitBranch, Activity, Cpu, Shield, BarChart3, Command } from "lucide-react";
+import { Sparkles, Zap, Target, TrendingUp, Code2, Terminal, Activity, GitBranch } from "lucide-react";
 
-const FEATURES = [
+const TABS = [
   {
-    icon: GitBranch,
-    title: "Autonomous Exploration",
-    description: "Agents automatically map your UI tree, identifying every button, input, and state without writing a single line of Cypress code.",
+    id: "intelligent",
+    title: "Intelligent Automation",
+    description: "AI-powered agents that understand context and adapt to your application's unique workflows.",
+    icon: Sparkles,
+    preview: {
+      title: "Context-Aware Testing",
+      subtitle: "Autonomous Agent Execution",
+      visual: "terminal"
+    },
   },
   {
-    icon: Activity,
-    title: "Stochastic User Models",
-    description: "Configure agents with personalities—from 'The Perfect User' to 'The Rage Clicker'—to validate resilience under various behaviors.",
+    id: "parallel",
+    title: "Parallel Execution",
+    description: "Run hundreds of test scenarios simultaneously across multiple personas.",
+    icon: Zap,
+    preview: {
+      title: "Massive Scale",
+      subtitle: "Concurrent Sessions",
+      visual: "grid"
+    },
   },
   {
-    icon: Cpu,
-    title: "Parallel Swarms",
-    description: "Spin up 10,000 concurrent unique sessions in our cloud. Watch them interact in real-time on the dashboard.",
+    id: "insights",
+    title: "Actionable Insights",
+    description: "Get beyond pass/fail results with deep behavioral analysis and recommendations.",
+    icon: Target,
+    preview: {
+      title: "Deep Analysis",
+      subtitle: "Behavioral Heatmaps",
+      visual: "graph"
+    },
   },
   {
-    icon: Shield,
-    title: "Self-Healing Scenarios",
-    description: "When your UI changes, our agents adapt. No more broken selectors or brittle rigid test scripts.",
-  },
-  {
-    icon: BarChart3,
-    title: "Heatmap Analytics",
-    description: "Visualize where agents got stuck, where latency spiked, and which flows resulted in unhandled exceptions.",
-  },
-  {
-    icon: Command,
-    title: "CLI First",
-    description: "Designed for developers. Integrate into your CI/CD pipeline with a single command. `npx agent2 run`.",
+    id: "continuous",
+    title: "Continuous Validation",
+    description: "Integrate seamlessly into your CI/CD pipeline for automated quality assurance.",
+    icon: TrendingUp,
+    preview: {
+      title: "Always-On Testing",
+      subtitle: "CI/CD Integration",
+      visual: "pipeline"
+    },
   },
 ];
 
 export function Features() {
-  const [activeFeature, setActiveFeature] = useState(0);
+  const [activeTab, setActiveTab] = useState(0);
 
   return (
-    <section id="features" className="py-24 bg-white border-t border-neutral-100">
-      <div className="container mx-auto px-6 max-w-7xl">
-        <div className="text-center max-w-3xl mx-auto mb-20">
-          <h2 
-            className="text-4xl font-light tracking-tight mb-6"
-            style={{ 
-              fontFamily: "'Georgia', 'Times New Roman', 'Palatino', 'Book Antiqua', serif",
-              fontWeight: 400
-            }}
-          >
-            Testing, evolved.
-          </h2>
-          <p className="text-lg font-light text-neutral-500">
-            Deterministic testing misses the chaos of reality. Vantage introduces 
-            stochastic behavior modeling to uncover edge cases you didn't know existed.
-          </p>
-        </div>
+    <section id="features" className="relative py-32 bg-neutral-50 overflow-hidden">
+      {/* Background Decorative Elements */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-neutral-200 to-transparent" />
+        <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-neutral-200 to-transparent" />
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
-          {/* Left: Interactive Accordion */}
-          <div className="space-y-4">
-            {FEATURES.map((feature, i) => (
-              <div
-                key={feature.title}
-                onClick={() => setActiveFeature(i)}
-                className={`group cursor-pointer border-l-2 pl-6 py-4 transition-all duration-300 ${
-                  activeFeature === i
-                    ? "border-black"
-                    : "border-neutral-200 hover:border-neutral-400"
-                }`}
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <feature.icon
-                    size={20}
-                    className={`transition-colors ${
-                      activeFeature === i ? "text-black" : "text-neutral-400 group-hover:text-neutral-600"
-                    }`}
-                  />
-                  <h3
-                    className={`text-xl font-medium transition-colors ${
-                      activeFeature === i ? "text-black" : "text-neutral-400 group-hover:text-neutral-600"
-                    }`}
+      <div className="container mx-auto px-6 max-w-7xl">
+        <div className="flex flex-col lg:flex-row gap-16 lg:gap-24 items-start">
+          
+          {/* Left Side: Content & Navigation */}
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="flex-1 lg:sticky lg:top-32 w-full lg:max-w-md"
+          >
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-serif font-medium tracking-tight text-neutral-900 mb-6 leading-[1.1]">
+              Simulation, <span className="italic text-neutral-500">evolved.</span>
+            </h2>
+            <p className="text-lg text-neutral-600 font-sans font-light leading-relaxed mb-12">
+              Next-generation testing powered by AI. Discover issues, validate experiences, and ensure quality at scale without the maintenance overhead.
+            </p>
+
+            {/* Vertical Navigation for better structure */}
+            <div className="space-y-2">
+              {TABS.map((tab, index) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === index;
+                
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(index)}
+                    className={`
+                      w-full text-left p-4 rounded-none transition-all duration-300 group
+                      border hover:border-neutral-200
+                      ${isActive 
+                        ? "bg-white border-neutral-200 shadow-sm" 
+                        : "bg-transparent border-transparent hover:bg-white/50"
+                      }
+                    `}
                   >
-                    {feature.title}
-                  </h3>
-                </div>
-                <AnimatePresence>
-                  {activeFeature === i && (
-                    <motion.p
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="text-neutral-500 font-light overflow-hidden"
-                    >
-                      {feature.description}
-                    </motion.p>
-                  )}
+                    <div className="flex items-center gap-3 mb-1">
+                      <div className={`
+                        p-2 rounded-none transition-colors
+                        ${isActive ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 group-hover:bg-white group-hover:text-neutral-900"}
+                      `}>
+                        <Icon size={18} strokeWidth={1.5} />
+                      </div>
+                      <span className={`font-medium transition-colors ${isActive ? "text-neutral-900" : "text-neutral-600"}`}>
+                        {tab.title}
+                      </span>
+                    </div>
+                    <p className={`text-sm pl-[52px] transition-colors leading-relaxed ${isActive ? "text-neutral-600" : "text-neutral-400"}`}>
+                      {tab.description}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+
+          {/* Right Side: Interactive Preview */}
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="flex-1 w-full"
+          >
+            <div className="relative aspect-square lg:aspect-[4/3] bg-white rounded-none border border-neutral-200 shadow-2xl shadow-neutral-200/50 overflow-hidden">
+              {/* Window Controls */}
+              <div className="absolute top-0 left-0 right-0 h-10 bg-neutral-50 border-b border-neutral-100 flex items-center px-4 gap-2 z-10">
+                <div className="w-3 h-3 rounded-full bg-red-400/20 border border-red-400/30" />
+                <div className="w-3 h-3 rounded-full bg-amber-400/20 border border-amber-400/30" />
+                <div className="w-3 h-3 rounded-full bg-green-400/20 border border-green-400/30" />
+              </div>
+
+              {/* Content Area */}
+              <div className="absolute inset-0 top-10 p-8 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeTab}
+                    initial={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
+                    animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                    exit={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    className="h-full flex flex-col"
+                  >
+                    {/* Dynamic Header */}
+                    <div className="mb-8">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-none bg-neutral-100 border border-neutral-200 text-xs font-medium text-neutral-600 mb-4">
+                        {TABS[activeTab].preview.subtitle}
+                      </div>
+                      <h3 className="text-3xl font-serif text-neutral-900">
+                        {TABS[activeTab].preview.title}
+                      </h3>
+                    </div>
+
+                    {/* Visual Content Placeholder */}
+                    <div className="flex-1 bg-white rounded-none border border-neutral-200 shadow-sm overflow-hidden relative group">
+                      {TABS[activeTab].preview.visual === "terminal" && (
+                        <div className="p-6 font-mono text-sm space-y-2 text-neutral-600">
+                          <div className="flex items-center gap-2 text-green-600">
+                            <span className="text-neutral-400">➜</span>
+                            <span>stagehand start --mode=auto</span>
+                          </div>
+                          <div className="text-neutral-400 pl-4">Initializing AI agent...</div>
+                          <div className="text-neutral-400 pl-4">Analyzing DOM structure...</div>
+                          <div className="text-blue-500 pl-4">Found login form. Attempting authentication.</div>
+                          <div className="flex items-center gap-2 pl-4 text-neutral-800 bg-neutral-50 p-2 rounded-none border border-neutral-100 mt-2">
+                            <Activity size={14} className="animate-pulse text-green-500" />
+                            <span>Agent exploring user dashboard...</span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {TABS[activeTab].preview.visual === "grid" && (
+                        <div className="p-6 grid grid-cols-2 gap-4">
+                           {[1, 2, 3, 4].map((i) => (
+                             <div key={i} className="bg-neutral-50 rounded-none p-3 border border-neutral-100">
+                               <div className="flex items-center justify-between mb-2">
+                                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                 <span className="text-xs text-neutral-400 font-mono">ID: {2490 + i}</span>
+                               </div>
+                               <div className="space-y-2">
+                                 <div className="h-1.5 w-3/4 bg-neutral-200 rounded-full" />
+                                 <div className="h-1.5 w-1/2 bg-neutral-200 rounded-full" />
+                               </div>
+                             </div>
+                           ))}
+                        </div>
+                      )}
+
+                      {TABS[activeTab].preview.visual === "graph" && (
+                        <div className="p-6 flex items-end justify-between h-full gap-2 pb-8">
+                          {[40, 65, 45, 80, 55, 90, 70].map((h, i) => (
+                            <motion.div
+                              key={i}
+                              initial={{ height: 0 }}
+                              animate={{ height: `${h}%` }}
+                              transition={{ duration: 0.5, delay: i * 0.1 }}
+                              className="w-full bg-neutral-100 rounded-none relative overflow-hidden group-hover:bg-neutral-900 transition-colors duration-500"
+                            >
+                              <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black/5 to-transparent" />
+                            </motion.div>
+                          ))}
+                        </div>
+                      )}
+
+                      {TABS[activeTab].preview.visual === "pipeline" && (
+                        <div className="p-6 flex flex-col justify-center h-full gap-4">
+                          {[
+                            { label: "Build", status: "success" },
+                            { label: "Unit Tests", status: "success" },
+                            { label: "E2E Tests", status: "processing" },
+                            { label: "Deploy", status: "pending" }
+                          ].map((step, i) => (
+                            <div key={i} className="flex items-center gap-4">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center border
+                                ${step.status === 'success' ? 'bg-green-50 border-green-200 text-green-600' :
+                                  step.status === 'processing' ? 'bg-blue-50 border-blue-200 text-blue-600 animate-pulse' :
+                                  'bg-neutral-50 border-neutral-200 text-neutral-300'}
+                              `}>
+                                {step.status === 'success' ? <Zap size={14} /> : 
+                                 step.status === 'processing' ? <Activity size={14} /> :
+                                 <div className="w-2 h-2 rounded-full bg-neutral-300" />}
+                              </div>
+                              <div className="flex-1 h-px bg-neutral-100" />
+                              <span className="text-sm font-medium text-neutral-600">{step.label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
                 </AnimatePresence>
               </div>
-            ))}
-          </div>
-
-          {/* Right: Visual Preview (Placeholder for feature-specific visualization) */}
-          <div className="bg-neutral-50 rounded-2xl h-[500px] flex items-center justify-center border border-neutral-100 p-12 relative overflow-hidden">
-             {/* Dynamic content based on activeFeature could go here */}
-             <motion.div
-                key={activeFeature}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4 }}
-                className="text-center"
-             >
-                <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-sm mx-auto mb-6">
-                    {/* Render the icon of the active feature larger */}
-                    {(() => {
-                        const Icon = FEATURES[activeFeature].icon;
-                        return <Icon size={48} className="text-neutral-900" strokeWidth={1} />;
-                    })()}
-                </div>
-                <h4 className="text-2xl font-light text-neutral-900 mb-2">{FEATURES[activeFeature].title}</h4>
-                <div className="text-sm font-mono text-neutral-400 mt-8 bg-white px-4 py-2 rounded border border-neutral-200 inline-block">
-                    Processing node: {activeFeature + 1} / {FEATURES.length}
-                </div>
-             </motion.div>
-             
-             {/* Decorative background elements */}
-             <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-50 pointer-events-none"></div>
-          </div>
+            </div>
+          </motion.div>
         </div>
       </div>
     </section>

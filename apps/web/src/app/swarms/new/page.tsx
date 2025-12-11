@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { generatePersonas, createSwarm, type GeneratedPersona } from "@/lib/batch-api";
+import { GeneratingPersonasLoader } from "@/components/ui/generating-personas-loader";
 import { 
   Plus, 
   Loader2, 
@@ -19,7 +20,7 @@ export default function CreateSwarmPage() {
   const router = useRouter();
   
   // Create Flow State
-  const [step, setStep] = useState<"details" | "generate" | "select">("details");
+  const [step, setStep] = useState<"details" | "generating" | "select">("details");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -37,7 +38,7 @@ export default function CreateSwarmPage() {
   const handleGeneratePersonas = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
+    setStep("generating");
 
     try {
       // Using the existing API to generate personas
@@ -50,8 +51,7 @@ export default function CreateSwarmPage() {
       setStep("select");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate personas");
-    } finally {
-      setLoading(false);
+      setStep("details");
     }
   };
 
@@ -252,7 +252,12 @@ export default function CreateSwarmPage() {
           </>
         )}
 
-        {/* Step 2: Select */}
+        {/* Step 2: Generating */}
+        {step === "generating" && (
+          <GeneratingPersonasLoader />
+        )}
+
+        {/* Step 3: Select */}
         {step === "select" && (
           <>
             <div className="mb-12">
@@ -285,7 +290,7 @@ export default function CreateSwarmPage() {
               </div>
 
               {/* Personas Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {generatedPersonas.map((persona, index) => {
                   const isSelected = selectedIndices.includes(index);
                   const isRecommended = recommendedIndices.includes(index);

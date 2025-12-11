@@ -189,6 +189,85 @@ batchTestsRoutes.get("/:id", async (c) => {
   });
 });
 
+// POST /batch-tests/:id/terminate - Terminate a running batch test
+batchTestsRoutes.post("/:id/terminate", async (c) => {
+  const user = c.get("user");
+  const batchId = c.req.param("id");
+
+  try {
+    // Verify ownership
+    const [batchTestRun] = await db
+      .select()
+      .from(schema.batchTestRuns)
+      .where(eq(schema.batchTestRuns.id, batchId));
+
+    if (!batchTestRun || batchTestRun.userId !== user.id) {
+      return c.json({ error: "Batch test not found" }, 404);
+    }
+
+    // Only allow termination if test is still running
+    if (!["running_tests", "aggregating"].includes(batchTestRun.status)) {
+      return c.json({ error: "Test is not running" }, 400);
+    }
+
+    // Cancel any queued jobs in the queue manager
+    // Note: Currently running jobs will complete, but we mark them as terminated
+    // Future enhancement: could add queue cancellation support
+
+    // Get all running test runs for this batch
+    const testRuns = await db
+      .select()
+      .from(schema.testRuns)
+      .where(eq(schema.testRuns.batchTestRunId, batchId));
+
+    // Update all running test runs to terminated
+    const runningTestRuns = testRuns.filter(tr => tr.status === "running" || tr.status === "pending");
+    
+    for (const testRun of runningTestRuns) {
+      await db
+        .update(schema.testRuns)
+        .set({
+          status: "terminated",
+          completedAt: new Date(),
+          errorMessage: "Test terminated by user",
+        })
+        .where(eq(schema.testRuns.id, testRun.id));
+    }
+
+    // Update batch status to terminated
+    await db
+      .update(schema.batchTestRuns)
+      .set({
+        status: "terminated",
+        completedAt: new Date(),
+        errorMessage: "Test terminated by user",
+      })
+      .where(eq(schema.batchTestRuns.id, batchId));
+
+    console.log(`[${batchId}] Batch test terminated by user ${user.id}`);
+
+    // Get updated batch test run
+    const [updatedBatchTestRun] = await db
+      .select()
+      .from(schema.batchTestRuns)
+      .where(eq(schema.batchTestRuns.id, batchId));
+
+    return c.json({ 
+      message: "Batch test terminated successfully",
+      batchTestRun: updatedBatchTestRun
+    });
+  } catch (error) {
+    console.error("Failed to terminate batch test:", error);
+    return c.json(
+      {
+        error: "Failed to terminate batch test",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      500
+    );
+  }
+});
+
 // ============================================================================
 // BACKGROUND PROCESSING
 // ============================================================================

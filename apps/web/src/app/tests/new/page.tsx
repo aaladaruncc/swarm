@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { generatePersonas, createBatchTest, type GeneratedPersona } from "@/lib/batch-api";
+import { GeneratingPersonasLoader } from "@/components/ui/generating-personas-loader";
 import { ArrowLeft, Globe, User, Loader2, Zap, Info, Check, Minus, Plus } from "lucide-react";
 
 export default function NewTest() {
@@ -22,7 +23,7 @@ export default function NewTest() {
   const [recommendedIndices, setRecommendedIndices] = useState<number[]>([]);
   
   // UI State
-  const [step, setStep] = useState<"describe" | "select" | "starting">("describe");
+  const [step, setStep] = useState<"describe" | "generating" | "select" | "starting">("describe");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -42,7 +43,7 @@ export default function NewTest() {
   const handleGeneratePersonas = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
+    setStep("generating");
 
     try {
       const result = await generatePersonas(url, userDescription, agentCount);
@@ -52,8 +53,7 @@ export default function NewTest() {
       setStep("select");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate personas");
-    } finally {
-      setLoading(false);
+      setStep("describe");
     }
   };
 
@@ -240,6 +240,11 @@ export default function NewTest() {
               </div>
             </form>
           </>
+        )}
+
+        {/* Step 1.5: Generating */}
+        {step === "generating" && (
+          <GeneratingPersonasLoader />
         )}
 
         {/* Step 2: Select Personas */}

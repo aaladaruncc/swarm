@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
-import { getBatchTest, type TestRunWithReport, type AggregatedReport, type BatchTestRun } from "@/lib/batch-api";
+import { getBatchTest, terminateBatchTest, type TestRunWithReport, type AggregatedReport, type BatchTestRun } from "@/lib/batch-api";
 import ReactMarkdown from "react-markdown";
-import { ArrowLeft, Loader2, ExternalLink, Download } from "lucide-react";
+import { ArrowLeft, Loader2, ExternalLink, Download, X, CheckCircle2, AlertCircle } from "lucide-react";
 import { pdf } from '@react-pdf/renderer';
 import { AggregatedReportPDF } from '@/components/pdf/AggregatedReportPDF';
 import { PersonaReportPDF } from '@/components/pdf/PersonaReportPDF';
@@ -22,6 +22,7 @@ export default function TestDetails() {
   const [error, setError] = useState("");
   const [selectedView, setSelectedView] = useState<"aggregated" | number>("aggregated");
   const [exportingPDF, setExportingPDF] = useState(false);
+  const [isTerminating, setIsTerminating] = useState(false);
 
   const testId = params.id as string;
 
@@ -108,7 +109,7 @@ export default function TestDetails() {
       return () => clearInterval(interval);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, testId, batchTestRun?.status]);
+  }, [session, testId]);
 
   if (isPending || !session?.user) {
     return (
@@ -118,6 +119,24 @@ export default function TestDetails() {
     );
   }
 
+  const handleTerminate = async () => {
+    if (!confirm("Are you sure you want to terminate this test? This will cancel all running agents.")) {
+      return;
+    }
+    
+    setIsTerminating(true);
+    try {
+      await terminateBatchTest(testId);
+      // Reload the test to get updated status
+      await loadTest();
+    } catch (err) {
+      console.error("Failed to terminate test:", err);
+      alert("Failed to terminate test");
+    } finally {
+      setIsTerminating(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       pending: "bg-neutral-100 text-neutral-600 border-neutral-200",
@@ -125,6 +144,7 @@ export default function TestDetails() {
       aggregating: "bg-purple-50 text-purple-700 border-purple-200",
       completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
       failed: "bg-red-50 text-red-700 border-red-200",
+      terminated: "bg-orange-50 text-orange-700 border-orange-200",
     };
     
     const labels: Record<string, string> = {
@@ -133,12 +153,37 @@ export default function TestDetails() {
       aggregating: "Aggregating",
       completed: "Success",
       failed: "Failed",
+      terminated: "Terminated",
     };
 
+    const canTerminate = ["running_tests", "aggregating"].includes(status);
+
     return (
-      <span className={`px-2.5 py-0.5 text-xs font-medium border ${styles[status] || styles.pending}`}>
-        {labels[status] || status}
-      </span>
+      <div className="flex items-center gap-3">
+        <span className={`px-3 py-1.5 text-xs font-medium border rounded-none ${styles[status] || styles.pending}`}>
+          {labels[status] || status}
+        </span>
+        {canTerminate && (
+          <button
+            onClick={handleTerminate}
+            disabled={isTerminating}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 transition-colors rounded-none disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Terminate all running agents"
+          >
+            {isTerminating ? (
+              <>
+                <Loader2 size={12} className="animate-spin" />
+                <span>Terminating...</span>
+              </>
+            ) : (
+              <>
+                <X size={12} />
+                <span>Terminate</span>
+              </>
+            )}
+          </button>
+        )}
+      </div>
     );
   };
 
@@ -228,16 +273,51 @@ export default function TestDetails() {
 
               {/* Persona Status Grid */}
               <div className="flex flex-wrap gap-3">
-                {testRuns.map((tr, i) => (
-                  <div key={i} className="flex items-center gap-2 px-3 py-1.5 border border-neutral-200 text-xs">
-                    <div className={`h-1.5 w-1.5 rounded-full ${
-                      tr.testRun.status === "completed" ? "bg-emerald-500" :
-                      tr.testRun.status === "running" ? "bg-blue-500 animate-pulse" :
-                      tr.testRun.status === "failed" ? "bg-red-500" : "bg-neutral-300"
-                    }`} />
-                    <span className="font-medium">{tr.testRun.personaName}</span>
-                  </div>
-                ))}
+                {testRuns.map((tr, i) => {
+                  const status = tr.testRun.status;
+                  const isCompleted = status === "completed";
+                  const isRunning = status === "running";
+                  const isFailed = status === "failed";
+                  const isTerminated = status === "terminated";
+                  
+                  return (
+                    <div 
+                      key={i} 
+                      className={`flex items-center gap-2 px-3 py-2 border text-xs rounded-none ${
+                        isCompleted 
+                          ? "border-emerald-200 bg-emerald-50" 
+                          : isRunning 
+                          ? "border-blue-200 bg-blue-50" 
+                          : isFailed
+                          ? "border-red-200 bg-red-50"
+                          : isTerminated
+                          ? "border-orange-200 bg-orange-50"
+                          : "border-neutral-200 bg-neutral-50"
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <CheckCircle2 size={14} className="text-emerald-600" />
+                      ) : isRunning ? (
+                        <Loader2 size={14} className="text-blue-600 animate-spin" />
+                      ) : isFailed ? (
+                        <AlertCircle size={14} className="text-red-600" />
+                      ) : isTerminated ? (
+                        <X size={14} className="text-orange-600" />
+                      ) : (
+                        <div className="w-3 h-3 border border-neutral-300" />
+                      )}
+                      <span className={`font-medium ${
+                        isCompleted ? "text-emerald-700" :
+                        isRunning ? "text-blue-700" :
+                        isFailed ? "text-red-700" :
+                        isTerminated ? "text-orange-700" :
+                        "text-neutral-600"
+                      }`}>
+                        {tr.testRun.personaName}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -264,6 +344,16 @@ export default function TestDetails() {
                 <h3 className="text-lg font-medium text-red-800 mb-2">Batch Test Failed</h3>
                 <p className="text-red-600 text-sm font-light">
                   {batchTestRun.errorMessage || "An unknown error occurred"}
+                </p>
+              </div>
+            )}
+
+            {/* Terminated State */}
+            {batchTestRun.status === "terminated" && (
+              <div className="border border-orange-200 bg-orange-50 p-6">
+                <h3 className="text-lg font-medium text-orange-800 mb-2">Batch Test Terminated</h3>
+                <p className="text-orange-600 text-sm font-light">
+                  This test was terminated by the user. All running agents have been stopped.
                 </p>
               </div>
             )}

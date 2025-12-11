@@ -19,7 +19,7 @@ const FAQS = [
   },
   {
     question: "Can I run this in my CI/CD pipeline?",
-    answer: "Absolutely. Stagehand is built to integrate seamlessy with GitHub Actions, GitLab CI, and other CI providers. You can trigger swarms on every pull request to ensure no regressions are introduced."
+    answer: "Absolutely. Stagehand is built to integrate seamlessly with GitHub Actions, GitLab CI, and other CI providers. You can trigger swarms on every pull request to ensure no regressions are introduced."
   },
   {
     question: "How secure is the browser execution environment?",
@@ -31,13 +31,13 @@ export function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section id="faq" className="py-24 bg-white border-t border-neutral-100">
-      <div className="container mx-auto px-6 max-w-4xl">
+    <section id="faq" className="py-24 bg-neutral-50 border-t border-neutral-200">
+      <div className="container mx-auto px-6 max-w-3xl">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-light mb-6 text-neutral-900">
-            Frequently Asked Questions
+          <h2 className="text-4xl md:text-5xl font-serif font-medium tracking-tight text-neutral-900 mb-6">
+            Frequently asked questions
           </h2>
-          <p className="text-lg text-neutral-500 font-light">
+          <p className="text-lg text-neutral-600 font-sans font-light">
             Everything you need to know about the platform.
           </p>
         </div>
@@ -46,13 +46,19 @@ export function FAQ() {
           {FAQS.map((faq, i) => (
             <div
               key={i}
-              className="border border-neutral-200 bg-neutral-50/50 hover:bg-neutral-50 transition-colors"
+              className={`
+                border rounded-none transition-all duration-300
+                ${openIndex === i 
+                  ? "bg-white border-neutral-200 shadow-sm" 
+                  : "bg-white/50 border-neutral-200 hover:bg-white hover:border-neutral-300"
+                }
+              `}
             >
               <button
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}
                 className="w-full flex items-center justify-between p-6 text-left"
               >
-                <span className="text-lg font-normal text-neutral-900 pr-8">
+                <span className={`text-lg font-medium pr-8 transition-colors ${openIndex === i ? "text-neutral-900" : "text-neutral-700"}`}>
                   {faq.question}
                 </span>
                 <ChevronDown
@@ -70,7 +76,7 @@ export function FAQ() {
                     transition={{ duration: 0.3, ease: "easeInOut" }}
                     className="overflow-hidden"
                   >
-                    <div className="px-6 pb-6 text-neutral-500 font-light leading-relaxed">
+                    <div className="px-6 pb-6 text-neutral-600 font-sans font-light leading-relaxed">
                       {faq.answer}
                     </div>
                   </motion.div>
@@ -83,4 +89,3 @@ export function FAQ() {
     </section>
   );
 }
-

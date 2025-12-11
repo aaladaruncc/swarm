@@ -6,7 +6,7 @@ export function Footer() {
       <div className="container mx-auto px-6 max-w-7xl flex flex-col md:flex-row justify-between items-center gap-6">
         
         <div className="text-neutral-400">
-          © {new Date().getFullYear()} Agent Squared Inc.
+          © {new Date().getFullYear()} Vantage
         </div>
 
         <nav className="flex gap-8 text-neutral-600">

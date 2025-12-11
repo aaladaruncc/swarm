@@ -8,7 +8,7 @@ import { FlickeringGrid } from "@/components/ui/flickering-grid";
 
 export function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-white pt-32 pb-20">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-white pt-32 pb-0">
       {/* Subtle Flickering Grid Background */}
       <div className="absolute inset-0 opacity-[0.15]">
         <FlickeringGrid
@@ -19,6 +19,9 @@ export function Hero() {
           maxOpacity={0.2}
         />
       </div>
+      
+      {/* Fade-out gradient at bottom to blend into next section */}
+      <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-b from-transparent via-white/50 to-white pointer-events-none z-10" />
 
       <div className="container mx-auto px-6 relative z-10 w-full max-w-6xl">
         <div className="text-center mb-16">

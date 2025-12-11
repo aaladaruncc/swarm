@@ -1,112 +1,100 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Terminal, Search, AlertCircle, Zap } from "lucide-react";
+import { Terminal, Search, AlertCircle, Zap, Play } from "lucide-react";
+import { Ripple } from "@/components/ui/ripple";
 
 const STEPS = [
   {
-    id: "init",
-    title: "Deploy Agents",
-    description: "Run a single command to spawn your swarm. Each agent gets a unique persona and browser context.",
-    icon: Terminal,
-    color: "bg-blue-500",
-    textColor: "text-blue-500",
+    title: "Initialize Swarm",
+    description: "Define your test parameters and target URL. Our system instantly provisions isolated browser contexts.",
   },
   {
-    id: "explore",
-    title: "Autonomous Navigation",
-    description: "Agents explore your application independently, discovering routes and interactions you didn't explicitly define.",
-    icon: Search,
-    color: "bg-purple-500",
-    textColor: "text-purple-500",
+    title: "Autonomous Exploration",
+    description: "AI agents intelligently navigate your application, discovering user flows and edge cases automatically.",
   },
   {
-    id: "stress",
-    title: "Stress Testing",
-    description: "Agents simulate real-world chaos—slow networks, rage-clicking, and edge cases to find breaking points.",
-    icon: AlertCircle,
-    color: "bg-orange-500",
-    textColor: "text-orange-500",
-  },
-  {
-    id: "resolve",
-    title: "Get Reports",
-    description: "Receive prioritized issues with video replays and DOM snapshots, ready for your team to fix.",
-    icon: Zap,
-    color: "bg-emerald-500",
-    textColor: "text-emerald-500",
+    title: "Actionable Reporting",
+    description: "Get comprehensive reports with video replays, DOM snapshots, and prioritized issue lists.",
   }
 ];
 
 export function InteractiveDemo() {
   return (
-    <section id="how-it-works" className="bg-white border-t border-neutral-100 py-32">
+    <section id="how-it-works" className="py-32 bg-white overflow-hidden">
       <div className="container mx-auto px-6 max-w-7xl">
-        <div className="text-center max-w-3xl mx-auto mb-20">
-          <h2 className="text-4xl font-light tracking-tight mb-6">How it works</h2>
-          <p className="text-lg font-light text-neutral-500">
-            From deployment to actionable reports in four simple steps.
+        <div className="text-center max-w-3xl mx-auto mb-24">
+          <h2 className="text-4xl md:text-5xl font-serif font-normal tracking-tight text-neutral-900 mb-6">
+            How it works
+          </h2>
+          <p className="text-lg md:text-xl text-neutral-600 font-sans font-light leading-relaxed">
+            From single command to comprehensive coverage in minutes.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {STEPS.map((step, i) => (
-            <motion.div
-              key={step.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-              className="relative"
-            >
-              {/* Step Number */}
-              <div className="flex items-center gap-4 mb-6">
-                <div className={`w-12 h-12 ${step.color} bg-opacity-10 rounded-lg flex items-center justify-center flex-shrink-0`}>
-                  <step.icon size={24} className={step.textColor} />
-                </div>
-                <div className="text-4xl font-light text-neutral-300">
-                  {String(i + 1).padStart(2, '0')}
-                </div>
-              </div>
-
-              {/* Content */}
-              <h3 className="text-xl font-light mb-3 text-neutral-900">
-                {step.title}
-              </h3>
-              <p className="text-neutral-500 font-light leading-relaxed">
-                {step.description}
-              </p>
-
-              {/* Connector Line (hidden on last item) */}
-              {i < STEPS.length - 1 && (
-                <div className="hidden lg:block absolute top-6 left-full w-full h-px bg-neutral-200 -z-10" style={{ width: 'calc(100% - 3rem)', left: 'calc(100% - 1.5rem)' }}>
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 bg-neutral-200 rounded-full"></div>
-                </div>
-              )}
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Visual Separator */}
-        <div className="mt-16 pt-16 border-t border-neutral-100">
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-neutral-900 rounded-xl p-8 font-mono text-sm text-neutral-300">
-              <div className="flex items-center gap-2 mb-6 opacity-50">
-                <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                <span className="ml-auto text-neutral-500 text-xs">agent2 run</span>
-              </div>
-              <div className="space-y-2">
-                <div className="text-emerald-500">➜  ~ agent2 run --agents=50</div>
-                <div className="text-neutral-400">[SYSTEM] Spawning 50 autonomous agents...</div>
-                <div className="text-neutral-400">[AGENT-01] Navigating to /checkout</div>
-                <div className="text-neutral-400">[AGENT-07] Exploring /settings/profile</div>
-                <div className="text-orange-400">[AGENT-07] Error: 500 Internal Server Error</div>
-                <div className="text-emerald-500">[SYSTEM] Analysis complete. 3 critical issues found.</div>
-              </div>
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
+          {/* Left: Steps */}
+          <div className="space-y-12">
+            {STEPS.map((step, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.2 }}
+                className="relative pl-8 border-l border-neutral-200"
+              >
+                <div className="absolute left-[-5px] top-0 w-2.5 h-2.5 rounded-none bg-neutral-900" />
+                <h3 className="text-2xl font-serif font-normal text-neutral-900 mb-3">
+                  {step.title}
+                </h3>
+                <p className="text-base text-neutral-600 font-sans font-light leading-relaxed">
+                  {step.description}
+                </p>
+              </motion.div>
+            ))}
           </div>
+
+          {/* Right: Ripple Visual */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="relative flex items-center justify-center min-h-[500px] w-full"
+          >
+            <div className="relative flex h-[500px] w-full flex-col items-center justify-center overflow-hidden rounded-none bg-white md:shadow-xl border border-neutral-100">
+              <p className="z-10 whitespace-pre-wrap text-center text-5xl font-medium tracking-tighter text-black">
+                Deploy
+              </p>
+              <Ripple mainCircleSize={150} mainCircleOpacity={0.15} numCircles={8} />
+              
+              {/* Floating Icons */}
+              <motion.div 
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute top-1/4 left-1/4 bg-white p-3 rounded-none shadow-lg border border-neutral-100 z-20"
+              >
+                <Terminal size={20} className="text-neutral-600" />
+              </motion.div>
+              
+              <motion.div 
+                animate={{ y: [0, 10, 0] }}
+                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                className="absolute bottom-1/3 right-1/4 bg-white p-3 rounded-none shadow-lg border border-neutral-100 z-20"
+              >
+                <Search size={20} className="text-neutral-600" />
+              </motion.div>
+
+              <motion.div 
+                animate={{ y: [0, -8, 0] }}
+                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+                className="absolute top-1/3 right-1/3 bg-white p-3 rounded-none shadow-lg border border-neutral-100 z-20"
+              >
+                <Zap size={20} className="text-neutral-600" />
+              </motion.div>
+            </div>
+          </motion.div>
         </div>
       </div>
     </section>

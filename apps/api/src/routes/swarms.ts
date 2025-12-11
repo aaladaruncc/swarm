@@ -22,6 +22,13 @@ const createSwarmSchema = z.object({
   agentCount: z.number().min(1).max(5),
 });
 
+const updateSwarmSchema = z.object({
+  name: z.string().min(1).optional(),
+  description: z.string().optional(),
+  personas: z.array(z.any()).optional(),
+  agentCount: z.number().min(1).max(5).optional(),
+});
+
 // ============================================================================
 // ROUTES
 // ============================================================================
@@ -65,6 +72,45 @@ swarmsRoutes.post(
       return c.json(
         {
           error: "Failed to create swarm",
+          details: error instanceof Error ? error.message : "Unknown error",
+        },
+        500
+      );
+    }
+  }
+);
+
+// PUT /swarms/:id - Update a swarm
+swarmsRoutes.put(
+  "/:id",
+  zValidator("json", updateSwarmSchema),
+  async (c) => {
+    const user = c.get("user");
+    const swarmId = c.req.param("id");
+    const updates = c.req.valid("json");
+
+    try {
+      const [updatedSwarm] = await db
+        .update(schema.swarms)
+        .set(updates)
+        .where(
+          and(
+            eq(schema.swarms.id, swarmId),
+            eq(schema.swarms.userId, user.id)
+          )
+        )
+        .returning();
+
+      if (!updatedSwarm) {
+        return c.json({ error: "Swarm not found or not authorized" }, 404);
+      }
+
+      return c.json({ swarm: updatedSwarm });
+    } catch (error) {
+      console.error("Failed to update swarm:", error);
+      return c.json(
+        {
+          error: "Failed to update swarm",
           details: error instanceof Error ? error.message : "Unknown error",
         },
         500

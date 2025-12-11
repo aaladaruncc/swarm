@@ -106,7 +106,16 @@
     transform: translateX(0);
   }
   to {
-    transform: translateX(calc(-100% - var(--gap)));
+    transform: translateX(calc(-100% - var(--gap, 0px)));
+  }
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
   }
 }
 
@@ -168,6 +177,10 @@
 
 .animate-marquee {
   animation: marquee var(--duration) linear infinite;
+}
+
+.animate-scroll {
+  animation: scroll 20s linear infinite;
 }
 
 .animate-marquee-vertical {

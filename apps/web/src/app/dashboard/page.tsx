@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
-import { getBatchTests, type BatchTestRun } from "@/lib/batch-api";
-import { Plus, Loader2, Trash2 } from "lucide-react";
+import { getBatchTests, getBatchTest, type BatchTestRun } from "@/lib/batch-api";
+import { Plus, Loader2, Trash2, CheckSquare, FileText, Download, Check } from "lucide-react";
+import { pdf } from '@react-pdf/renderer';
+import { AggregatedReportPDF } from '@/components/pdf/AggregatedReportPDF';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -15,6 +17,7 @@ export default function Dashboard() {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [exportingPDF, setExportingPDF] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -61,6 +64,57 @@ export default function Dashboard() {
     }
   };
 
+  const handleExportPDF = async () => {
+    if (selectedTests.length === 0) return;
+    
+    setExportingPDF(true);
+    try {
+      // Process each selected test sequentially
+      for (const id of selectedTests) {
+        try {
+          // Fetch full test details to get the aggregated report
+          const data = await getBatchTest(id);
+          const { batchTestRun, aggregatedReport, testRuns } = data;
+          
+          if (!batchTestRun || !aggregatedReport) continue;
+          
+          // Generate PDF
+          const blob = await pdf(
+            <AggregatedReportPDF 
+              batchTestRun={batchTestRun}
+              aggregatedReport={aggregatedReport}
+              agentCount={testRuns.length}
+            />
+          ).toBlob();
+          
+          // Download
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `aggregated-report-${batchTestRun.targetUrl.replace(/[^a-z0-9]/gi, '_').substring(0, 20)}-${new Date().toISOString().split('T')[0]}.pdf`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          
+          // Small delay to ensure browser handles sequential downloads
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (err) {
+          console.error(`Failed to export PDF for test ${id}:`, err);
+          // Continue with next test
+        }
+      }
+      
+      setSelectedTests([]);
+      setIsSelectionMode(false);
+    } catch (err) {
+      console.error('Export process failed:', err);
+      setError('Failed to export PDFs');
+    } finally {
+      setExportingPDF(false);
+    }
+  };
+
   const handleArchive = async () => {
     if (selectedTests.length === 0) return;
     
@@ -81,6 +135,24 @@ export default function Dashboard() {
     }
   };
 
+  const CustomCheckbox = ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
+    <div 
+      onClick={(e) => {
+        e.stopPropagation();
+        onChange();
+      }}
+      className={`
+        w-5 h-5 border flex items-center justify-center cursor-pointer transition-all duration-200
+        ${checked 
+          ? 'bg-neutral-900 border-neutral-900 text-white' 
+          : 'bg-white border-neutral-300 hover:border-neutral-500'
+        }
+      `}
+    >
+      {checked && <Check size={12} strokeWidth={3} />}
+    </div>
+  );
+
   if (isPending || !session?.user) {
     return (
       <div className="h-full flex items-center justify-center bg-white text-neutral-900">
@@ -96,6 +168,7 @@ export default function Dashboard() {
       aggregating: "bg-purple-50 text-purple-700 border-purple-200",
       completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
       failed: "bg-red-50 text-red-700 border-red-200",
+      terminated: "bg-orange-50 text-orange-700 border-orange-200",
     };
     
     const labels: Record<string, string> = {
@@ -104,6 +177,7 @@ export default function Dashboard() {
       aggregating: "Aggregating",
       completed: "Success",
       failed: "Failed",
+      terminated: "Terminated",
     };
 
     return (
@@ -121,33 +195,6 @@ export default function Dashboard() {
           <p className="text-neutral-500 font-light">Create and manage your simulations.</p>
         </div>
         <div className="flex items-center gap-3">
-          {isSelectionMode ? (
-            <>
-              <button
-                onClick={toggleSelectionMode}
-                className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors font-medium px-2"
-              >
-                Cancel
-              </button>
-              {selectedTests.length > 0 && (
-                <button
-                  onClick={handleArchive}
-                  disabled={isArchiving}
-                  className="flex items-center justify-center gap-2 bg-white border border-neutral-200 text-red-600 px-4 py-2.5 hover:bg-red-50 hover:border-red-200 transition-all text-sm font-medium rounded-none"
-                >
-                  {isArchiving ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                  <span>Archive ({selectedTests.length})</span>
-                </button>
-              )}
-            </>
-          ) : (
-            <button
-              onClick={toggleSelectionMode}
-              className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors font-medium px-2"
-            >
-              Select
-            </button>
-          )}
           <Link
             href="/tests/new"
             className="group flex items-center justify-center gap-2 bg-neutral-900 text-white px-5 py-2.5 hover:bg-neutral-800 transition-all text-sm font-medium shadow-lg hover:shadow-xl hover:-translate-y-0.5 duration-300"
@@ -164,55 +211,109 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="border border-dashed border-neutral-300 p-1 min-h-[400px]">
-        {loading ? (
-          <div className="flex justify-center items-center h-full min-h-[400px]">
-            <Loader2 className="animate-spin w-8 h-8 text-neutral-300" />
+      <div className="border border-neutral-200 flex flex-col relative overflow-hidden bg-white shadow-sm">
+        {/* Table Header / Toolbar */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 bg-white/50 backdrop-blur-sm z-20">
+          <div className="text-sm font-medium text-neutral-500">
+             {loading ? "Loading..." : `${batchTests.length} Simulations`}
           </div>
-        ) : batchTests.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-            <h3 className="text-lg font-medium text-neutral-900 mb-2">No batch tests yet</h3>
-            <p className="text-neutral-500 font-light text-sm max-w-sm mb-6">
-              Launch your first multi-agent batch simulation to start testing.
-            </p>
-            <Link
-              href="/tests/new"
-              className="inline-flex items-center justify-center gap-2 border border-neutral-200 bg-white text-neutral-900 px-5 py-2.5 hover:border-neutral-900 transition-all text-sm font-medium"
-            >
-              Start Simulation
-            </Link>
+          
+          <div className="flex items-center gap-3">
+            {isSelectionMode ? (
+              <>
+                <button
+                  onClick={toggleSelectionMode}
+                  className="text-xs text-neutral-500 hover:text-neutral-900 transition-colors font-medium px-2 uppercase tracking-wide"
+                >
+                  Cancel
+                </button>
+                {selectedTests.length > 0 && (
+                  <>
+                    <button
+                      onClick={handleExportPDF}
+                      disabled={exportingPDF}
+                      className="flex items-center justify-center gap-2 text-neutral-600 hover:text-neutral-900 transition-all text-xs font-medium uppercase tracking-wide disabled:opacity-50"
+                    >
+                      {exportingPDF ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                      <span>Export PDF ({selectedTests.length})</span>
+                    </button>
+                    <button
+                      onClick={handleArchive}
+                      disabled={isArchiving}
+                      className="flex items-center justify-center gap-2 text-red-600 hover:text-red-700 transition-all text-xs font-medium uppercase tracking-wide"
+                    >
+                      {isArchiving ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                      <span>Archive ({selectedTests.length})</span>
+                    </button>
+                  </>
+                )}
+              </>
+            ) : (
+              <button
+                onClick={toggleSelectionMode}
+                disabled={batchTests.length === 0}
+                className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-900 transition-colors font-medium uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <CheckSquare size={14} />
+                <span>Select</span>
+              </button>
+            )}
           </div>
-        ) : (
-          <div className="bg-white h-full w-full">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="bg-neutral-50 border-b border-neutral-200">
-                    {isSelectionMode && (
-                      <th className="px-6 py-4 w-12">
-                        <input 
-                          type="checkbox" 
-                          className="border-neutral-300 text-neutral-900 focus:ring-neutral-900 shadow-sm w-4 h-4"
-                          checked={batchTests.length > 0 && selectedTests.length === batchTests.length}
-                          onChange={toggleSelectAll}
-                        />
-                      </th>
-                    )}
-                      <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs w-1/3">Target URL</th>
-                      <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs">Agents</th>
-                      <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs">Status</th>
-                      <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs">Date</th>
-                      <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs text-right">Action</th>
+        </div>
+
+        <div className="relative h-[600px]">
+          <div className="h-full w-full overflow-y-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="sticky top-0 bg-white z-10 shadow-sm">
+                <tr className="bg-neutral-50 border-b border-neutral-200">
+                  {isSelectionMode && (
+                    <th className="px-6 py-4 w-12 bg-neutral-50">
+                      <CustomCheckbox 
+                        checked={batchTests.length > 0 && selectedTests.length === batchTests.length}
+                        onChange={toggleSelectAll}
+                      />
+                    </th>
+                  )}
+                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs w-1/3 bg-neutral-50">Target URL</th>
+                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs bg-neutral-50">Agents</th>
+                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs bg-neutral-50">Status</th>
+                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs bg-neutral-50">Date</th>
+                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs text-right bg-neutral-50">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-200 bg-white">
+                {loading ? (
+                  <tr>
+                    <td colSpan={isSelectionMode ? 6 : 5} className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <Loader2 className="animate-spin w-6 h-6 text-neutral-400" />
+                        <span className="text-sm text-neutral-500 font-light">Loading simulations...</span>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-200 bg-white">
-                  {batchTests.map((test) => (
+                ) : batchTests.length === 0 ? (
+                  <tr>
+                    <td colSpan={isSelectionMode ? 6 : 5} className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <h3 className="text-base font-medium text-neutral-900">No batch tests yet</h3>
+                        <p className="text-neutral-500 font-light text-sm max-w-sm">
+                          Launch your first multi-agent batch simulation to start testing.
+                        </p>
+                        <Link
+                          href="/tests/new"
+                          className="inline-flex items-center justify-center gap-2 border border-neutral-200 bg-white text-neutral-900 px-5 py-2.5 hover:border-neutral-900 transition-all text-sm font-medium mt-2"
+                        >
+                          Start Simulation
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  batchTests.map((test) => (
                     <tr key={test.id} className={`group transition-colors ${selectedTests.includes(test.id) ? "bg-neutral-50" : "hover:bg-neutral-50/30"}`}>
                       {isSelectionMode && (
                         <td className="px-6 py-5">
-                          <input 
-                            type="checkbox" 
-                            className="border-neutral-300 text-neutral-900 focus:ring-neutral-900 shadow-sm w-4 h-4"
+                          <CustomCheckbox 
                             checked={selectedTests.includes(test.id)}
                             onChange={() => toggleSelect(test.id)}
                           />
@@ -244,12 +345,12 @@ export default function Dashboard() {
                         </Link>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
