@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useSession, signOut, authClient } from "@/lib/auth-client";
-import { User, Mail, Shield, Key, LogOut, Loader2, Check } from "lucide-react";
+import { User, Mail, LogOut, Loader2, Check } from "lucide-react";
 import { useState, useEffect } from "react";
 
 export default function SettingsPage() {
@@ -84,13 +84,13 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-8 w-full">
-      <div className="mb-12 border-b border-border pb-6">
+    <div className="max-w-4xl mx-auto p-8 w-full h-full overflow-hidden flex flex-col">
+      <div className="mb-12 border-b border-border pb-6 flex-shrink-0">
         <h1 className="text-3xl font-light tracking-tight text-foreground mb-2">Settings</h1>
         <p className="text-sm text-muted-foreground font-light">Manage your account and preferences.</p>
       </div>
 
-      <div className="space-y-12">
+      <div className="flex-1 overflow-y-auto">
         {/* Profile Section */}
         <section>
           <h2 className="text-lg font-medium text-foreground mb-6 uppercase tracking-widest text-xs border-b border-border pb-2">Profile Information</h2>
@@ -175,43 +175,6 @@ export default function SettingsPage() {
             </div>
           </div>
         </section>
-
-        {/* Security Section (Placeholder) */}
-        <section className="opacity-70">
-          <div className="flex items-center justify-between mb-6 border-b border-border pb-2">
-            <h2 className="text-lg font-medium text-foreground uppercase tracking-widest text-xs">Security Settings</h2>
-            <span className="text-[10px] font-mono bg-muted text-muted-foreground px-2 py-1 uppercase tracking-wider">Coming Soon</span>
-          </div>
-          
-          <div className="bg-background border border-border rounded-none divide-y divide-border">
-            <div className="p-6 flex items-center justify-between group hover:bg-muted/50 transition-colors">
-                <div className="flex items-center gap-4">
-                    <div className="p-2 bg-muted/50 border border-border text-foreground">
-                        <Key size={20} strokeWidth={1.5} />
-                    </div>
-                    <div>
-                        <p className="text-sm font-medium text-foreground">Password</p>
-                        <p className="text-xs text-muted-foreground font-light mt-0.5">Change your account password</p>
-                    </div>
-                </div>
-                <button disabled className="px-4 py-2 text-xs font-medium border border-border text-muted-foreground cursor-not-allowed uppercase tracking-wider hover:border-primary transition-colors">Update</button>
-            </div>
-            
-            <div className="p-6 flex items-center justify-between group hover:bg-muted/50 transition-colors">
-                <div className="flex items-center gap-4">
-                    <div className="p-2 bg-muted/50 border border-border text-foreground">
-                        <Shield size={20} strokeWidth={1.5} />
-                    </div>
-                    <div>
-                        <p className="text-sm font-medium text-foreground">Two-Factor Authentication</p>
-                        <p className="text-xs text-muted-foreground font-light mt-0.5">Add an extra layer of security</p>
-                    </div>
-                </div>
-                <button disabled className="px-4 py-2 text-xs font-medium border border-border text-muted-foreground cursor-not-allowed uppercase tracking-wider hover:border-primary transition-colors">Enable</button>
-            </div>
-          </div>
-        </section>
-
       </div>
     </div>
   );

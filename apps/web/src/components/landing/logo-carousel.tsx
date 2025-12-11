@@ -15,7 +15,7 @@ const LOGOS: Logo[] = [
   { name: "Capital One", src: "/images/logos/capitalone_logo.png", type: "image" },
   { name: "Fidelity", src: "/images/logos/fidelity_logo.png", type: "image" },
   { name: "Chapter One", src: "/images/logos/chapterone_logo.jpg", type: "image" },
-  { name: "Ambient", src: "/images/logos/ambient_logo.jpg", type: "image" },
+  { name: "Ambient", src: "/images/logos/ambient_logo.png", type: "image" },
 ];
 
 // Helper function to detect if a logo is an SVG
