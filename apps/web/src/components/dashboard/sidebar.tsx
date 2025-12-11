@@ -6,8 +6,6 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  SquareTerminal, 
-  Bot, 
   User, 
   LogOut, 
   Settings, 
@@ -28,12 +26,12 @@ export function DashboardSidebar() {
     {
       name: "Playground",
       href: "/dashboard",
-      icon: SquareTerminal
+      iconSrc: "/images/icons/playground.png"
     },
     {
       name: "Swarms",
       href: "/dashboard/swarms",
-      icon: Bot,
+      iconSrc: "/images/icons/swarm.png",
       disabled: false
     }
   ];
@@ -96,7 +94,13 @@ export function DashboardSidebar() {
               }`}
               onClick={(e) => item.disabled && e.preventDefault()}
             >
-              <item.icon size={22} strokeWidth={1.5} className={`flex-shrink-0 ${isActive ? "text-neutral-900" : item.disabled ? "text-neutral-300" : "text-neutral-600 group-hover:text-neutral-900"}`} />
+              <Image
+                src={item.iconSrc}
+                alt={item.name}
+                width={22}
+                height={22}
+                className={`flex-shrink-0 ${item.disabled ? "opacity-30" : "opacity-100"}`}
+              />
               {expanded && (
                 <motion.span
                   initial={{ opacity: 0 }}

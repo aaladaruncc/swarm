@@ -253,9 +253,7 @@ export default function CreateSwarmPage() {
         )}
 
         {/* Step 2: Generating */}
-        {step === "generating" && (
-          <GeneratingPersonasLoader />
-        )}
+        {step === "generating" && <GeneratingPersonasLoader />}
 
         {/* Step 3: Select */}
         {step === "select" && (

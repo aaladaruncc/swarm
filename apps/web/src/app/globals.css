@@ -203,3 +203,19 @@
   animation: gradient 8s ease infinite;
   background-size: 200% 200%;
 }
+
+@keyframes loading-bar-fill {
+  0% {
+    width: 0%;
+  }
+  50% {
+    width: 100%;
+  }
+  100% {
+    width: 0%;
+  }
+}
+
+.loading-bar-fill {
+  animation: loading-bar-fill 2s ease-in-out infinite;
+}

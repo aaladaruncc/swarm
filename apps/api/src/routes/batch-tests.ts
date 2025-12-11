@@ -210,17 +210,17 @@ batchTestsRoutes.post("/:id/terminate", async (c) => {
       return c.json({ error: "Test is not running" }, 400);
     }
 
-    // Cancel any queued jobs in the queue manager
-    // Note: Currently running jobs will complete, but we mark them as terminated
-    // Future enhancement: could add queue cancellation support
-
-    // Get all running test runs for this batch
+    // Get all test runs for this batch
     const testRuns = await db
       .select()
       .from(schema.testRuns)
       .where(eq(schema.testRuns.batchTestRunId, batchId));
 
-    // Update all running test runs to terminated
+    // Cancel queued jobs in the queue manager
+    const testRunIds = testRuns.map(tr => tr.id);
+    globalTestQueue.cancelBatch(batchId, testRunIds);
+
+    // Update all running/pending test runs to terminated
     const runningTestRuns = testRuns.filter(tr => tr.status === "running" || tr.status === "pending");
     
     for (const testRun of runningTestRuns) {
@@ -307,13 +307,15 @@ async function runBatchTestInBackground(
     const testRuns = await Promise.all(testRunPromises);
     console.log(`[${batchTestRunId}] Created ${testRuns.length} test run records`);
     
-    // Get queue status
-    const queueStatus = globalTestQueue.getStatus();
-    console.log(`[${batchTestRunId}] Queue status: ${queueStatus.running} running, ${queueStatus.queued} queued`);
+    // Get queue status before adding
+    const queueStatusBefore = globalTestQueue.getStatus();
+    console.log(`[${batchTestRunId}] Queue status before adding: ${queueStatusBefore.running} running, ${queueStatusBefore.queued} queued`);
 
     // Run all tests using the queue manager (prevents rate limits)
+    console.log(`[${batchTestRunId}] Adding ${testRuns.length} tests to queue...`);
     const testPromises = testRuns.map(async (testRun, index) => {
       // Use queue to manage rate limits
+      console.log(`[${batchTestRunId}] Adding test ${testRun.id} (${selectedPersonas[index].name}) to queue...`);
       return globalTestQueue.add(testRun.id, async () => {
         try {
           console.log(`[${testRun.id}] Starting test for ${selectedPersonas[index].name}...`);
@@ -388,7 +390,11 @@ async function runBatchTestInBackground(
       });
     });
 
+    // Get queue status after adding
+    const queueStatusAfter = globalTestQueue.getStatus();
+    console.log(`[${batchTestRunId}] Queue status after adding: ${queueStatusAfter.running} running, ${queueStatusAfter.queued} queued`);
     console.log(`[${batchTestRunId}] Waiting for all tests to complete...`);
+    
     const results = await Promise.all(testPromises);
     const successfulResults = results.filter((r): r is AgentResult => r !== null);
 

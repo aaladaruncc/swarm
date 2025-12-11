@@ -23,6 +23,7 @@ export default function TestDetails() {
   const [selectedView, setSelectedView] = useState<"aggregated" | number>("aggregated");
   const [exportingPDF, setExportingPDF] = useState(false);
   const [isTerminating, setIsTerminating] = useState(false);
+  const [showTerminateConfirm, setShowTerminateConfirm] = useState(false);
 
   const testId = params.id as string;
 
@@ -119,16 +120,17 @@ export default function TestDetails() {
     );
   }
 
-  const handleTerminate = async () => {
-    if (!confirm("Are you sure you want to terminate this test? This will cancel all running agents.")) {
-      return;
-    }
-    
+  const handleTerminateClick = () => {
+    setShowTerminateConfirm(true);
+  };
+
+  const handleTerminateConfirm = async () => {
     setIsTerminating(true);
     try {
       await terminateBatchTest(testId);
       // Reload the test to get updated status
       await loadTest();
+      setShowTerminateConfirm(false);
     } catch (err) {
       console.error("Failed to terminate test:", err);
       alert("Failed to terminate test");
@@ -165,22 +167,13 @@ export default function TestDetails() {
         </span>
         {canTerminate && (
           <button
-            onClick={handleTerminate}
+            onClick={handleTerminateClick}
             disabled={isTerminating}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 transition-colors rounded-none disabled:opacity-50 disabled:cursor-not-allowed"
             title="Terminate all running agents"
           >
-            {isTerminating ? (
-              <>
-                <Loader2 size={12} className="animate-spin" />
-                <span>Terminating...</span>
-              </>
-            ) : (
-              <>
-                <X size={12} />
-                <span>Terminate</span>
-              </>
-            )}
+            <X size={12} />
+            <span>Terminate</span>
           </button>
         )}
       </div>
@@ -650,6 +643,40 @@ export default function TestDetails() {
           </div>
         )}
       </main>
+
+      {/* Terminate Confirmation Modal */}
+      {showTerminateConfirm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white p-6 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in-95 duration-200 rounded-none">
+            <h3 className="text-lg font-medium text-neutral-900 mb-2">Terminate Test</h3>
+            <p className="text-neutral-500 font-light text-sm mb-6">
+              Are you sure you want to terminate this test? This will cancel all running agents and cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowTerminateConfirm(false)}
+                className="px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100 transition-colors rounded-none"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleTerminateConfirm}
+                disabled={isTerminating}
+                className="px-4 py-2 text-sm bg-orange-600 text-white hover:bg-orange-700 transition-colors shadow-sm rounded-none disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isTerminating ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Terminating...</span>
+                  </>
+                ) : (
+                  "Terminate"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
