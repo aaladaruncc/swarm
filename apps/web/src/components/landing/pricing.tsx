@@ -42,9 +42,9 @@ export function Pricing() {
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="text-center max-w-3xl mx-auto mb-20"
         >
-          <h2 className="text-5xl md:text-6xl lg:text-7xl font-serif font-normal tracking-tight text-neutral-900 mb-6 leading-[1.1]">
-            Pricing
-          </h2>
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-serif font-medium tracking-tight text-neutral-900 mb-6 leading-[1.1]">
+          <span className="italic text-neutral-500">Simple</span> Pricing
+            </h2>
           <p className="text-xl md:text-2xl text-neutral-600 font-sans font-light leading-relaxed">
             Start small and scale as your user base grows.
           </p>

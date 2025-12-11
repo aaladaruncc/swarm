@@ -24,9 +24,9 @@ export function InteractiveDemo() {
     <section id="how-it-works" className="py-32 bg-white overflow-hidden">
       <div className="container mx-auto px-6 max-w-7xl">
         <div className="text-center max-w-3xl mx-auto mb-24">
-          <h2 className="text-4xl md:text-5xl font-serif font-normal tracking-tight text-neutral-900 mb-6">
-            How it works
-          </h2>
+        <h2 className="text-4xl md:text-5xl lg:text-6xl font-serif font-medium tracking-tight text-neutral-900 mb-6 leading-[1.1]">
+              The <span className="italic text-neutral-500">Flow</span>
+            </h2>
           <p className="text-lg md:text-xl text-neutral-600 font-sans font-light leading-relaxed">
             From single command to comprehensive coverage in minutes.
           </p>

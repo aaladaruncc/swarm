@@ -27,7 +27,8 @@ const isSVG = (logo: Logo): boolean => {
 };
 
 export function LogoCarousel() {
-  // Duplicate the logos array for seamless infinite scroll
+  // Create two identical sets for seamless infinite scroll
+  // The animation will move -50% so when it loops, it's seamless
   const logoSets = [...LOGOS, ...LOGOS];
   
   return (
@@ -42,10 +43,12 @@ export function LogoCarousel() {
         <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
         <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
         
+        {/* Wrapper that will be animated - contains two identical sets */}
+        {/* Animation moves -50% (half the total width) for seamless loop */}
         <div
-          className="flex gap-16 min-w-max items-center"
+          className="flex gap-16 min-w-max items-center will-change-transform"
           style={{
-            animation: "scroll 20s linear infinite",
+            animation: "scroll 30s linear infinite",
           }}
         >
           {logoSets.map((logo, i) => (

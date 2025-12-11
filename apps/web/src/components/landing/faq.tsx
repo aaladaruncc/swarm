@@ -34,9 +34,9 @@ export function FAQ() {
     <section id="faq" className="py-24 bg-neutral-50 border-t border-neutral-200">
       <div className="container mx-auto px-6 max-w-3xl">
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-serif font-medium tracking-tight text-neutral-900 mb-6">
-            Frequently asked questions
-          </h2>
+        <h2 className="text-4xl md:text-5xl lg:text-6xl font-serif font-medium tracking-tight text-neutral-900 mb-6 leading-[1.1]">
+              FAQ
+            </h2>
           <p className="text-lg text-neutral-600 font-sans font-light">
             Everything you need to know about the platform.
           </p>
