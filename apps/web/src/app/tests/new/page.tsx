@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
-import { generatePersonas, createBatchTest, type GeneratedPersona } from "@/lib/batch-api";
+import { generatePersonas, createBatchTest, getSwarms, type GeneratedPersona, type Swarm } from "@/lib/batch-api";
 import { GeneratingPersonasLoader } from "@/components/ui/generating-personas-loader";
-import { ArrowLeft, Globe, User, Loader2, Zap, Info, Check, Minus, Plus } from "lucide-react";
+import { ArrowLeft, Globe, User, Loader2, Zap, Info, Check, Minus, Plus, Users, X, ArrowRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function NewTest() {
   const router = useRouter();
@@ -21,6 +22,13 @@ export default function NewTest() {
   const [personas, setPersonas] = useState<GeneratedPersona[]>([]);
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [recommendedIndices, setRecommendedIndices] = useState<number[]>([]);
+  
+  // Swarm Selection
+  const [swarms, setSwarms] = useState<Swarm[]>([]);
+  const [isLoadingSwarms, setIsLoadingSwarms] = useState(false);
+  const [showSwarmSelector, setShowSwarmSelector] = useState(false);
+  const [selectedSwarm, setSelectedSwarm] = useState<Swarm | null>(null);
+  const [swarmModalStep, setSwarmModalStep] = useState<"select" | "confirm">("select");
   
   // UI State
   const [step, setStep] = useState<"describe" | "generating" | "select" | "starting">("describe");
@@ -39,6 +47,79 @@ export default function NewTest() {
     router.push("/");
     return null;
   }
+
+  // Load swarms when URL is entered
+  useEffect(() => {
+    if (url && session?.user) {
+      loadSwarms();
+    }
+  }, [url, session]);
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (showSwarmSelector) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showSwarmSelector]);
+
+  const loadSwarms = async () => {
+    setIsLoadingSwarms(true);
+    try {
+      const data = await getSwarms();
+      setSwarms(data.swarms);
+    } catch (err) {
+      console.error("Failed to load swarms:", err);
+    } finally {
+      setIsLoadingSwarms(false);
+    }
+  };
+
+  const handleSelectSwarm = (swarm: Swarm) => {
+    setSelectedSwarm(swarm);
+    setSwarmModalStep("confirm");
+  };
+
+  const handleConfirmSwarm = () => {
+    if (!selectedSwarm) return;
+    setShowSwarmSelector(false);
+    // Use personas from the swarm (limit to agentCount to be safe)
+    const personasToUse = selectedSwarm.personas.slice(0, selectedSwarm.agentCount);
+    setPersonas(personasToUse);
+    setSelectedIndices(personasToUse.map((_, i) => i));
+    setAgentCount(selectedSwarm.agentCount);
+    // Immediately start the test
+    handleStartBatchTestFromSwarm(selectedSwarm);
+  };
+
+  const handleStartBatchTestFromSwarm = async (swarm: Swarm) => {
+    setError("");
+    setLoading(true);
+    setStep("starting");
+
+    try {
+      // Use swarm personas directly - limit to agentCount
+      const personasToUse = swarm.personas.slice(0, swarm.agentCount);
+      const selectedIndices = personasToUse.map((_, i) => i);
+      const result = await createBatchTest(
+        url,
+        swarm.description || `Test using ${swarm.name}`,
+        personasToUse,
+        selectedIndices,
+        swarm.agentCount
+      );
+      router.push(`/tests/${result.batchTestRun.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start batch test");
+      setStep("describe");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleGeneratePersonas = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,6 +207,7 @@ export default function NewTest() {
                     The agents will begin their sessions at this URL.
                   </p>
                 </div>
+
               </section>
 
               {/* Audience Description */}
@@ -146,9 +228,26 @@ export default function NewTest() {
                     minLength={10}
                     maxLength={2000}
                   />
-                  <p className="text-xs text-neutral-400 font-light">
-                    Be specific: demographics, goals, tech comfort, pain points, accessibility needs.
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-neutral-400 font-light">
+                      Be specific: demographics, goals, tech comfort, pain points, accessibility needs.
+                    </p>
+                    
+                    {/* Use Saved Swarms Box */}
+                    {url && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSwarmModalStep("select");
+                          setShowSwarmSelector(true);
+                        }}
+                        className="px-4 py-2 border border-neutral-200 hover:border-neutral-900 bg-white hover:bg-neutral-50 transition-all text-sm font-medium text-neutral-900 flex items-center gap-2 group"
+                      >
+                        <Users size={16} className="text-neutral-500 group-hover:text-neutral-900 transition-colors" />
+                        <span>Use Saved Swarms</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </section>
 
@@ -409,12 +508,245 @@ export default function NewTest() {
             <p className="text-neutral-500 font-light">
               Launching {agentCount} concurrent agent{agentCount !== 1 ? 's' : ''} to test your environment
             </p>
+            {selectedSwarm && (
+              <p className="text-sm text-neutral-600 font-light mt-2">
+                Using swarm: <span className="font-medium">{selectedSwarm.name}</span>
+              </p>
+            )}
             <p className="text-xs text-neutral-400 font-light mt-2">
               Queue system active • Rate limits prevented
             </p>
           </div>
         )}
       </main>
+
+      {/* Swarm Selector Modal */}
+      <AnimatePresence>
+        {showSwarmSelector && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            onClick={() => {
+              if (swarmModalStep === "select") {
+                setShowSwarmSelector(false);
+                setSwarmModalStep("select");
+                setSelectedSwarm(null);
+              } else {
+                setSwarmModalStep("select");
+                setSelectedSwarm(null);
+              }
+            }}
+          >
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white w-full max-w-3xl max-h-[85vh] overflow-hidden shadow-2xl rounded-none flex flex-col relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Swipe Container */}
+              <div className="relative overflow-hidden flex-1 flex">
+                {/* Step 1: Select Swarm */}
+                <AnimatePresence mode="wait">
+                  {swarmModalStep === "select" && (
+                    <motion.div
+                      key="select"
+                      initial={{ x: 0, opacity: 1 }}
+                      exit={{ x: -100, opacity: 0 }}
+                      transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                      className="w-full flex flex-col shrink-0"
+                    >
+                      {/* Header */}
+                      <div className="p-6 border-b border-neutral-100 flex items-start justify-between bg-white shrink-0">
+                        <div className="flex-1">
+                          <h2 className="text-2xl font-light text-neutral-900 mb-1">Select a Swarm</h2>
+                          <p className="text-neutral-500 font-light text-sm">
+                            Choose a saved swarm to use for this test.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setShowSwarmSelector(false);
+                            setSwarmModalStep("select");
+                            setSelectedSwarm(null);
+                          }}
+                          className="ml-4 p-2 hover:bg-neutral-100 transition-colors"
+                        >
+                          <X size={20} className="text-neutral-500" />
+                        </button>
+                      </div>
+
+                      {/* Swarms List */}
+                      <div className="flex-1 overflow-y-auto p-6">
+                        {isLoadingSwarms ? (
+                          <div className="flex items-center justify-center py-12">
+                            <Loader2 className="w-6 h-6 animate-spin text-neutral-300" />
+                          </div>
+                        ) : swarms.length === 0 ? (
+                          <div className="text-center py-12">
+                            <Users size={48} className="mx-auto text-neutral-300 mb-4" />
+                            <p className="text-neutral-500 font-light">No swarms available</p>
+                            <Link
+                              href="/swarms/new"
+                              className="text-sm text-neutral-900 underline hover:text-neutral-600 mt-2 inline-block"
+                            >
+                              Create your first swarm
+                            </Link>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {swarms.map((swarm) => (
+                              <button
+                                key={swarm.id}
+                                onClick={() => handleSelectSwarm(swarm)}
+                                className="p-6 border border-neutral-200 hover:border-neutral-900 transition-all text-left group"
+                              >
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex-1">
+                                    <h3 className="font-medium text-lg mb-1 group-hover:text-neutral-900 transition-colors">
+                                      {swarm.name}
+                                    </h3>
+                                    {swarm.description && (
+                                      <p className="text-xs text-neutral-500 font-light line-clamp-2">
+                                        {swarm.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="ml-4 flex items-center gap-1.5">
+                                    <Users size={16} className="text-neutral-400" />
+                                    <span className="text-xs text-neutral-500 font-mono">
+                                      {swarm.personas.length}
+                                    </span>
+                                  </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-4 text-xs text-neutral-400 font-mono uppercase tracking-wider">
+                                  <span>{swarm.personas.length} Persona{swarm.personas.length !== 1 ? 's' : ''}</span>
+                                  <span>•</span>
+                                  <span>{new Date(swarm.createdAt).toLocaleDateString()}</span>
+                                </div>
+
+                                <div className="mt-4 pt-4 border-t border-neutral-100">
+                                  <div className="flex items-center gap-2 text-xs text-neutral-600">
+                                    <ArrowRight size={12} />
+                                    <span>Select to continue</span>
+                                  </div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Step 2: Confirm Start */}
+                  {swarmModalStep === "confirm" && selectedSwarm && (
+                    <motion.div
+                      key="confirm"
+                      initial={{ x: 100, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      exit={{ x: 100, opacity: 0 }}
+                      transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+                      // Other variations to try:
+                      // transition={{ duration: 0.15, ease: [0.3, 0, 0.2, 1] }} // Fast, smooth cubic-bezier
+                      // transition={{ duration: 0.2, ease: "easeOut" }} // Standard ease out
+                      // transition={{ duration: 0.12, ease: [0.4, 0, 0.2, 1] }} // Very fast, smooth
+                      // transition={{ duration: 0.25, ease: "easeInOut" }} // Slower, balanced
+                      // transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }} // Custom smooth curve
+                      // transition={{ duration: 0.2, ease: "circOut" }} // Circular ease out
+                      // transition={{ type: "spring", stiffness: 300, damping: 30 }} // Spring animation
+                      className="w-full flex flex-col shrink-0"
+                    >
+                      {/* Header */}
+                      <div className="p-6 border-b border-neutral-100 flex items-start justify-between bg-white shrink-0">
+                        <div className="flex-1">
+                          <h2 className="text-2xl font-light text-neutral-900 mb-1">Start Simulation?</h2>
+                          <p className="text-neutral-500 font-light text-sm">
+                            Ready to deploy {selectedSwarm.agentCount} agent{selectedSwarm.agentCount !== 1 ? 's' : ''} using <span className="font-medium">{selectedSwarm.name}</span>
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setSwarmModalStep("select");
+                            setSelectedSwarm(null);
+                          }}
+                          className="ml-4 p-2 hover:bg-neutral-100 transition-colors"
+                        >
+                          <X size={20} className="text-neutral-500" />
+                        </button>
+                      </div>
+
+                      {/* Confirmation Content */}
+                      <div className="flex-1 overflow-y-auto p-6">
+                        <div className="max-w-md mx-auto text-center py-12">
+                          <div className="mb-6">
+                            <div className="w-16 h-16 mx-auto mb-4 border-2 border-neutral-900 flex items-center justify-center">
+                              <Users size={32} className="text-neutral-900" />
+                            </div>
+                            <h3 className="text-xl font-light text-neutral-900 mb-2">{selectedSwarm.name}</h3>
+                            {selectedSwarm.description && (
+                              <p className="text-sm text-neutral-500 font-light mb-4">
+                                {selectedSwarm.description}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="space-y-3 text-left bg-neutral-50 p-4 border border-neutral-100 mb-6">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-neutral-600 font-light">Personas</span>
+                              <span className="text-neutral-900 font-medium">{selectedSwarm.personas.length}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-neutral-600 font-light">Target URL</span>
+                              <span className="text-neutral-900 font-medium text-xs truncate max-w-[200px]" title={url}>
+                                {url}
+                              </span>
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-neutral-500 font-light mb-6">
+                            The simulation will start immediately. Queue system will manage rate limits automatically.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Footer */}
+                      <div className="p-6 border-t border-neutral-100 bg-white shrink-0">
+                        <div className="flex items-center justify-between gap-4">
+                          <button
+                            onClick={() => {
+                              setSwarmModalStep("select");
+                              setSelectedSwarm(null);
+                            }}
+                            className="px-6 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-900 transition-colors"
+                          >
+                            ← Back
+                          </button>
+                          <button
+                            onClick={handleConfirmSwarm}
+                            disabled={loading}
+                            className="bg-neutral-900 text-white px-8 py-2 hover:bg-neutral-800 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {loading ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span>Starting...</span>
+                              </>
+                            ) : (
+                              <span>Start Simulation</span>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

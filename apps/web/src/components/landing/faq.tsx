@@ -6,24 +6,28 @@ import { ChevronDown } from "lucide-react";
 
 const FAQS = [
   {
-    question: "How does Stagehand differ from Playwright or Cypress?",
-    answer: "Stagehand operates at a higher level of abstraction. Instead of writing brittle selectors that break when your UI changes, you give natural language instructions to AI agents. These agents intelligently navigate and interact with your application, adapting to changes automatically."
+    question: "How does AI persona testing work?",
+    answer: "Our platform uses advanced behavioral language models to generate realistic user personas based on your audience description. AI agents then navigate your website as these personas, providing authentic user experience feedback from different perspectives."
   },
   {
     question: "Do I need to know how to code to use this?",
-    answer: "While Stagehand is designed with a 'CLI-first' approach for developers, the instructions are written in plain English. We also offer a web dashboard where non-technical team members can view session replays and reports."
+    answer: "No coding required. Simply describe your target audience in plain English, and the platform handles everything automatically."
   },
   {
-    question: "What happens if an agent gets stuck?",
-    answer: "Our agents are designed with self-healing capabilities. If an expected element isn't found, the agent will attempt alternative strategies, look for semantic equivalents, or retry with different interactions. If it's truly stuck, it will flag the session for human review and provide a detailed state snapshot."
+    question: "How many personas can I test with at once?",
+    answer: "You can test with 1-5 personas per test run. Our AI generates 10 diverse personas and automatically recommends the most relevant ones for you to review."
   },
   {
-    question: "Can I run this in my CI/CD pipeline?",
-    answer: "Absolutely. Stagehand is built to integrate seamlessly with GitHub Actions, GitLab CI, and other CI providers. You can trigger swarms on every pull request to ensure no regressions are introduced."
+    question: "What kind of insights do I get?",
+    answer: "You receive comprehensive UX reports with overall scores, persona-specific findings, common usability issues, and prioritized recommendations. Reports are aggregated from multiple persona perspectives to give you a holistic view."
   },
   {
-    question: "How secure is the browser execution environment?",
-    answer: "Each agent session runs in an isolated, ephemeral container. We never store sensitive data from your application unless explicitly configured for debugging. All traffic is encrypted, and containers are destroyed immediately after the session concludes."
+    question: "Can I save and reuse personas?",
+    answer: "Yes. You can save collections of personas as 'Swarms' for future use, making it easy to test your website with the same user profiles across different iterations."
+  },
+  {
+    question: "How long does a test take?",
+    answer: "Tests take 5-10 minutes."
   }
 ];
 
