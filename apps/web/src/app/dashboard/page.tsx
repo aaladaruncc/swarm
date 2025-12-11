@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { getBatchTests, getBatchTest, type BatchTestRun } from "@/lib/batch-api";
-import { Plus, Loader2, Trash2, CheckSquare, FileText, Download, Check } from "lucide-react";
+import { Plus, Loader2, Trash2, CheckSquare, FileText, Download, Check, ChevronUp, ChevronDown } from "lucide-react";
 import { pdf } from '@react-pdf/renderer';
 import { AggregatedReportPDF } from '@/components/pdf/AggregatedReportPDF';
 
@@ -19,6 +19,8 @@ export default function Dashboard() {
   const [isArchiving, setIsArchiving] = useState(false);
   const [exportingPDF, setExportingPDF] = useState(false);
   const [error, setError] = useState("");
+  const [sortField, setSortField] = useState<"date" | "agents" | "status" | "targetUrl" | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
     if (!isPending && !session?.user) {
@@ -187,6 +189,80 @@ export default function Dashboard() {
     );
   };
 
+  const handleSort = (field: "date" | "agents" | "status" | "targetUrl") => {
+    if (sortField === field) {
+      // Toggle direction if clicking the same field
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      // Set new field and default to ascending
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const sortedTests = [...batchTests].sort((a, b) => {
+    if (!sortField) return 0;
+
+    let comparison = 0;
+
+    switch (sortField) {
+      case "date":
+        comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        break;
+      case "agents":
+        comparison = (a.selectedPersonaIndices?.length || 0) - (b.selectedPersonaIndices?.length || 0);
+        break;
+      case "status":
+        comparison = a.status.localeCompare(b.status);
+        break;
+      case "targetUrl":
+        comparison = a.targetUrl.localeCompare(b.targetUrl);
+        break;
+    }
+
+    return sortDirection === "asc" ? comparison : -comparison;
+  });
+
+  const SortableHeader = ({ 
+    field, 
+    children,
+    className = ""
+  }: { 
+    field: "date" | "agents" | "status" | "targetUrl"; 
+    children: React.ReactNode;
+    className?: string;
+  }) => {
+    const isActive = sortField === field;
+    return (
+      <th 
+        className={`px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs bg-neutral-50 cursor-pointer hover:text-neutral-900 transition-colors select-none ${className}`}
+        onClick={() => handleSort(field)}
+      >
+        <div className="flex items-center gap-2">
+          <span>{children}</span>
+          <div className="flex flex-col">
+            <ChevronUp 
+              size={12} 
+              className={`transition-opacity ${
+                isActive && sortDirection === "asc" 
+                  ? "opacity-100 text-neutral-900" 
+                  : "opacity-30"
+              }`}
+            />
+            <ChevronDown 
+              size={12} 
+              className={`-mt-1 transition-opacity ${
+                isActive && sortDirection === "desc" 
+                  ? "opacity-100 text-neutral-900" 
+                  : "opacity-30"
+              }`}
+            />
+          </div>
+        </div>
+      </th>
+    );
+  };
+
   return (
     <div className="p-8 max-w-7xl mx-auto w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
@@ -274,10 +350,10 @@ export default function Dashboard() {
                       />
                     </th>
                   )}
-                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs w-1/3 bg-neutral-50">Target URL</th>
-                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs bg-neutral-50">Agents</th>
-                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs bg-neutral-50">Status</th>
-                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs bg-neutral-50">Date</th>
+                  <SortableHeader field="targetUrl" className="w-1/3">Target URL</SortableHeader>
+                  <SortableHeader field="agents">Agents</SortableHeader>
+                  <SortableHeader field="status">Status</SortableHeader>
+                  <SortableHeader field="date">Date</SortableHeader>
                   <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs text-right bg-neutral-50">Action</th>
                 </tr>
               </thead>
@@ -309,7 +385,7 @@ export default function Dashboard() {
                     </td>
                   </tr>
                 ) : (
-                  batchTests.map((test) => (
+                  sortedTests.map((test) => (
                     <tr key={test.id} className={`group transition-colors ${selectedTests.includes(test.id) ? "bg-neutral-50" : "hover:bg-neutral-50/30"}`}>
                       {isSelectionMode && (
                         <td className="px-6 py-5">

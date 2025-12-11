@@ -140,6 +140,114 @@ testsRoutes.get("/:id/screenshots", async (c) => {
   return c.json({ screenshots });
 });
 
+// GET /tests/:id/transcript - Get session transcript with actions, reasoning, and screenshots
+testsRoutes.get("/:id/transcript", async (c) => {
+  const user = c.get("user");
+  const testId = c.req.param("id");
+
+  const [testRun] = await db
+    .select()
+    .from(schema.testRuns)
+    .where(eq(schema.testRuns.id, testId));
+
+  if (!testRun || testRun.userId !== user.id) {
+    return c.json({ error: "Test not found" }, 404);
+  }
+
+  // Get report with full data
+  const [report] = await db
+    .select()
+    .from(schema.reports)
+    .where(eq(schema.reports.testRunId, testId));
+
+  if (!report) {
+    return c.json({ error: "Report not found" }, 404);
+  }
+
+  // Get screenshots
+  const screenshots = await db
+    .select()
+    .from(schema.screenshots)
+    .where(eq(schema.screenshots.testRunId, testId))
+    .orderBy(schema.screenshots.stepNumber);
+
+  // Extract transcript data from fullReport
+  const fullReport = report.fullReport as any;
+  const agentActions = fullReport?.agentActions || [];
+  const agentReasoning = fullReport?.agentReasoning || "";
+  const agentLogs = fullReport?.agentLogs || [];
+
+  // Combine actions, logs, and screenshots into timeline
+  const timeline: Array<{
+    type: "action" | "screenshot" | "reasoning" | "log";
+    timestamp: number;
+    data: any;
+  }> = [];
+
+  // Add logs (agent thinking/INFO messages)
+  agentLogs.forEach((log: any) => {
+    timeline.push({
+      type: "log",
+      timestamp: log.timestamp || 0,
+      data: {
+        level: log.level || "INFO",
+        message: log.message || "",
+      },
+    });
+  });
+
+  // Add actions
+  agentActions.forEach((action: any) => {
+    timeline.push({
+      type: "action",
+      timestamp: action.timestamp || 0,
+      data: action,
+    });
+  });
+
+  // Add screenshots (use timestamp from fullReport if available, otherwise estimate)
+  screenshots.forEach((screenshot, index) => {
+    // Try to get timestamp from fullReport screenshots array
+    const fullReportScreenshot = (fullReport?.screenshots || []).find(
+      (s: any) => s.stepNumber === screenshot.stepNumber
+    );
+    
+    // Use stored timestamp, or estimate based on step number
+    const timestamp = fullReportScreenshot?.timestamp 
+      ? fullReportScreenshot.timestamp
+      : testRun.startedAt 
+        ? new Date(testRun.startedAt).getTime() + (screenshot.stepNumber * 5000) // ~5 seconds per step
+        : Date.now();
+    
+    timeline.push({
+      type: "screenshot",
+      timestamp,
+      data: {
+        stepNumber: screenshot.stepNumber,
+        description: screenshot.description,
+        base64Data: screenshot.base64Data,
+        createdAt: screenshot.createdAt,
+      },
+    });
+  });
+
+  // Sort timeline by timestamp
+  timeline.sort((a, b) => a.timestamp - b.timestamp);
+
+  return c.json({
+    agentActions,
+    agentReasoning,
+    agentLogs,
+    screenshots,
+    timeline,
+    testRun: {
+      startedAt: testRun.startedAt,
+      completedAt: testRun.completedAt,
+      targetUrl: testRun.targetUrl,
+    },
+  });
+});
+
 // GET /tests/:id/recording - Get session live view URL from Browserbase
 testsRoutes.get("/:id/recording", async (c) => {
   const user = c.get("user");
@@ -166,9 +274,11 @@ testsRoutes.get("/:id/recording", async (c) => {
     // Try to get the live view URL using the debug endpoint
     try {
       const debugInfo = await bb.sessions.debug(testRun.browserbaseSessionId);
+      const liveViewUrl = debugInfo.debuggerFullscreenUrl || debugInfo.debuggerUrl || debugInfo.liveUrl;
       
       return c.json({ 
-        liveViewUrl: debugInfo.debuggerFullscreenUrl,
+        liveViewUrl,
+        debugUrl: liveViewUrl,
         sessionId: testRun.browserbaseSessionId,
       });
     } catch (debugError: any) {
@@ -180,6 +290,7 @@ testsRoutes.get("/:id/recording", async (c) => {
         // This will show the recording on Browserbase's platform
         return c.json({ 
           liveViewUrl: `https://www.browserbase.com/sessions/${testRun.browserbaseSessionId}`,
+          debugUrl: `https://www.browserbase.com/sessions/${testRun.browserbaseSessionId}`,
           sessionId: testRun.browserbaseSessionId,
           isFallback: true,
         });

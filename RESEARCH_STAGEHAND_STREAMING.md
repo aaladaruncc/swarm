@@ -43,16 +43,26 @@ interface AgentResult {
 }
 ```
 
-**AgentAction Structure** (from documentation):
+**AgentAction Structure** (from documentation and testing):
 ```typescript
 interface AgentAction {
-  type: "act" | "extract" | "goto" | "wait" | "navback" | "refresh" | "close";
-  parameters?: string;       // Instruction or parameters used
-  playwrightArguments?: any; // Playwright action details
-  description?: string;      // Human-readable description
-  timestamp?: string;         // When action occurred (if available)
+  type: string;              // Action type: "open_web_browser", "click", "keypress", etc.
+  timestamp: number;         // Unix timestamp in milliseconds (ALWAYS present)
+  pageUrl: string;          // Current page URL (ALWAYS present)
+  
+  // Optional properties (based on action type):
+  x?: number;               // X coordinate for click actions
+  y?: number;               // Y coordinate for click actions
+  button?: string;          // Mouse button for click actions
+  keys?: string;            // Keys pressed for keypress actions
 }
 ```
+
+**TEST RESULTS** (December 10, 2025):
+- ✅ Actions array is always present
+- ✅ Timestamps are included (Unix ms format)
+- ✅ Actions are chronologically ordered
+- ✅ Common action types: "open_web_browser", "click", "keypress"
 
 **Access Pattern**:
 ```typescript
@@ -95,6 +105,12 @@ history.forEach((entry) => {
 1. ⚠️ Does `history` update incrementally during `agent.execute()`?
 2. ⚠️ Or does it only populate after execution completes?
 3. ⚠️ Can we poll `history` during execution to get real-time updates?
+
+**TEST RESULTS** (December 10, 2025):
+- ❌ **History does NOT update incrementally** - confirmed by testing
+- ❌ History remains empty (length: 0) during execution
+- ❌ Cannot use history polling for real-time updates
+- ✅ Must use post-execution approach instead
 
 **Potential Use Case**:
 - If history updates incrementally, we could poll it every 1-2 seconds during execution
@@ -254,12 +270,14 @@ clearInterval(pollInterval);
 - ✅ Better user experience
 
 **Cons**:
-- ⚠️ **Unknown**: Does history update incrementally?
-- ⚠️ Requires testing to confirm behavior
-- ⚠️ Polling overhead
-- ❌ May not include agent's internal reasoning/thoughts
+- ❌ **TESTED: History does NOT update incrementally** (confirmed Dec 10, 2025)
+- ❌ Cannot be used for real-time updates
+- ❌ Polling would be ineffective
+- ❌ History remains empty during execution
 
-**Best For**: Real-time progress display (if supported)
+**Best For**: ❌ **NOT RECOMMENDED** - Use Approach 1 instead
+
+**TEST RESULTS**: History polling approach is not viable. History does not update during execution.
 
 **Testing Required**:
 ```typescript
@@ -530,56 +548,361 @@ logFile.end();
 
 ## Recommended Implementation Strategy
 
-### Phase 1: Immediate (Post-Execution)
+### ✅ Phase 1: Immediate Implementation (Post-Execution Replay)
+
+**Status**: Ready to implement (tests confirm this approach works)
+
 1. **Implement Approach 1** (Post-Execution Replay)
    - Parse `agentResult.actions` after completion
-   - Display as transcript with timestamps
+   - Use timestamps to reconstruct timeline
+   - Display as transcript with chronological order
    - Simple, reliable, works immediately
 
-### Phase 2: Research (Testing)
-2. **Test History Polling** (Approach 2)
-   - Run Test 1 to determine if history updates incrementally
-   - If yes, implement polling-based real-time updates
-   - If no, stick with post-execution replay
+**Why this approach**:
+- ✅ Tests confirm `agentResult.actions` contains all needed data
+- ✅ Timestamps are included and accurate
+- ✅ No dependencies on history API
+- ✅ Reliable and predictable
 
-### Phase 3: Enhancement (If Needed)
-3. **Hybrid Approach** (Approach 5)
-   - Combine post-execution data with simulated real-time
+### ❌ Phase 2: History Polling (NOT VIABLE)
+
+**Status**: Tested and confirmed NOT viable
+
+2. **History Polling Test Results**:
+   - ❌ History does NOT update incrementally (confirmed by testing)
+   - ❌ History remains empty during execution
+   - ❌ Cannot use for real-time updates
+   - ✅ **Skip this approach**
+
+### Phase 3: Enhancement (Optional)
+
+3. **Simulated Real-Time Replay** (Approach 5)
+   - Use timestamps from actions to replay with delays
    - Better UX than pure post-execution
-   - Fallback if history doesn't update incrementally
+   - Simulates real-time experience
+   - All data available, just delayed display
 
-## Key Questions to Answer
+## Key Questions - ANSWERED ✅
 
 1. **Does `stagehand.history` update incrementally during `agent.execute()`?**
-   - This is the critical question
-   - If yes → Approach 2 (Polling) is viable
-   - If no → Stick with Approach 1 (Post-Execution)
+   - ✅ **ANSWERED**: ❌ NO - History does NOT update incrementally
+   - ✅ **Decision**: Stick with Approach 1 (Post-Execution)
+   - ✅ **Test Date**: December 10, 2025
 
 2. **What's the full structure of `agentResult.actions`?**
-   - Need to inspect actual return value
-   - Determine if timestamps are included
-   - Check for any reasoning/thoughts data
+   - ✅ **ANSWERED**: Structure confirmed by testing
+   - ✅ Timestamps ARE included (Unix ms format)
+   - ✅ Actions are chronologically ordered
+   - ✅ Common types: "open_web_browser", "click", "keypress"
+   - ✅ See TEST_RESULTS.md for full structure
 
 3. **Can we access agent's internal reasoning?**
-   - Current evidence suggests no
-   - Only final `message` contains assessment
-   - May need to parse `message` for intermediate thoughts
+   - ✅ **ANSWERED**: Limited - only final `message` contains reasoning
+   - ✅ `message` includes agent's thought process and final assessment
+   - ❌ No step-by-step reasoning during execution
+   - ⚠️ May need to parse `message` for structured data
 
 4. **Is there an event emitter or callback system?**
-   - Documentation doesn't mention one
-   - Would need to inspect SDK source code
-   - Unlikely but worth checking
+   - ✅ **ANSWERED**: ❌ NO - No built-in streaming/events
+   - ✅ Must use post-execution approach
+   - ✅ See TEST_RESULTS.md for details
 
 ## Next Steps
 
-1. **Run Test 1** to determine history update behavior
-2. **Run Test 2** to understand `agentResult.actions` structure
-3. **Implement Approach 1** as baseline (works regardless)
-4. **If history updates incrementally**, implement Approach 2
-5. **If not**, enhance Approach 1 with better formatting/timeline reconstruction
+1. ✅ **Tests Complete** - Both tests executed successfully
+2. ✅ **Findings Documented** - See TEST_RESULTS.md
+3. ⏳ **Implement Approach 1** - Post-execution replay (recommended)
+4. ⏳ **Create transcript parser** - Parse agentResult.actions
+5. ⏳ **Integrate into codebase** - Update apps/api/src/lib/agent.ts
+6. ⏳ **Create frontend component** - Display transcript UI
+
+## Implementation Recommendations
+
+### Recommended Approach: Phased Implementation
+
+Based on the research findings, we recommend a phased approach that starts with what works immediately and evolves based on testing results.
+
+#### Phase 1: Immediate Implementation (Post-Execution Replay)
+
+**Priority**: High  
+**Complexity**: Low  
+**Timeline**: 1-2 days
+
+**Implementation Steps**:
+
+1. **Modify `apps/api/src/lib/agent.ts`** to capture and parse `agentResult.actions`:
+   ```typescript
+   const agentResult = await agent.execute({ instruction, maxSteps });
+   
+   // Parse actions into transcript
+   const transcript = parseAgentActionsToTranscript(
+     agentResult.actions || [],
+     executionStartTime
+   );
+   ```
+
+2. **Create transcript parser utility** (`apps/api/src/lib/transcript-parser.ts`):
+   - Parse `agentResult.actions` array
+   - Reconstruct timeline with timestamps
+   - Format entries for frontend consumption
+   - See `examples/approach-1-post-execution-replay.ts` for reference
+
+3. **Update `AgentResult` interface** to include transcript:
+   ```typescript
+   export interface AgentResult {
+     // ... existing fields
+     transcript?: TranscriptEntry[];
+   }
+   ```
+
+4. **Frontend integration**:
+   - Display transcript after test completion
+   - Show as scrollable timeline
+   - Include action types, descriptions, timestamps
+
+**Benefits**:
+- ✅ Works immediately (no testing required)
+- ✅ Reliable and predictable
+- ✅ All action data available
+- ✅ Good foundation for future enhancements
+
+**Limitations**:
+- ❌ Not real-time (only after completion)
+- ❌ No intermediate thoughts/reasoning
+
+#### Phase 2: Testing & Validation
+
+**Priority**: Medium  
+**Complexity**: Low  
+**Timeline**: 1 day
+
+**Action Items**:
+
+1. **Run test scripts**:
+   - Execute `test-stagehand-history.ts` to verify history update behavior
+   - Execute `test-agent-result-structure.ts` to understand actions structure
+   - Document findings
+
+2. **Validate assumptions**:
+   - Confirm `agentResult.actions` structure
+   - Check if timestamps are included
+   - Verify data completeness
+
+**Decision Point**: Based on test results, choose Phase 3A or 3B
+
+#### Phase 3A: Real-Time History Polling (If Supported)
+
+**Priority**: High (if history updates incrementally)  
+**Complexity**: Medium  
+**Timeline**: 2-3 days
+
+**Prerequisites**: Test 1 confirms history updates incrementally
+
+**Implementation Steps**:
+
+1. **Create `HistoryPollingTranscript` class** (see `examples/approach-2-history-polling.ts`):
+   - Poll `stagehand.history` every 1-2 seconds during execution
+   - Emit new entries via EventEmitter
+   - Filter for relevant operations (agent, act, extract, observe)
+
+2. **Integrate with agent execution**:
+   ```typescript
+   const transcriptPoller = new HistoryPollingTranscript(stagehand);
+   transcriptPoller.on('entry', (entry) => {
+     // Stream to frontend via WebSocket/SSE
+     streamToFrontend(entry);
+   });
+   
+   await transcriptPoller.startPolling(1000);
+   const result = await agent.execute({ instruction, maxSteps });
+   transcriptPoller.stopPolling();
+   ```
+
+3. **Frontend real-time updates**:
+   - Use WebSocket or Server-Sent Events (SSE)
+   - Update transcript UI as entries arrive
+   - Show "live" indicator during execution
+
+**Benefits**:
+- ✅ True real-time updates
+- ✅ Better user experience
+- ✅ Shows progress during execution
+
+**Limitations**:
+- ⚠️ Only works if history updates incrementally
+- ⚠️ May not include agent's internal reasoning
+- ⚠️ Polling overhead (minimal)
+
+#### Phase 3B: Enhanced Post-Execution (If History Doesn't Update)
+
+**Priority**: Medium  
+**Complexity**: Low  
+**Timeline**: 1-2 days
+
+**Prerequisites**: Test 1 confirms history does NOT update incrementally
+
+**Implementation Steps**:
+
+1. **Enhance transcript with better timeline reconstruction**:
+   - Use actual execution duration to estimate timestamps
+   - Add progress indicators
+   - Include estimated time per action
+
+2. **Simulated real-time replay** (optional):
+   - Stream transcript entries with delays
+   - Simulate real-time experience
+   - See `examples/approach-1-post-execution-replay.ts` for `streamTranscriptEntries`
+
+3. **Better formatting**:
+   - Group related actions
+   - Show action sequences
+   - Highlight key milestones
+
+**Benefits**:
+- ✅ Better UX than pure post-execution
+- ✅ All data available
+- ✅ No polling overhead
+
+**Limitations**:
+- ❌ Still not truly real-time
+- ❌ Estimated timestamps may be inaccurate
+
+### Code Examples Provided
+
+The following example implementations are available in the `examples/` directory:
+
+1. **`approach-1-post-execution-replay.ts`**:
+   - Complete implementation of post-execution transcript parsing
+   - Timeline reconstruction
+   - Simulated streaming for better UX
+   - Ready to integrate
+
+2. **`approach-2-history-polling.ts`**:
+   - `HistoryPollingTranscript` class for real-time polling
+   - EventEmitter-based streaming
+   - Integration example
+   - Use if history updates incrementally
+
+### Integration Points
+
+#### Backend (`apps/api/src/lib/agent.ts`)
+
+**Current code location**: Line 561-611
+
+**Recommended changes**:
+
+```typescript
+// After agent.execute() completes
+const agentResult = await agent.execute({
+  instruction: generateAgentInstructions(persona),
+  maxSteps,
+});
+
+// NEW: Parse transcript
+const transcript = parseAgentActionsToTranscript(
+  agentResult.actions || [],
+  new Date(startTime)
+);
+
+// Include in return value
+return {
+  // ... existing fields
+  transcript, // NEW
+};
+```
+
+#### Frontend (`apps/web/src/app/tests/[id]/page.tsx`)
+
+**Recommended additions**:
+
+1. **Transcript component**:
+   - Display transcript entries in timeline format
+   - Show action types, descriptions, timestamps
+   - Scrollable, searchable
+
+2. **Real-time updates** (if Phase 3A):
+   - WebSocket/SSE connection during execution
+   - Live transcript updates
+   - Progress indicator
+
+### Data Flow Architecture
+
+```
+┌─────────────────┐
+│  Agent Execute  │
+└────────┬────────┘
+         │
+         ├─► [If History Polling]
+         │   └─► Poll stagehand.history
+         │       └─► Stream entries → WebSocket/SSE → Frontend
+         │
+         └─► [After Completion]
+             └─► Parse agentResult.actions
+                 └─► Return transcript → API Response → Frontend
+```
+
+### Performance Considerations
+
+1. **Polling Frequency**: 1-2 seconds is optimal
+   - Too frequent: Unnecessary overhead
+   - Too slow: Poor user experience
+
+2. **Transcript Size**: 
+   - Typical execution: 10-20 actions
+   - Each entry: ~200-500 bytes
+   - Total: ~5-10 KB (negligible)
+
+3. **Frontend Rendering**:
+   - Virtual scrolling for long transcripts
+   - Lazy load action details
+   - Debounce updates if needed
+
+### Testing Checklist
+
+- [ ] Run `test-stagehand-history.ts` to verify history behavior
+- [ ] Run `test-agent-result-structure.ts` to understand actions structure
+- [ ] Test post-execution transcript parsing
+- [ ] Test transcript formatting and display
+- [ ] (If Phase 3A) Test history polling during execution
+- [ ] (If Phase 3A) Test WebSocket/SSE streaming
+- [ ] Test with various agent instructions and maxSteps
+- [ ] Test error handling (timeouts, failures)
+- [ ] Test with multiple concurrent agents
+
+### Success Metrics
+
+1. **Functionality**:
+   - ✅ Transcript displays all agent actions
+   - ✅ Timestamps are accurate (or estimated reasonably)
+   - ✅ Action descriptions are clear and readable
+
+2. **User Experience**:
+   - ✅ Transcript is easy to read and navigate
+   - ✅ (If Phase 3A) Real-time updates work smoothly
+   - ✅ No performance degradation
+
+3. **Reliability**:
+   - ✅ Works consistently across different scenarios
+   - ✅ Handles errors gracefully
+   - ✅ No memory leaks or performance issues
 
 ## References
 
 - Stagehand v3 Documentation: https://github.com/browserbase/stagehand
 - Current Implementation: `apps/api/src/lib/agent.ts`
 - SDK Version: `@browserbasehq/stagehand@3.0.3`
+- Test Scripts: `test-stagehand-history.ts`, `test-agent-result-structure.ts`
+- Test Results: `TEST_RESULTS.md` (December 10, 2025)
+- Example Implementations: `examples/approach-1-post-execution-replay.ts`, `examples/approach-2-history-polling.ts`
+
+## Test Results Summary
+
+**Date**: December 10, 2025
+
+**Key Findings**:
+- ❌ `stagehand.history` does NOT update incrementally during execution
+- ✅ `agentResult.actions` contains all actions with timestamps
+- ✅ Timestamps are accurate and can reconstruct timeline
+- ✅ Post-execution approach (Approach 1) is viable and recommended
+
+**See `TEST_RESULTS.md` for complete test findings.**

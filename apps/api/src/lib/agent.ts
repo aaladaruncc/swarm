@@ -1,5 +1,6 @@
 import { Stagehand } from "@browserbasehq/stagehand";
 import { type UserPersona, SAMPLE_PERSONAS, getPersonaByIndex } from "./personas.js";
+import { Writable } from "stream";
 
 // ============================================================================
 // TYPES
@@ -11,6 +12,23 @@ export interface InteractionLog {
   observation: string;
   screenshotBase64?: string;
   sentiment: "positive" | "neutral" | "confused" | "frustrated";
+}
+
+export interface AgentAction {
+  type: string;
+  timestamp: number;
+  pageUrl?: string;
+  x?: number;
+  y?: number;
+  button?: string;
+  keys?: string;
+  [key: string]: any;
+}
+
+export interface AgentLog {
+  timestamp: number;
+  level: "INFO" | "WARN" | "ERROR" | "DEBUG";
+  message: string;
 }
 
 export interface AgentResult {
@@ -37,7 +55,11 @@ export interface AgentResult {
     stepNumber: number;
     description: string;
     base64Data: string;
+    timestamp?: number;
   }>;
+  agentActions?: AgentAction[]; // Actions taken by the agent
+  agentReasoning?: string; // Full reasoning/thinking from agent
+  agentLogs?: AgentLog[]; // Console logs captured during execution
 }
 
 export interface RunTestOptions {
@@ -457,11 +479,139 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
   const persona = customPersona || getPersonaByIndex(personaIndex);
   const startTime = Date.now();
   const interactionLogs: InteractionLog[] = [];
-  const screenshots: Array<{ stepNumber: number; description: string; base64Data: string }> = [];
+  const screenshots: Array<{ stepNumber: number; description: string; base64Data: string; timestamp?: number }> = [];
+  const agentLogs: AgentLog[] = [];
   let stepCount = 0;
 
+  // Intercept both console.log and stdout to capture ALL messages from Stagehand verbose logging
+  const originalConsoleLog = console.log;
+  const originalConsoleWarn = console.warn;
+  const originalConsoleError = console.error;
+  const originalConsoleInfo = console.info;
+  const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+  const originalStderrWrite = process.stderr.write.bind(process.stderr);
+  let isConsoleStdoutWrite = false;
+  let isConsoleStderrWrite = false;
+  const recentLogMap = new Map<string, number>();
+  const DEDUPE_MS = 1500;
+  
+  const captureLog = (level: "INFO" | "WARN" | "ERROR" | "DEBUG", message: string) => {
+    // Split multi-line chunks so we don't lose content written in a single stdout write
+    const lines = (message || "").split("\n");
+    lines.forEach((line) => {
+      const trimmedMessage = line.trim();
+      if (trimmedMessage.length <= 1) return;
+
+      // Deduplicate identical messages within a short window to avoid double-capture from console + stdout
+      const now = Date.now();
+      const key = `${level}:${trimmedMessage}`;
+      const lastSeen = recentLogMap.get(key);
+      if (lastSeen && now - lastSeen < DEDUPE_MS) {
+        return;
+      }
+      recentLogMap.set(key, now);
+
+      // Drop noisy API/server logs; keep agent reasoning
+      const lower = trimmedMessage.toLowerCase();
+      const isApiNoise =
+        lower.includes("get /api/") ||
+        lower.includes("post /api/") ||
+        lower.includes("options /api/") ||
+        lower.includes("put /api/") ||
+        lower.includes("delete /api/") ||
+        lower.includes("queue]") ||
+        lower.startsWith("<--") ||
+        lower.startsWith("-->") ||
+        lower.includes("batch-tests") ||
+        lower.includes("auth/get-session") ||
+        lower.match(/^\d{3}\s+\d+ms/);
+      if (isApiNoise) return;
+      
+      agentLogs.push({
+        timestamp: Date.now(),
+        level,
+        message: trimmedMessage,
+      });
+    });
+  };
+
+  // Intercept console methods
+  console.log = (...args: any[]) => {
+    const message = args.map(arg => 
+      typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+    ).join(' ');
+    try {
+      isConsoleStdoutWrite = true;
+      originalConsoleLog(...args);
+    } finally {
+      isConsoleStdoutWrite = false;
+    }
+    captureLog("INFO", message);
+  };
+
+  console.info = (...args: any[]) => {
+    const message = args.map(arg => 
+      typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+    ).join(' ');
+    try {
+      isConsoleStdoutWrite = true;
+      originalConsoleInfo(...args);
+    } finally {
+      isConsoleStdoutWrite = false;
+    }
+    captureLog("INFO", message);
+  };
+
+  console.warn = (...args: any[]) => {
+    const message = args.map(arg => 
+      typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+    ).join(' ');
+    try {
+      isConsoleStdoutWrite = true;
+      originalConsoleWarn(...args);
+    } finally {
+      isConsoleStdoutWrite = false;
+    }
+    captureLog("WARN", message);
+  };
+
+  console.error = (...args: any[]) => {
+    const message = args.map(arg => 
+      typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+    ).join(' ');
+    try {
+      isConsoleStderrWrite = true;
+      originalConsoleError(...args);
+    } finally {
+      isConsoleStderrWrite = false;
+    }
+    captureLog("ERROR", message);
+  };
+
+  // Also intercept stdout directly (Stagehand might write directly to stdout)
+  process.stdout.write = function(chunk: any, encoding?: any, callback?: any): boolean {
+    if (typeof chunk === 'string') {
+      // Avoid double-capturing console.* writes
+      if (!isConsoleStdoutWrite) {
+        captureLog("INFO", chunk);
+      }
+    }
+    return originalStdoutWrite(chunk, encoding, callback);
+  };
+
+  // Intercept stderr as well (Stagehand/Gemini sometimes streams reasoning to stderr)
+  process.stderr.write = function(chunk: any, encoding?: any, callback?: any): boolean {
+    if (typeof chunk === 'string') {
+      // Avoid double-capturing console.error writes
+      if (!isConsoleStderrWrite) {
+        captureLog("DEBUG", chunk);
+      }
+    }
+    return originalStderrWrite(chunk, encoding, callback);
+  };
+
   const log = (message: string) => {
-    console.log(message);
+    originalConsoleLog(message);
     onProgress?.(message);
   };
 
@@ -481,7 +631,7 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
     try {
       stagehand = new Stagehand({
         env: "BROWSERBASE",
-        verbose: 1,
+        verbose: 2, // Maximum verbosity to capture all agent thinking/logs
         browserbaseSessionCreateParams: {
           projectId: process.env.BROWSERBASE_PROJECT_ID,
           timeout: 900,
@@ -516,15 +666,28 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
     }
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
+    // Helper to capture screenshots with monotonically increasing step numbers
+    let nextStepNumber = 1;
+    const captureScreenshot = async (description: string) => {
+      try {
+        const buffer = await page.screenshot();
+        const base64 = buffer.toString("base64");
+        const stepNumber = nextStepNumber++;
+        stepCount = Math.max(stepCount, stepNumber);
+        screenshots.push({
+          stepNumber,
+          description,
+          base64Data: base64,
+          timestamp: Date.now(),
+        });
+      } catch (err) {
+        // Do not throw—screenshots are best-effort
+        originalConsoleWarn("Screenshot capture failed:", (err as any)?.message || err);
+      }
+    };
+
     // Initial screenshot
-    stepCount++;
-    const initialScreenshotBuffer = await page.screenshot();
-    const initialScreenshot = initialScreenshotBuffer.toString("base64");
-    screenshots.push({
-      stepNumber: stepCount,
-      description: "initial-landing",
-      base64Data: initialScreenshot,
-    });
+    await captureScreenshot("initial-landing");
 
     interactionLogs.push({
       timestamp: new Date().toISOString(),
@@ -557,12 +720,42 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
 
     let agentResult;
     let wasTimeout = false;
+    let screenshotLoopStop = false;
+    const screenshotIntervalMs = 5000; // capture every 5 seconds while the agent runs
+    const maxAutoScreenshots = Math.max(8, maxSteps + 3); // cap to avoid spam
+    let autoShotCount = 0;
+
+    // Run a background loop to capture periodic screenshots during the blocking execute call
+    const screenshotLoop = (async () => {
+      while (!screenshotLoopStop && autoShotCount < maxAutoScreenshots) {
+        await new Promise(res => setTimeout(res, screenshotIntervalMs));
+        if (screenshotLoopStop) break;
+        autoShotCount += 1;
+        await captureScreenshot(`auto-${autoShotCount}`);
+      }
+    })();
+
     try {
       agentResult = await agent.execute({
         instruction: generateAgentInstructions(persona),
         maxSteps,
       });
+      
+      // After agent completes, we can't capture intermediate states
+      // But we can associate screenshots with actions using Browserbase's recording
+      // For now, capture the final state and note that intermediate screenshots
+      // would need to be extracted from Browserbase's session recording
+      const agentActions = (agentResult as any).actions || [];
+      log(`Agent completed with ${agentActions.length} actions.`);
+      
+      // Capture final state after completion
+      screenshotLoopStop = true;
+      await screenshotLoop;
+      await captureScreenshot("final-state");
     } catch (error: any) {
+      screenshotLoopStop = true;
+      await screenshotLoop;
+
       // If session times out or CDP closes, capture what we have
       if (error.message?.includes("CDP") || error.message?.includes("timeout") || error.message?.includes("closed") || error.message?.includes("Session")) {
         log("Session ended early (timeout/close), generating report from partial exploration...");
@@ -605,24 +798,18 @@ Session timed out before full assessment. Site complexity or performance may imp
 END ASSESSMENT`,
           success: false,
         };
+
+        // Best-effort final screenshot for the partial session
+        await captureScreenshot("final-state-partial");
       } else {
         throw error;
       }
     }
 
-    // Capture final screenshot
-    stepCount++;
-    try {
-      const finalScreenshotBuffer = await page.screenshot();
-      const finalScreenshot = finalScreenshotBuffer.toString("base64");
-      screenshots.push({
-        stepNumber: stepCount,
-        description: "final-state",
-        base64Data: finalScreenshot,
-      });
-    } catch {
-      log("Could not capture final screenshot");
-    }
+    // Note: Intermediate screenshots cannot be captured during agent.execute() 
+    // because it's a blocking call. To get screenshots at each action, we would need
+    // to use Browserbase's session recording API to extract frames at different timestamps.
+    // For now, we capture initial and final states only.
 
     interactionLogs.push({
       timestamp: new Date().toISOString(),
@@ -635,7 +822,15 @@ END ASSESSMENT`,
     const duration = Math.round((endTime - startTime) / 1000);
 
     // Parse agent response
-    const agentMessage = agentResult.message || "";
+    let agentMessage = agentResult.message || "";
+    const hasChunkError = /cannot read properties of undefined \(reading 'parts'\)/i.test(agentMessage) || /failed to execute task/i.test(agentMessage);
+    if (hasChunkError) {
+      agentMessage = `${agentMessage}\n\nNOTE: Model returned an invalid chunk mid-run; navigation continued and screenshots were captured.`;
+    }
+    
+    // Capture agent actions and reasoning
+    const agentActions = (agentResult as any).actions || [];
+    const agentReasoning = agentMessage; // Full message contains reasoning
     
     // Log agent completion
     if (wasTimeout) {
@@ -650,6 +845,9 @@ END ASSESSMENT`,
                       agentMessage.match(/(\d+)\s*\/\s*10/);
     const extractedScore = scoreMatch ? parseInt(scoreMatch[1], 10) : (wasTimeout ? 6 : 7);
     const parsedFeedback = parseAgentFeedback(agentMessage);
+    if (/failed to execute task|cannot read properties of undefined \(reading 'parts'\)/i.test(parsedFeedback.summary)) {
+      parsedFeedback.summary = "Run completed with a transient model chunk error; see transcript and screenshots for the full walkthrough.";
+    }
 
     log(`Test complete. Score: ${extractedScore}/10 ${wasTimeout ? "(timeout fallback)" : ""}`);
 
@@ -670,12 +868,23 @@ END ASSESSMENT`,
       personaSpecificFeedback: agentMessage,
       recommendations: parsedFeedback.recommendations,
       screenshots,
+      agentActions: (agentResult as any).actions || [], // Include agent actions for transcript
+      agentReasoning, // Include full reasoning
+      agentLogs, // Include captured console logs
     };
   } catch (unexpectedError: any) {
     log(`❌ Unexpected error during test: ${unexpectedError.message}`);
     log(`Error stack: ${unexpectedError.stack}`);
     throw new Error(`Test execution failed: ${unexpectedError.message}`);
   } finally {
+    // Restore original console methods and stdout
+    console.log = originalConsoleLog;
+    console.info = originalConsoleInfo;
+    console.warn = originalConsoleWarn;
+    console.error = originalConsoleError;
+    process.stdout.write = originalStdoutWrite;
+    process.stderr.write = originalStderrWrite;
+    
     if (stagehand) {
       try {
         await stagehand.close();

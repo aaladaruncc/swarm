@@ -283,19 +283,19 @@ export default function SwarmsPage() {
                 )}
               </div>
               
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 {!isEditing ? (
                   <>
                     <button 
                       onClick={() => setIsEditing(true)}
-                      className="p-2 hover:bg-neutral-100 text-neutral-500 hover:text-neutral-900 transition-colors rounded-none flex items-center gap-2"
+                      className="p-2.5 hover:bg-neutral-100 text-neutral-500 hover:text-neutral-900 transition-colors rounded-none"
                       title="Edit Swarm"
                     >
                       <Edit2 size={18} />
                     </button>
                     <button 
                       onClick={() => handleDeleteSwarm(selectedSwarm.id)}
-                      className="p-2 hover:bg-red-50 text-neutral-400 hover:text-red-600 transition-colors rounded-none"
+                      className="p-2.5 hover:bg-red-50 text-neutral-400 hover:text-red-600 transition-colors rounded-none"
                       title="Delete Swarm"
                     >
                       <Trash2 size={18} />
@@ -312,6 +312,8 @@ export default function SwarmsPage() {
                   </button>
                 )}
                 
+                <div className="w-px h-6 bg-neutral-200 mx-1" />
+                
                 <button 
                   onClick={() => {
                     if (isEditing) {
@@ -324,7 +326,8 @@ export default function SwarmsPage() {
                       setSelectedSwarm(null);
                     }
                   }}
-                  className="p-2 hover:bg-neutral-100 transition-colors rounded-none ml-2"
+                  className="p-2.5 hover:bg-neutral-100 transition-colors rounded-none"
+                  title="Close"
                 >
                   <X size={20} className="text-neutral-500" />
                 </button>

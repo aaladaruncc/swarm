@@ -82,33 +82,33 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white font-sans selection:bg-neutral-900 selection:text-white relative overflow-hidden">
-      <div className="w-full max-w-xl px-6 relative z-10 flex flex-col items-center">
+      <div className="w-full max-w-lg px-8 relative z-10 flex flex-col items-center">
         {/* Logo */}
         <Link 
           href="/" 
-          className="mb-10 hover:opacity-80 transition-opacity"
+          className="mb-8 hover:opacity-80 transition-opacity"
         >
           <Image 
             src="/images/vantage_small.png" 
             alt="Vantage" 
-            width={160} 
-            height={160}
-            className="h-24 w-auto object-contain"
+            width={120} 
+            height={120}
+            className="h-16 w-auto object-contain"
           />
         </Link>
 
         {/* Card */}
-        <div className="w-full bg-white border border-neutral-200 shadow-xl shadow-neutral-200/40 p-10 md:p-14">
-          <div className="mb-10 text-center">
-            <h1 className="text-4xl font-serif font-normal tracking-tight mb-3 text-neutral-900">
+        <div className="w-full bg-white border border-neutral-200 shadow-xl shadow-neutral-200/40 p-8 md:p-10 lg:p-12">
+          <div className="mb-6 text-center">
+            <h1 className="text-2xl md:text-3xl font-serif font-normal tracking-tight mb-2 text-neutral-900">
               {isLogin ? "Welcome back" : "Join the simulation"}
             </h1>
-            <p className="text-lg text-neutral-500 font-sans font-light">
+            <p className="text-sm text-neutral-500 font-sans font-light">
               {isLogin ? "Enter your credentials to access the swarm." : "Deploy your first agent swarm today."}
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {!isLogin && (
               <div className="space-y-2">
                 <label className="text-xs font-sans font-medium text-neutral-900 uppercase tracking-wide">Name</label>
@@ -116,7 +116,7 @@ export default function LoginPage() {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-neutral-50 border border-neutral-200 text-neutral-900 px-5 py-4 text-lg focus:border-neutral-900 focus:bg-white focus:ring-0 outline-none transition-all placeholder:text-neutral-300 font-sans font-light"
+                  className="w-full bg-neutral-50 border border-neutral-200 text-neutral-900 px-5 py-3 text-base focus:border-neutral-900 focus:bg-white focus:ring-0 outline-none transition-all placeholder:text-neutral-300 font-sans font-light"
                   placeholder="Ada Lovelace"
                   required={!isLogin}
                 />
@@ -129,7 +129,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-neutral-50 border border-neutral-200 text-neutral-900 px-5 py-4 text-lg focus:border-neutral-900 focus:bg-white focus:ring-0 outline-none transition-all placeholder:text-neutral-300 font-sans font-light"
+                  className="w-full bg-neutral-50 border border-neutral-200 text-neutral-900 px-5 py-3 text-base focus:border-neutral-900 focus:bg-white focus:ring-0 outline-none transition-all placeholder:text-neutral-300 font-sans font-light"
                   placeholder="ada@example.com"
                 required
               />
@@ -146,7 +146,7 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-neutral-50 border border-neutral-200 text-neutral-900 px-5 py-4 text-lg focus:border-neutral-900 focus:bg-white focus:ring-0 outline-none transition-all placeholder:text-neutral-300 font-sans font-light"
+                  className="w-full bg-neutral-50 border border-neutral-200 text-neutral-900 px-5 py-3 text-base focus:border-neutral-900 focus:bg-white focus:ring-0 outline-none transition-all placeholder:text-neutral-300 font-sans font-light"
                   placeholder="••••••••"
                 required
               />
@@ -156,7 +156,7 @@ export default function LoginPage() {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-4 bg-red-50 text-red-600 text-base font-sans font-light border border-red-100"
+                className="p-3 bg-red-50 text-red-600 text-sm font-sans font-light border border-red-100"
               >
                 {error}
               </motion.div>
@@ -166,7 +166,7 @@ export default function LoginPage() {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-4 bg-emerald-50 text-emerald-600 text-base font-sans font-light border border-emerald-100"
+                className="p-3 bg-emerald-50 text-emerald-600 text-sm font-sans font-light border border-emerald-100"
               >
                 {success}
               </motion.div>
@@ -175,20 +175,20 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-neutral-900 text-white py-4 text-lg hover:bg-neutral-800 transition-all font-sans font-light flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+              className="w-full bg-neutral-900 text-white py-3 text-base hover:bg-neutral-800 transition-all font-sans font-light flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed mt-4"
             >
               {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <>
                   {isLogin ? "Sign In" : "Create Account"}
-                  <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                 </>
               )}
             </button>
           </form>
 
-          <div className="mt-10 text-center text-base font-sans font-light text-neutral-500">
+          <div className="mt-8 text-center text-sm font-sans font-light text-neutral-500">
             {isLogin ? "Don't have an account? " : "Already have an account? "}
             <button
               onClick={() => setIsLogin(!isLogin)}

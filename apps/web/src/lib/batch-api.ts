@@ -100,6 +100,46 @@ async function fetchWithAuth(path: string, options: RequestInit = {}) {
   return response.json();
 }
 
+export interface SessionTranscript {
+  agentActions: Array<{
+    type: string;
+    timestamp: number;
+    pageUrl?: string;
+    x?: number;
+    y?: number;
+    button?: string;
+    keys?: string;
+    [key: string]: any;
+  }>;
+  agentReasoning: string;
+  agentLogs?: Array<{
+    timestamp: number;
+    level: "INFO" | "WARN" | "ERROR" | "DEBUG";
+    message: string;
+  }>;
+  screenshots: Array<{
+    id: string;
+    stepNumber: number;
+    description: string | null;
+    base64Data: string | null;
+    createdAt: string;
+  }>;
+  timeline: Array<{
+    type: "action" | "screenshot" | "reasoning" | "log";
+    timestamp: number;
+    data: any;
+  }>;
+  testRun: {
+    startedAt: string | null;
+    completedAt: string | null;
+    targetUrl: string;
+  };
+}
+
+export async function getSessionTranscript(testRunId: string): Promise<SessionTranscript> {
+  return fetchWithAuth(`/api/tests/${testRunId}/transcript`);
+}
+
 export async function generatePersonas(
   targetUrl: string,
   userDescription: string,
@@ -149,6 +189,7 @@ export async function getBatchTest(id: string): Promise<{
 }> {
   return fetchWithAuth(`/api/batch-tests/${id}`);
 }
+
 
 interface Swarm {
   id: string;
