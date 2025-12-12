@@ -1156,8 +1156,8 @@ ${errorContext}`,
     log(`Test complete. Score: ${extractedScore}/10 ${wasTimeout ? "(timeout fallback)" : ""}`);
 
     // Finalize any pending log entry
-    const pendingEntry: { level: "INFO" | "WARN" | "ERROR" | "DEBUG"; message: string; timestamp: number } | null = currentLogEntry;
-    if (pendingEntry !== null) {
+    if (currentLogEntry !== null) {
+      const pendingEntry = currentLogEntry;
       const lower = pendingEntry.message.toLowerCase();
       const isApiNoise =
         (lower.includes("get /api/") && !lower.includes("reasoning") && !lower.includes("executing step")) ||
