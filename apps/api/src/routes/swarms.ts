@@ -9,6 +9,7 @@ type Variables = {
   user: Session["user"];
 };
 
+
 const swarmsRoutes = new Hono<{ Variables: Variables }>();
 
 // ============================================================================
