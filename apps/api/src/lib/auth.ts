@@ -32,9 +32,9 @@ export const auth = betterAuth({
       enabled: false,
     },
     defaultCookieAttributes: {
-      sameSite: "none",
-      secure: true,
-      partitioned: true,
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: process.env.NODE_ENV === "production",
+      partitioned: false, // Disable partitioned cookies for localhost compatibility
     },
   },
 });

@@ -6,7 +6,8 @@ import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { getBatchTest, terminateBatchTest, type TestRunWithReport, type AggregatedReport, type BatchTestRun } from "@/lib/batch-api";
 import ReactMarkdown from "react-markdown";
-import { ArrowLeft, Loader2, ExternalLink, Download, X, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Loader2, ExternalLink, Download, X, CheckCircle2, AlertCircle, Play } from "lucide-react";
+import { SessionTranscriptViewer } from "@/components/SessionTranscriptViewer";
 import { pdf } from '@react-pdf/renderer';
 import { AggregatedReportPDF } from '@/components/pdf/AggregatedReportPDF';
 import { PersonaReportPDF } from '@/components/pdf/PersonaReportPDF';
@@ -24,6 +25,7 @@ export default function TestDetails() {
   const [exportingPDF, setExportingPDF] = useState(false);
   const [isTerminating, setIsTerminating] = useState(false);
   const [showTerminateConfirm, setShowTerminateConfirm] = useState(false);
+  const [viewingSession, setViewingSession] = useState<string | null>(null);
 
   const testId = params.id as string;
 
@@ -102,15 +104,24 @@ export default function TestDetails() {
   useEffect(() => {
     if (session?.user && testId) {
       loadTest();
-      const interval = setInterval(() => {
-        if (batchTestRun?.status && ["running_tests", "aggregating"].includes(batchTestRun.status)) {
-          loadTest();
-        }
-      }, 5000);
-      return () => clearInterval(interval);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, testId]);
+
+  // Poll for status updates when test is running or aggregating
+  useEffect(() => {
+    if (!batchTestRun) return;
+    
+    const status = batchTestRun.status;
+    const isActive = ["running_tests", "aggregating"].includes(status);
+    
+    if (!isActive) return;
+
+    const pollInterval = setInterval(() => {
+      loadTest();
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [batchTestRun?.status, testId]);
 
   if (isPending || !session?.user) {
     return (
@@ -525,32 +536,41 @@ export default function TestDetails() {
                 {typeof selectedView === "number" && testRuns[selectedView]?.report && (
                   <div className="space-y-8">
                     {/* Persona Profile */}
-                    <div className="bg-gradient-to-br from-neutral-900 to-neutral-800 text-white p-8">
-                      <h2 className="text-2xl font-light mb-4">{testRuns[selectedView].testRun.personaName}'s Experience</h2>
+                    <div className="border border-neutral-900 bg-neutral-900 text-white p-8">
+                      <div className="flex items-start justify-between mb-4">
+                        <h2 className="text-2xl font-light text-white">{testRuns[selectedView].testRun.personaName}'s Experience</h2>
+                        <button
+                          onClick={() => setViewingSession(testRuns[selectedView].testRun.id)}
+                          className="flex items-center gap-2 px-4 py-2 bg-white text-neutral-900 hover:bg-neutral-100 transition-colors text-sm font-light rounded-none border border-neutral-900"
+                        >
+                          <Play size={16} />
+                          View Session
+                        </button>
+                      </div>
                       {testRuns[selectedView].testRun.personaData && (
                         <div className="grid md:grid-cols-3 gap-6 text-sm">
                           <div>
-                            <p className="text-neutral-400 text-xs uppercase tracking-wide mb-1">Profile</p>
-                            <p className="font-medium">
+                            <p className="text-neutral-300 text-xs uppercase tracking-wide mb-1 font-light">Profile</p>
+                            <p className="font-light text-white">
                               {testRuns[selectedView].testRun.personaData.age} years old
                             </p>
-                            <p className="font-light">{testRuns[selectedView].testRun.personaData.occupation}</p>
+                            <p className="font-light text-neutral-300">{testRuns[selectedView].testRun.personaData.occupation}</p>
                           </div>
                           <div>
-                            <p className="text-neutral-400 text-xs uppercase tracking-wide mb-1">Location</p>
-                            <p className="font-light">{testRuns[selectedView].testRun.personaData.country}</p>
+                            <p className="text-neutral-300 text-xs uppercase tracking-wide mb-1 font-light">Location</p>
+                            <p className="font-light text-neutral-300">{testRuns[selectedView].testRun.personaData.country}</p>
                           </div>
                           <div>
-                            <p className="text-neutral-400 text-xs uppercase tracking-wide mb-1">Tech Level</p>
-                            <p className="font-light capitalize">{testRuns[selectedView].testRun.personaData.techSavviness}</p>
+                            <p className="text-neutral-300 text-xs uppercase tracking-wide mb-1 font-light">Tech Level</p>
+                            <p className="font-light text-neutral-300 capitalize">{testRuns[selectedView].testRun.personaData.techSavviness}</p>
                           </div>
                         </div>
                       )}
                     </div>
 
                     {/* Score */}
-                    <div className="border border-neutral-200 p-8">
-                      <h3 className="text-lg font-medium mb-4">Individual Score</h3>
+                    <div className="border border-neutral-900 p-8">
+                      <h3 className="text-lg font-light mb-4 text-neutral-900">Individual Score</h3>
                       <div className="flex items-center gap-6">
                         <div className="text-5xl font-light text-neutral-900">
                           {testRuns[selectedView].report?.score}<span className="text-2xl text-neutral-400">/10</span>
@@ -571,8 +591,8 @@ export default function TestDetails() {
 
                     {/* Positive Aspects */}
                     {testRuns[selectedView].report?.positiveAspects && testRuns[selectedView].report.positiveAspects!.length > 0 && (
-                      <div className="border border-neutral-200 p-8">
-                        <h3 className="text-lg font-medium mb-4 text-emerald-700">What Worked</h3>
+                      <div className="border border-neutral-900 p-8">
+                        <h3 className="text-lg font-light mb-4 text-neutral-900">What Worked</h3>
                         <ul className="space-y-2">
                           {testRuns[selectedView].report!.positiveAspects!.map((item, i) => (
                             <li key={i} className="flex gap-3 text-sm font-light">
@@ -586,8 +606,8 @@ export default function TestDetails() {
 
                     {/* Confusion Points */}
                     {testRuns[selectedView].report?.accessibilityNotes && testRuns[selectedView].report.accessibilityNotes!.length > 0 && (
-                      <div className="border border-neutral-200 p-8">
-                        <h3 className="text-lg font-medium mb-4 text-yellow-700">Confusion Points</h3>
+                      <div className="border border-neutral-900 p-8">
+                        <h3 className="text-lg font-light mb-4 text-neutral-900">Confusion Points</h3>
                         <ul className="space-y-2">
                           {testRuns[selectedView].report!.accessibilityNotes!.map((item, i) => (
                             <li key={i} className="flex gap-3 text-sm font-light">
@@ -601,8 +621,8 @@ export default function TestDetails() {
 
                     {/* Usability Issues */}
                     {testRuns[selectedView].report?.usabilityIssues && testRuns[selectedView].report.usabilityIssues!.length > 0 && (
-                      <div className="border border-neutral-200 p-8">
-                        <h3 className="text-lg font-medium mb-4 text-red-700">Usability Issues</h3>
+                      <div className="border border-neutral-900 p-8">
+                        <h3 className="text-lg font-light mb-4 text-neutral-900">Usability Issues</h3>
                         <div className="space-y-3">
                           {testRuns[selectedView].report!.usabilityIssues!.map((issue: any, i: number) => (
                             <div key={i} className={`border-l-4 p-4 ${getSeverityColor(issue.severity)}`}>
@@ -623,8 +643,8 @@ export default function TestDetails() {
 
                     {/* Recommendations */}
                     {testRuns[selectedView].report?.recommendations && testRuns[selectedView].report.recommendations!.length > 0 && (
-                      <div className="border border-neutral-200 p-8">
-                        <h3 className="text-lg font-medium mb-4">Recommendations</h3>
+                      <div className="border border-neutral-900 p-8">
+                        <h3 className="text-lg font-light mb-4 text-neutral-900">Recommendations</h3>
                         <ol className="list-decimal list-inside space-y-2 text-sm font-light">
                           {testRuns[selectedView].report!.recommendations!.map((rec, i) => (
                             <li key={i}>{rec}</li>
@@ -676,6 +696,15 @@ export default function TestDetails() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Session Transcript Viewer */}
+      {viewingSession && (
+        <SessionTranscriptViewer
+          testRunId={viewingSession}
+          personaName={testRuns.find((tr) => tr.testRun.id === viewingSession)?.testRun.personaName || "Agent"}
+          onClose={() => setViewingSession(null)}
+        />
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import type { CSSProperties } from "react";
 
 type LogoType = "image" | "svg";
 
@@ -26,11 +27,13 @@ const isSVG = (logo: Logo): boolean => {
   return logo.src.toLowerCase().endsWith(".svg");
 };
 
+// Create enough duplicates to ensure seamless infinite scrolling
+// We duplicate 4 times to ensure there's always content visible
+const LOGO_TRACK = [...LOGOS, ...LOGOS, ...LOGOS, ...LOGOS];
+
 export function LogoCarousel() {
-  // Create two identical sets for seamless infinite scroll
-  // The animation will move -50% so when it loops, it's seamless
-  const logoSets = [...LOGOS, ...LOGOS];
-  
+  const gap = "2.75rem";
+
   return (
     <section className="pt-12 pb-10 border-b border-neutral-100 bg-white overflow-hidden">
       <div className="container mx-auto px-4 mb-6 text-center">
@@ -38,20 +41,22 @@ export function LogoCarousel() {
           Made with talent from
         </p>
       </div>
-      
-      <div className="flex relative w-full overflow-hidden">
-        <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
-        <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
-        
-        {/* Wrapper that will be animated - contains two identical sets */}
-        {/* Animation moves -50% (half the total width) for seamless loop */}
+
+      <div className="relative w-full overflow-hidden">
+        <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
+
         <div
-          className="flex gap-16 min-w-max items-center will-change-transform"
-          style={{
-            animation: "scroll 30s linear infinite",
-          }}
+          className="flex w-max items-center will-change-transform"
+          style={
+            {
+              "--gap": gap,
+              gap,
+              animation: "marquee 26s linear infinite",
+            } as CSSProperties
+          }
         >
-          {logoSets.map((logo, i) => (
+          {LOGO_TRACK.map((logo, i) => (
             <div
               key={`${logo.name}-${i}`}
               className="flex items-center justify-center h-16 w-32 flex-shrink-0 grayscale opacity-60 hover:opacity-100 hover:grayscale-0 transition-all duration-300"
@@ -60,6 +65,7 @@ export function LogoCarousel() {
                 <img
                   src={logo.src}
                   alt={logo.name}
+                  loading="lazy"
                   className="h-auto w-auto max-h-12 object-contain"
                 />
               ) : (
@@ -69,6 +75,7 @@ export function LogoCarousel() {
                   width={120}
                   height={48}
                   className="h-auto w-auto max-h-12 object-contain"
+                  priority={i < LOGOS.length}
                 />
               )}
             </div>

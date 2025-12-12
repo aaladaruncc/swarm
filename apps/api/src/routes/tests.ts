@@ -3,7 +3,8 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { eq, desc, inArray, and } from "drizzle-orm";
 import { db, schema } from "../db/index.js";
-import { runUserTestAgent, SAMPLE_PERSONAS } from "../lib/agent.js";
+import { runUserTestAgent } from "../lib/agent.js";
+import { SAMPLE_PERSONAS } from "../lib/personas.js";
 import type { Session } from "../lib/auth.js";
 import Browserbase from "@browserbasehq/sdk";
 
@@ -140,6 +141,198 @@ testsRoutes.get("/:id/screenshots", async (c) => {
   return c.json({ screenshots });
 });
 
+// GET /tests/:id/transcript - Get session transcript with actions, reasoning, and screenshots
+testsRoutes.get("/:id/transcript", async (c) => {
+  const user = c.get("user");
+  const testId = c.req.param("id");
+
+  const [testRun] = await db
+    .select()
+    .from(schema.testRuns)
+    .where(eq(schema.testRuns.id, testId));
+
+  if (!testRun || testRun.userId !== user.id) {
+    return c.json({ error: "Test not found" }, 404);
+  }
+
+  // Get report with full data
+  const [report] = await db
+    .select()
+    .from(schema.reports)
+    .where(eq(schema.reports.testRunId, testId));
+
+  if (!report) {
+    return c.json({ error: "Report not found" }, 404);
+  }
+
+  // Get screenshots
+  const screenshots = await db
+    .select()
+    .from(schema.screenshots)
+    .where(eq(schema.screenshots.testRunId, testId))
+    .orderBy(schema.screenshots.stepNumber);
+
+  // Extract transcript data from fullReport
+  const fullReport = report.fullReport as any;
+  const agentActions = fullReport?.agentActions || [];
+  const agentReasoning = fullReport?.agentReasoning || "";
+  const agentLogs = fullReport?.agentLogs || [];
+  const rawStreams = fullReport?.rawStreams || { stdout: [], stderr: [] };
+
+  // Combine actions, logs, and screenshots into timeline
+  const timeline: Array<{
+    type: "action" | "screenshot" | "reasoning" | "log" | "raw";
+    timestamp: number;
+    data: any;
+  }> = [];
+
+  const baseTimestamp =
+    (testRun.startedAt ? new Date(testRun.startedAt).getTime() : Date.now()) || Date.now();
+
+  // Add logs (agent thinking/INFO messages)
+  agentLogs.forEach((log: any) => {
+    timeline.push({
+      type: "log",
+      timestamp: log.timestamp || 0,
+      data: {
+        level: log.level || "INFO",
+        message: log.message || "",
+      },
+    });
+  });
+
+  // Add actions
+  agentActions.forEach((action: any) => {
+    timeline.push({
+      type: "action",
+      timestamp: action.timestamp || 0,
+      data: action,
+    });
+  });
+
+  // Add raw stdout/stderr (unfiltered reasoning stream)
+  // Parse and split multi-line chunks, extract timestamps from Stagehand format
+  let rawIdx = 0;
+  (rawStreams.stdout || []).forEach((chunk: string) => {
+    // Remove ANSI color codes
+    const cleanChunk = chunk.replace(/\x1b\[[0-9;]*m/g, '');
+    const lines = cleanChunk.split('\n');
+    lines.forEach((line: string) => {
+      const trimmed = line.trim();
+      if (trimmed.length === 0) return;
+      
+      // Strip dev server prefixes (e.g., "apps/api dev: ")
+      const cleanLine = trimmed.replace(/^apps\/\w+\s+dev:\s*/i, '').trim();
+      if (cleanLine.length === 0) return;
+      
+      // Try to extract timestamp from Stagehand format: [2025-12-11 02:58:35.865 -0500] LEVEL: message
+      const timestampMatch = cleanLine.match(/\[([^\]]+)\]/);
+      let timestamp = baseTimestamp + rawIdx;
+      if (timestampMatch) {
+        try {
+          const parsed = new Date(timestampMatch[1]).getTime();
+          if (!isNaN(parsed)) {
+            timestamp = parsed;
+          }
+        } catch {
+          // Use default
+        }
+      }
+      
+      timeline.push({
+        type: "raw",
+        timestamp,
+        data: {
+          stream: "stdout",
+          message: cleanLine,
+        },
+      });
+      rawIdx++;
+    });
+  });
+
+  (rawStreams.stderr || []).forEach((chunk: string) => {
+    // Remove ANSI color codes
+    const cleanChunk = chunk.replace(/\x1b\[[0-9;]*m/g, '');
+    const lines = cleanChunk.split('\n');
+    lines.forEach((line: string) => {
+      const trimmed = line.trim();
+      if (trimmed.length === 0) return;
+      
+      // Strip dev server prefixes
+      const cleanLine = trimmed.replace(/^apps\/\w+\s+dev:\s*/i, '').trim();
+      if (cleanLine.length === 0) return;
+      
+      // Try to extract timestamp from Stagehand format
+      const timestampMatch = cleanLine.match(/\[([^\]]+)\]/);
+      let timestamp = baseTimestamp + rawIdx + 0.5;
+      if (timestampMatch) {
+        try {
+          const parsed = new Date(timestampMatch[1]).getTime();
+          if (!isNaN(parsed)) {
+            timestamp = parsed;
+          }
+        } catch {
+          // Use default
+        }
+      }
+      
+      timeline.push({
+        type: "raw",
+        timestamp,
+        data: {
+          stream: "stderr",
+          message: cleanLine,
+        },
+      });
+      rawIdx++;
+    });
+  });
+
+  // Add screenshots (use timestamp from fullReport if available, otherwise estimate)
+  screenshots.forEach((screenshot, index) => {
+    // Try to get timestamp from fullReport screenshots array
+    const fullReportScreenshot = (fullReport?.screenshots || []).find(
+      (s: any) => s.stepNumber === screenshot.stepNumber
+    );
+    
+    // Use stored timestamp, or estimate based on step number
+    const timestamp = fullReportScreenshot?.timestamp 
+      ? fullReportScreenshot.timestamp
+      : testRun.startedAt 
+        ? new Date(testRun.startedAt).getTime() + (screenshot.stepNumber * 5000) // ~5 seconds per step
+        : Date.now();
+    
+    timeline.push({
+      type: "screenshot",
+      timestamp,
+      data: {
+        stepNumber: screenshot.stepNumber,
+        description: screenshot.description,
+        base64Data: screenshot.base64Data,
+        createdAt: screenshot.createdAt,
+      },
+    });
+  });
+
+  // Sort timeline by timestamp
+  timeline.sort((a, b) => a.timestamp - b.timestamp);
+
+  return c.json({
+    agentActions,
+    agentReasoning,
+    agentLogs,
+    rawStreams,
+    screenshots,
+    timeline,
+    testRun: {
+      startedAt: testRun.startedAt,
+      completedAt: testRun.completedAt,
+      targetUrl: testRun.targetUrl,
+    },
+  });
+});
+
 // GET /tests/:id/recording - Get session live view URL from Browserbase
 testsRoutes.get("/:id/recording", async (c) => {
   const user = c.get("user");
@@ -166,9 +359,11 @@ testsRoutes.get("/:id/recording", async (c) => {
     // Try to get the live view URL using the debug endpoint
     try {
       const debugInfo = await bb.sessions.debug(testRun.browserbaseSessionId);
+      const liveViewUrl = debugInfo.debuggerFullscreenUrl || debugInfo.debuggerUrl || debugInfo.liveUrl;
       
       return c.json({ 
-        liveViewUrl: debugInfo.debuggerFullscreenUrl,
+        liveViewUrl,
+        debugUrl: liveViewUrl,
         sessionId: testRun.browserbaseSessionId,
       });
     } catch (debugError: any) {
@@ -180,6 +375,7 @@ testsRoutes.get("/:id/recording", async (c) => {
         // This will show the recording on Browserbase's platform
         return c.json({ 
           liveViewUrl: `https://www.browserbase.com/sessions/${testRun.browserbaseSessionId}`,
+          debugUrl: `https://www.browserbase.com/sessions/${testRun.browserbaseSessionId}`,
           sessionId: testRun.browserbaseSessionId,
           isFallback: true,
         });

@@ -2,8 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useSession, signOut, authClient } from "@/lib/auth-client";
-import { User, Mail, LogOut, Loader2, Check } from "lucide-react";
+import { User, Mail, LogOut, Loader2, Check, Bell, BellOff } from "lucide-react";
 import { useState, useEffect } from "react";
+import {
+  isNotificationSupported,
+  getNotificationPermission,
+  requestNotificationPermission,
+  isNotificationsEnabled,
+  setNotificationsEnabled,
+} from "@/lib/notifications";
 
 export default function SettingsPage() {
   const { data: session } = useSession();
@@ -13,6 +20,11 @@ export default function SettingsPage() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  
+  // Notification state
+  const [notificationsEnabled, setNotificationsEnabledState] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
+  const [isRequestingPermission, setIsRequestingPermission] = useState(false);
 
   useEffect(() => {
     if (session?.user) {
@@ -21,10 +33,62 @@ export default function SettingsPage() {
     }
   }, [session]);
 
+  useEffect(() => {
+    if (isNotificationSupported()) {
+      const permission = getNotificationPermission();
+      const enabled = isNotificationsEnabled();
+      setNotificationPermission(permission);
+      setNotificationsEnabledState(enabled);
+      
+      // If permission was granted but we don't have it stored, update it
+      if (permission === "granted" && !enabled) {
+        setNotificationsEnabled(true);
+        setNotificationsEnabledState(true);
+      }
+    }
+  }, []);
+
   const handleSignOut = async () => {
     await signOut();
     router.push("/login");
   };
+
+  const handleToggleNotifications = async () => {
+    if (!isNotificationSupported()) {
+      setMessage({ type: "error", text: "Browser notifications are not supported in this browser." });
+      return;
+    }
+
+    if (!notificationsEnabled) {
+      // Turning on - request permission
+      setIsRequestingPermission(true);
+      try {
+        const permission = await requestNotificationPermission();
+        setNotificationPermission(permission);
+
+        if (permission === "granted") {
+          setNotificationsEnabledState(true);
+          setNotificationsEnabled(true);
+          setMessage({ type: "success", text: "Notifications enabled! You'll be notified when your test runs complete." });
+        } else if (permission === "denied") {
+          setMessage({ type: "error", text: "Notification permission was denied. Please enable it in your browser settings." });
+        } else {
+          setMessage({ type: "error", text: "Notification permission was not granted." });
+        }
+      } catch (error) {
+        console.error("Error requesting notification permission:", error);
+        setMessage({ type: "error", text: "Failed to request notification permission." });
+      } finally {
+        setIsRequestingPermission(false);
+      }
+    } else {
+      // Turning off
+      setNotificationsEnabledState(false);
+      setNotificationsEnabled(false);
+      setMessage({ type: "success", text: "Notifications disabled." });
+    }
+  };
+
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,6 +236,52 @@ export default function SettingsPage() {
                 <LogOut size={16} />
                 Sign Out
               </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Notifications Section */}
+        <section className="mt-12">
+          <h2 className="text-lg font-medium text-foreground mb-6 uppercase tracking-widest text-xs border-b border-border pb-2">Notifications</h2>
+          
+          <div className="bg-background border border-border rounded-none p-8">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  {notificationsEnabled ? (
+                    <Bell size={20} className="text-primary" />
+                  ) : (
+                    <BellOff size={20} className="text-muted-foreground" />
+                  )}
+                  <h3 className="text-base font-medium text-foreground">Test Completion Notifications</h3>
+                </div>
+                <p className="text-sm text-muted-foreground font-light ml-8">
+                  Get notified when your test runs complete. You'll receive a browser notification when the newest test finishes.
+                </p>
+                {notificationPermission === "denied" && (
+                  <p className="text-xs text-destructive mt-2 ml-8">
+                    Notifications are blocked. Please enable them in your browser settings.
+                  </p>
+                )}
+              </div>
+              
+              <div className="flex items-center">
+                <button
+                  onClick={handleToggleNotifications}
+                  disabled={isRequestingPermission || notificationPermission === "denied"}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-none transition-colors focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:ring-offset-2 ${
+                    notificationsEnabled ? "bg-neutral-900" : "bg-neutral-200"
+                  } ${isRequestingPermission ? "opacity-50 cursor-wait" : ""} ${
+                    notificationPermission === "denied" ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform bg-white transition-transform border border-neutral-900 ${
+                      notificationsEnabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
           </div>
         </section>
