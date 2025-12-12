@@ -21,7 +21,6 @@ export default function App() {
       smoothWheel: true,
       wheelMultiplier: 1.8,
       touchMultiplier: 2.5,
-      smoothTouch: true,
       infinite: false,
     });
 
