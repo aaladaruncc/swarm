@@ -1157,7 +1157,7 @@ ${errorContext}`,
 
     // Finalize any pending log entry
     if (currentLogEntry !== null) {
-      const pendingEntry = currentLogEntry;
+      const pendingEntry: { level: "INFO" | "WARN" | "ERROR" | "DEBUG"; message: string; timestamp: number } = currentLogEntry;
       const lower = pendingEntry.message.toLowerCase();
       const isApiNoise =
         (lower.includes("get /api/") && !lower.includes("reasoning") && !lower.includes("executing step")) ||
