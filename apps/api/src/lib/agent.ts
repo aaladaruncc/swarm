@@ -907,7 +907,7 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
       try {
         const title = await page.title();
         if (title && title.toLowerCase().includes("404")) return true;
-        const content = await page.content();
+        const content = await page.evaluate(() => document.documentElement.outerHTML);
         return content.toLowerCase().includes("404");
       } catch {
         return false;
@@ -1005,7 +1005,7 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
 
     log("Starting agent exploration...");
 
-    let agentResult;
+    let agentResult: any;
     let wasTimeout = false;
     let screenshotLoopStop = false;
     const screenshotIntervalMs = 5000; // capture every 5 seconds while the agent runs
@@ -1156,7 +1156,7 @@ ${errorContext}`,
     log(`Test complete. Score: ${extractedScore}/10 ${wasTimeout ? "(timeout fallback)" : ""}`);
 
     // Finalize any pending log entry
-    const pendingEntry = currentLogEntry;
+    const pendingEntry: { level: "INFO" | "WARN" | "ERROR" | "DEBUG"; message: string; timestamp: number } | null = currentLogEntry;
     if (pendingEntry !== null) {
       const lower = pendingEntry.message.toLowerCase();
       const isApiNoise =

@@ -359,7 +359,7 @@ testsRoutes.get("/:id/recording", async (c) => {
     // Try to get the live view URL using the debug endpoint
     try {
       const debugInfo = await bb.sessions.debug(testRun.browserbaseSessionId);
-      const liveViewUrl = debugInfo.debuggerFullscreenUrl || debugInfo.debuggerUrl || debugInfo.liveUrl;
+      const liveViewUrl = debugInfo.debuggerFullscreenUrl || debugInfo.debuggerUrl;
       
       return c.json({ 
         liveViewUrl,
