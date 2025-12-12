@@ -183,7 +183,7 @@ export default function NewTest() {
             <div className="mb-12">
               <h1 className="text-4xl font-light tracking-tight mb-4">Initialize Batch Simulation</h1>
               <p className="text-neutral-500 font-light text-lg">
-                Define your target environment and audience. AI will generate diverse personas to test your experience.
+                Define your target environment and audience. AI will generate richer, behavior-driven personas (patience, trust, device expectations) to test your experience.
               </p>
             </div>
 
@@ -312,7 +312,7 @@ export default function NewTest() {
               <div className="flex items-start gap-3 p-4 bg-neutral-50 border border-neutral-100 text-sm font-light text-neutral-600">
                 <Info size={16} className="mt-0.5 shrink-0" />
                 <p>
-                  AI will generate 10 diverse personas and automatically select the {agentCount} most relevant ones.
+                  AI will generate 10 diverse personas (with patience, trust, and device heuristics) and automatically select the {agentCount} most relevant ones. Agents now run with added resilience checks and evidence capture.
                 </p>
               </div>
 
@@ -466,7 +466,7 @@ export default function NewTest() {
               <div className="flex items-start gap-3 p-4 bg-neutral-50 border border-neutral-100 text-sm font-light text-neutral-600">
                 <Info size={16} className="mt-0.5 shrink-0" />
                 <p>
-                  Each agent will run concurrently. Queue system prevents rate limits. Tests take 5-10 minutes.
+                  Each agent will run concurrently with a ~6 minute cap and resilience (re-observe, single retry, 404 double-checks). Queue system prevents rate limits.
                 </p>
               </div>
 

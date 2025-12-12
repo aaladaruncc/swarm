@@ -218,6 +218,28 @@ export function SessionTranscriptViewer({ testRunId, personaName, onClose }: Ses
                     );
                   }
                   
+                  if (item.type === "raw") {
+                    const raw = item.data;
+                    return (
+                      <div key={`raw-${index}`} className="border-l-2 border-neutral-400 pl-4 py-2 hover:bg-neutral-50 transition-colors">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 mt-0.5">
+                            <Info size={14} className="text-neutral-500" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-mono text-neutral-500 font-light">{time}</span>
+                              <span className="text-xs px-1.5 py-0.5 bg-neutral-600 text-white font-light uppercase">{raw.stream || "RAW"}</span>
+                            </div>
+                            <p className="text-sm text-neutral-600 font-light leading-relaxed whitespace-pre-wrap font-mono">
+                              {raw.message}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  
                   return null;
                 })
               )}

@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loginSuccess, setLoginSuccess] = useState(false);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -39,12 +40,21 @@ export default function LoginPage() {
     try {
       if (isLogin) {
         const res = await signIn.email({ email, password });
+        
         if (res?.error) {
           setError(res.error.message || "Authentication failed");
           setLoading(false);
           return;
         }
-        router.push("/dashboard");
+        
+        setLoginSuccess(true);
+        
+        // Wait a moment for cookies to be set, then use window.location for full page reload
+        // This ensures cookies are properly sent with the next request
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Use window.location.href for full page reload to ensure cookies are sent
+        window.location.href = "/dashboard";
       } else {
         const res = await signUp.email({ email, password, name });
         if (res?.error) {
@@ -62,9 +72,16 @@ export default function LoginPage() {
         }, 2000);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Authentication failed");
+      const errorMessage = err instanceof Error ? err.message : "Authentication failed";
+      // Check if it's a network error
+      if (errorMessage.includes("Failed to fetch") || errorMessage.includes("ERR_CONNECTION_REFUSED") || errorMessage.includes("NetworkError")) {
+        setError("Cannot connect to server. Please make sure the API server is running on port 8080.");
+      } else {
+        setError(errorMessage);
+      }
+      setLoading(false);
     } finally {
-      if (isLogin && !error) {
+      if (isLogin && loginSuccess) {
          // keep loading if successful login to avoid flash
       } else {
          setLoading(false);

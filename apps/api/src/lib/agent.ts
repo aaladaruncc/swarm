@@ -3,6 +3,14 @@ import { type UserPersona, SAMPLE_PERSONAS, getPersonaByIndex } from "./personas
 import { Writable } from "stream";
 
 // ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const MAX_RUN_WALL_CLOCK_MS = 6 * 60 * 1000; // 6 minutes hard cap
+const ACTION_RETRY_BACKOFF_MS = 1500;
+const RAW_STREAM_MAX_ENTRIES = 4000;
+
+// ============================================================================
 // TYPES
 // ============================================================================
 
@@ -60,6 +68,22 @@ export interface AgentResult {
   agentActions?: AgentAction[]; // Actions taken by the agent
   agentReasoning?: string; // Full reasoning/thinking from agent
   agentLogs?: AgentLog[]; // Console logs captured during execution
+  rawStreams?: {
+    stdout: string[];
+    stderr: string[];
+  }; // Unfiltered raw stream for full reasoning
+  runtimeMetrics?: {
+    navDurationMs?: number;
+    executionDurationMs?: number;
+    timedOut: boolean;
+    navigationRetries: number;
+    actionCount: number;
+    autoScreenshotCount: number;
+    errorEvents: string[];
+  };
+  runCaps?: {
+    maxRunMs: number;
+  };
 }
 
 export interface RunTestOptions {
@@ -157,6 +181,11 @@ CRITICAL REMINDERS:
 - Give ACTIONABLE recommendations (not "improve UX" but "reduce form from 12 to 5 fields")
 - Think as a ${persona.age}yo ${persona.occupation} with ${persona.techSavviness} tech skills
 - Complete by step 15 maximum!
+- Before every click/type: re-read the current page to confirm the element is present and interactable. After each action, verify the expected change (URL or element) happened; if not, re-check once and move on.
+- If an action fails, retry once after a short pause. Do not loop. If it still fails, log it as blocked with what you tried and why it failed.
+- If a page claims 404/4xx, refresh once and try again; if it works, note it as a warning, otherwise record as an issue with evidence.
+- Only treat the site as "slow" when the page/app is slow; do not confuse your own thinking time with user impatience.
+- Attach evidence to each issue: what you attempted, the element text/section, any latency noticed, and a concrete fix.
 `;
 }
 
@@ -463,6 +492,29 @@ function parseAgentFeedback(agentMessage: string): {
 }
 
 // ============================================================================
+// RUNTIME HELPERS
+// ============================================================================
+
+function createTimeoutPromise<T>(ms: number, onTimeout: () => void): Promise<T> {
+  return new Promise((_, reject) => {
+    const timer = setTimeout(() => {
+      onTimeout();
+      reject(new Error(`Run exceeded max wall clock (${ms} ms)`));
+    }, ms);
+    // Prevent Node from holding the process open
+    (timer as any).unref?.();
+  });
+}
+
+function pushCapped(arr: string[], item: string) {
+  if (!item) return;
+  arr.push(item);
+  if (arr.length > RAW_STREAM_MAX_ENTRIES) {
+    arr.shift();
+  }
+}
+
+// ============================================================================
 // MAIN AGENT FUNCTION
 // ============================================================================
 
@@ -478,10 +530,18 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
 
   const persona = customPersona || getPersonaByIndex(personaIndex);
   const startTime = Date.now();
+  const runCaps = { maxRunMs: MAX_RUN_WALL_CLOCK_MS };
   const interactionLogs: InteractionLog[] = [];
   const screenshots: Array<{ stepNumber: number; description: string; base64Data: string; timestamp?: number }> = [];
   const agentLogs: AgentLog[] = [];
+  const rawStdout: string[] = [];
+  const rawStderr: string[] = [];
+  const errorEvents: string[] = [];
+  let navigationRetries = 0;
   let stepCount = 0;
+  let navDurationMs: number | undefined;
+  let executionDurationMs: number | undefined;
+  let runTimedOut = false;
 
   // Intercept both console.log and stdout to capture ALL messages from Stagehand verbose logging
   const originalConsoleLog = console.log;
@@ -495,43 +555,208 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
   const recentLogMap = new Map<string, number>();
   const DEDUPE_MS = 1500;
   
+  // Track current log entry for multi-line messages
+  let currentLogEntry: { level: "INFO" | "WARN" | "ERROR" | "DEBUG"; message: string; timestamp: number } | null = null;
+  
+  // Helper to parse Stagehand verbose log format: [timestamp] LEVEL: message
+  // Also handles dev server prefixes like "apps/api dev: "
+  const parseStagehandLog = (line: string): { level: "INFO" | "WARN" | "ERROR" | "DEBUG"; message: string; timestamp?: number } | null => {
+    const trimmed = line.trim();
+    if (!trimmed) return null;
+    
+    // Strip common dev server prefixes (e.g., "apps/api dev: ", "apps/web dev: ")
+    let cleanLine = trimmed.replace(/^apps\/\w+\s+dev:\s*/i, '');
+    
+    // Match Stagehand format: [2025-12-11 02:58:35.865 -0500] DEBUG: message
+    // Also match with optional prefix before the bracket
+    const stagehandMatch = cleanLine.match(/\[([^\]]+)\]\s+(DEBUG|INFO|WARN|ERROR|TRACE):\s*(.+)$/i);
+    if (stagehandMatch) {
+      const [, timestampStr, levelStr, message] = stagehandMatch;
+      const level = (levelStr.toUpperCase() as "INFO" | "WARN" | "ERROR" | "DEBUG");
+      // Try to parse timestamp, fallback to current time
+      let timestamp: number;
+      try {
+        timestamp = new Date(timestampStr).getTime();
+        if (isNaN(timestamp)) timestamp = Date.now();
+      } catch {
+        timestamp = Date.now();
+      }
+      return { level, message: message.trim(), timestamp };
+    }
+    
+    // Category lines are handled as continuations, not skipped here
+    // They'll be included in the log entry they belong to
+    
+    // Default: treat as INFO level, but keep the original message
+    return { level: "INFO", message: trimmed };
+  };
+
   const captureLog = (level: "INFO" | "WARN" | "ERROR" | "DEBUG", message: string) => {
+    // Always keep raw stream (unfiltered) for replay
+    pushCapped(level === "DEBUG" ? rawStderr : rawStdout, message);
+
     // Split multi-line chunks so we don't lose content written in a single stdout write
     const lines = (message || "").split("\n");
     lines.forEach((line) => {
       const trimmedMessage = line.trim();
-      if (trimmedMessage.length <= 1) return;
-
-      // Deduplicate identical messages within a short window to avoid double-capture from console + stdout
-      const now = Date.now();
-      const key = `${level}:${trimmedMessage}`;
-      const lastSeen = recentLogMap.get(key);
-      if (lastSeen && now - lastSeen < DEDUPE_MS) {
+      if (trimmedMessage.length <= 1) {
+        // Empty line - if we have a current log entry, add a newline to it
+        if (currentLogEntry) {
+          currentLogEntry.message += "\n";
+        }
         return;
       }
-      recentLogMap.set(key, now);
 
-      // Drop noisy API/server logs; keep agent reasoning
-      const lower = trimmedMessage.toLowerCase();
-      const isApiNoise =
-        lower.includes("get /api/") ||
-        lower.includes("post /api/") ||
-        lower.includes("options /api/") ||
-        lower.includes("put /api/") ||
-        lower.includes("delete /api/") ||
-        lower.includes("queue]") ||
-        lower.startsWith("<--") ||
-        lower.startsWith("-->") ||
-        lower.includes("batch-tests") ||
-        lower.includes("auth/get-session") ||
-        lower.match(/^\d{3}\s+\d+ms/);
-      if (isApiNoise) return;
+      // Try to parse Stagehand log format first
+      const parsed = parseStagehandLog(trimmedMessage);
       
-      agentLogs.push({
-        timestamp: Date.now(),
-        level,
-        message: trimmedMessage,
-      });
+      // If this is a new log entry (has timestamp/level), finalize previous entry and start new one
+      if (parsed && parsed.timestamp) {
+        // Finalize previous entry if exists
+        if (currentLogEntry) {
+          const lower = currentLogEntry.message.toLowerCase();
+          const isApiNoise =
+            (lower.includes("get /api/") && !lower.includes("reasoning") && !lower.includes("executing step")) ||
+            (lower.includes("post /api/") && !lower.includes("reasoning")) ||
+            (lower.includes("options /api/")) ||
+            (lower.includes("put /api/")) ||
+            (lower.includes("delete /api/")) ||
+            (lower.includes("[queue]") && !lower.includes("reasoning")) ||
+            (lower.startsWith("<--") && !lower.includes("reasoning")) ||
+            (lower.startsWith("-->") && !lower.includes("reasoning") && !lower.match(/\d{3}\s+\d+ms/)) ||
+            (lower.includes("batch-tests") && !lower.includes("reasoning") && !lower.includes("executing")) ||
+            (lower.includes("auth/get-session") && !lower.includes("reasoning")) ||
+            (lower.match(/^\d{3}\s+\d+ms$/) && !lower.includes("reasoning"));
+          
+          const isStagehandAgentLog = 
+            currentLogEntry.level === "DEBUG" ||
+            lower.includes("reasoning:") ||
+            lower.includes("executing step") ||
+            lower.includes("raw response") ||
+            lower.includes("function call") ||
+            lower.includes("found function call") ||
+            lower.includes("taking screenshot") ||
+            lower.includes("capturing screenshot") ||
+            lower.includes("agent completed") ||
+            lower.includes("category:");
+          
+          if (!isApiNoise || isStagehandAgentLog) {
+            // Deduplicate
+            const key = `${currentLogEntry.level}:${currentLogEntry.message}`;
+            const now = Date.now();
+            const lastSeen = recentLogMap.get(key);
+            if (!lastSeen || now - lastSeen >= DEDUPE_MS) {
+              recentLogMap.set(key, now);
+              agentLogs.push({
+                timestamp: currentLogEntry.timestamp,
+                level: currentLogEntry.level,
+                message: currentLogEntry.message,
+              });
+            }
+          }
+        }
+        
+        // Start new log entry
+        currentLogEntry = {
+          level: parsed.level,
+          message: parsed.message,
+          timestamp: parsed.timestamp,
+        };
+      } else if (currentLogEntry) {
+        // Continuation of previous log entry (multi-line message)
+        // Check if this line is a continuation:
+        const cleanLine = trimmedMessage.replace(/^apps\/\w+\s+dev:\s*/i, '').trim();
+        
+        // Check if this is a new timestamped log entry
+        const isNewTimestampedLog = cleanLine.match(/^\[([^\]]+)\]\s+(DEBUG|INFO|WARN|ERROR|TRACE):/i);
+        
+        // Check if this is an HTTP log (not a continuation)
+        const isHttpLog = cleanLine.match(/^(GET|POST|PUT|DELETE|OPTIONS)\s+\//i) || 
+                          cleanLine.match(/^<--|^-->/) ||
+                          cleanLine.match(/^\d{3}\s+\d+ms/);
+        
+        // Determine if this is a continuation:
+        // - Not a new timestamped log
+        // - Not an HTTP log  
+        // - Is JSON content, category line, or continuation text
+        const isJsonContent = 
+          cleanLine.match(/^[\s"{}[\],:]/) || // JSON structure characters
+          cleanLine.match(/^\s*"[^"]+"\s*:/) || // JSON key-value pairs
+          cleanLine.match(/^\s*category:/i) || // Category metadata (part of JSON block)
+          (currentLogEntry.message.includes("{") && !currentLogEntry.message.includes("}")) || // Incomplete JSON object
+          (currentLogEntry.message.match(/\{/g)?.length || 0) > (currentLogEntry.message.match(/\}/g)?.length || 0); // Unbalanced braces
+        
+        const isContinuation = 
+          !isNewTimestampedLog && // Not a new timestamped log
+          !isHttpLog && // Not an HTTP log
+          (isJsonContent || // JSON/category content
+           cleanLine[0] === cleanLine[0].toLowerCase() || // Starts with lowercase (likely continuation)
+           cleanLine.startsWith("  ") || // Indented (likely continuation)
+           cleanLine.startsWith("    ") || // More indented
+           currentLogEntry.message.toLowerCase().includes("raw response") || // Part of raw response block
+           currentLogEntry.message.toLowerCase().includes("reasoning:")); // Part of reasoning block
+        
+        if (isContinuation) {
+          // Include category lines as part of the log entry
+          currentLogEntry.message += "\n" + cleanLine;
+        } else {
+          // Might be a new log entry without timestamp, finalize previous and start new
+          const lower = currentLogEntry.message.toLowerCase();
+          const isApiNoise =
+            (lower.includes("get /api/") && !lower.includes("reasoning") && !lower.includes("executing step")) ||
+            (lower.includes("post /api/") && !lower.includes("reasoning")) ||
+            (lower.includes("options /api/")) ||
+            (lower.includes("put /api/")) ||
+            (lower.includes("delete /api/")) ||
+            (lower.includes("[queue]") && !lower.includes("reasoning")) ||
+            (lower.startsWith("<--") && !lower.includes("reasoning")) ||
+            (lower.startsWith("-->") && !lower.includes("reasoning") && !lower.match(/\d{3}\s+\d+ms/)) ||
+            (lower.includes("batch-tests") && !lower.includes("reasoning") && !lower.includes("executing")) ||
+            (lower.includes("auth/get-session") && !lower.includes("reasoning")) ||
+            (lower.match(/^\d{3}\s+\d+ms$/) && !lower.includes("reasoning"));
+          
+          const isStagehandAgentLog = 
+            currentLogEntry.level === "DEBUG" ||
+            lower.includes("reasoning:") ||
+            lower.includes("executing step") ||
+            lower.includes("raw response") ||
+            lower.includes("function call") ||
+            lower.includes("found function call") ||
+            lower.includes("taking screenshot") ||
+            lower.includes("capturing screenshot") ||
+            lower.includes("agent completed") ||
+            lower.includes("category:");
+          
+          if (!isApiNoise || isStagehandAgentLog) {
+            const key = `${currentLogEntry.level}:${currentLogEntry.message}`;
+            const now = Date.now();
+            const lastSeen = recentLogMap.get(key);
+            if (!lastSeen || now - lastSeen >= DEDUPE_MS) {
+              recentLogMap.set(key, now);
+              agentLogs.push({
+                timestamp: currentLogEntry.timestamp,
+                level: currentLogEntry.level,
+                message: currentLogEntry.message,
+              });
+            }
+          }
+          
+          // Start new entry
+          currentLogEntry = {
+            level: parsed?.level || level,
+            message: parsed?.message || cleanLine,
+            timestamp: parsed?.timestamp || Date.now(),
+          };
+        }
+      } else {
+        // No current entry, start new one
+        const cleanLine = trimmedMessage.replace(/^apps\/\w+\s+dev:\s*/i, '').trim();
+        currentLogEntry = {
+          level: parsed?.level || level,
+          message: parsed?.message || cleanLine,
+          timestamp: parsed?.timestamp || Date.now(),
+        };
+      }
     });
   };
 
@@ -591,9 +816,20 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
   // Also intercept stdout directly (Stagehand might write directly to stdout)
   process.stdout.write = function(chunk: any, encoding?: any, callback?: any): boolean {
     if (typeof chunk === 'string') {
+      // Always capture raw (with ANSI codes for now, we'll strip them later)
+      pushCapped(rawStdout, chunk);
       // Avoid double-capturing console.* writes
       if (!isConsoleStdoutWrite) {
-        captureLog("INFO", chunk);
+        // Remove ANSI codes before parsing
+        const cleanChunk = chunk.replace(/\x1b\[[0-9;]*m/g, '');
+        captureLog("INFO", cleanChunk);
+      }
+    } else if (Buffer.isBuffer(chunk)) {
+      const str = chunk.toString('utf8');
+      pushCapped(rawStdout, str);
+      if (!isConsoleStdoutWrite) {
+        const cleanChunk = str.replace(/\x1b\[[0-9;]*m/g, '');
+        captureLog("INFO", cleanChunk);
       }
     }
     return originalStdoutWrite(chunk, encoding, callback);
@@ -602,9 +838,20 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
   // Intercept stderr as well (Stagehand/Gemini sometimes streams reasoning to stderr)
   process.stderr.write = function(chunk: any, encoding?: any, callback?: any): boolean {
     if (typeof chunk === 'string') {
+      // Always capture raw
+      pushCapped(rawStderr, chunk);
       // Avoid double-capturing console.error writes
       if (!isConsoleStderrWrite) {
-        captureLog("DEBUG", chunk);
+        // Remove ANSI codes before parsing
+        const cleanChunk = chunk.replace(/\x1b\[[0-9;]*m/g, '');
+        captureLog("DEBUG", cleanChunk);
+      }
+    } else if (Buffer.isBuffer(chunk)) {
+      const str = chunk.toString('utf8');
+      pushCapped(rawStderr, str);
+      if (!isConsoleStderrWrite) {
+        const cleanChunk = str.replace(/\x1b\[[0-9;]*m/g, '');
+        captureLog("DEBUG", cleanChunk);
       }
     }
     return originalStderrWrite(chunk, encoding, callback);
@@ -655,15 +902,55 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
   try {
     // Navigate to target URL
     log(`Navigating to ${targetUrl}...`);
+    const navStart = Date.now();
+    const looksLike404 = async () => {
+      try {
+        const title = await page.title();
+        if (title && title.toLowerCase().includes("404")) return true;
+        const content = await page.content();
+        return content.toLowerCase().includes("404");
+      } catch {
+        return false;
+      }
+    };
+
+    const navigateOnce = async (waitForNetworkIdle: boolean) => {
+      const response = await page.goto(targetUrl, waitForNetworkIdle ? { waitUntil: "networkidle", timeoutMs: 30000 } : { timeoutMs: 30000 });
+      const status = typeof response?.status === "function" ? response?.status() : undefined;
+      return status;
+    };
+
     try {
-      await page.goto(targetUrl, { waitUntil: "networkidle", timeoutMs: 30000 });
-      log("✅ Page loaded successfully");
+      const status = await navigateOnce(true);
+      navDurationMs = Date.now() - navStart;
+      if (status && status >= 400) {
+        navigationRetries += 1;
+        errorEvents.push(`navigation-status-${status}`);
+        log(`⚠️ Navigation returned status ${status}, retrying with refresh...`);
+        await page.reload({ waitUntil: "networkidle", timeoutMs: 20000 });
+      }
     } catch (navError: any) {
+      navigationRetries += 1;
+      errorEvents.push(`navigation-error-${navError?.message || "unknown"}`);
       log(`⚠️ Navigation warning: ${navError.message}`);
       // Try without waiting for networkidle
-      await page.goto(targetUrl, { timeoutMs: 30000 });
-      log("✅ Page loaded (without networkidle)");
+      const status = await navigateOnce(false);
+      navDurationMs = Date.now() - navStart;
+      if (status && status >= 400) {
+        errorEvents.push(`navigation-status-${status}`);
+        log(`⚠️ Navigation status ${status} after fallback; attempting one refresh...`);
+        await page.reload({ timeoutMs: 20000 });
+      }
     }
+
+    const seen404 = await looksLike404();
+    if (seen404) {
+      navigationRetries += 1;
+      errorEvents.push("navigation-404-check");
+      log("⚠️ Page looks like 404; refreshing once to confirm...");
+      await page.reload({ timeoutMs: 20000 });
+    }
+
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Helper to capture screenshots with monotonically increasing step numbers
@@ -735,11 +1022,20 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
       }
     })();
 
+    const execStart = Date.now();
     try {
-      agentResult = await agent.execute({
+      const execPromise = agent.execute({
         instruction: generateAgentInstructions(persona),
         maxSteps,
       });
+
+      agentResult = await Promise.race([
+        execPromise,
+        createTimeoutPromise(MAX_RUN_WALL_CLOCK_MS, () => {
+          runTimedOut = true;
+        }),
+      ]);
+      executionDurationMs = Date.now() - execStart;
       
       // After agent completes, we can't capture intermediate states
       // But we can associate screenshots with actions using Browserbase's recording
@@ -757,16 +1053,17 @@ export async function runUserTestAgent(options: RunTestOptions): Promise<AgentRe
       await screenshotLoop;
 
       // If session times out or CDP closes, capture what we have
-      if (error.message?.includes("CDP") || error.message?.includes("timeout") || error.message?.includes("closed") || error.message?.includes("Session")) {
+      if (runTimedOut || error.message?.includes("CDP") || error.message?.includes("timeout") || error.message?.includes("closed") || error.message?.includes("Session")) {
         log("Session ended early (timeout/close), generating report from partial exploration...");
         wasTimeout = true;
+        errorEvents.push(`execution-error-${error?.message || "timeout"}`);
         
         // Try to extract any partial thoughts from error context
-        const errorContext = error.context?.lastResponse || error.message || "";
+        const errorContext = error?.context?.lastResponse || error?.message || "";
         
         agentResult = {
           message: `Session timed out during exploration. Based on partial observations:
-
+          
 FINAL UX ASSESSMENT
 
 FIRST IMPRESSION:
@@ -795,7 +1092,10 @@ TOP SUGGESTIONS:
 OVERALL SCORE: 6/10
 Session timed out before full assessment. Site complexity or performance may impact real user experience.
 
-END ASSESSMENT`,
+END ASSESSMENT
+
+Additional error context:
+${errorContext}`,
           success: false,
         };
 
@@ -803,6 +1103,10 @@ END ASSESSMENT`,
         await captureScreenshot("final-state-partial");
       } else {
         throw error;
+      }
+    } finally {
+      if (!executionDurationMs) {
+        executionDurationMs = Date.now() - execStart;
       }
     }
 
@@ -851,6 +1155,50 @@ END ASSESSMENT`,
 
     log(`Test complete. Score: ${extractedScore}/10 ${wasTimeout ? "(timeout fallback)" : ""}`);
 
+    // Finalize any pending log entry
+    const pendingEntry = currentLogEntry;
+    if (pendingEntry !== null) {
+      const lower = pendingEntry.message.toLowerCase();
+      const isApiNoise =
+        (lower.includes("get /api/") && !lower.includes("reasoning") && !lower.includes("executing step")) ||
+        (lower.includes("post /api/") && !lower.includes("reasoning")) ||
+        (lower.includes("options /api/")) ||
+        (lower.includes("put /api/") && !lower.includes("reasoning")) ||
+        (lower.includes("delete /api/")) ||
+        (lower.includes("[queue]") && !lower.includes("reasoning")) ||
+        (lower.startsWith("<--") && !lower.includes("reasoning")) ||
+        (lower.startsWith("-->") && !lower.includes("reasoning") && !lower.match(/\d{3}\s+\d+ms/)) ||
+        (lower.includes("batch-tests") && !lower.includes("reasoning") && !lower.includes("executing")) ||
+        (lower.includes("auth/get-session") && !lower.includes("reasoning")) ||
+        (lower.match(/^\d{3}\s+\d+ms$/) && !lower.includes("reasoning"));
+      
+      const isStagehandAgentLog = 
+        pendingEntry.level === "DEBUG" ||
+        lower.includes("reasoning:") ||
+        lower.includes("executing step") ||
+        lower.includes("raw response") ||
+        lower.includes("function call") ||
+        lower.includes("found function call") ||
+        lower.includes("taking screenshot") ||
+        lower.includes("capturing screenshot") ||
+        lower.includes("agent completed") ||
+        lower.includes("category:");
+      
+      if (!isApiNoise || isStagehandAgentLog) {
+        const key = `${pendingEntry.level}:${pendingEntry.message}`;
+        const now = Date.now();
+        const lastSeen = recentLogMap.get(key);
+        if (!lastSeen || now - lastSeen >= DEDUPE_MS) {
+          agentLogs.push({
+            timestamp: pendingEntry.timestamp,
+            level: pendingEntry.level,
+            message: pendingEntry.message,
+          });
+        }
+      }
+      currentLogEntry = null;
+    }
+
     return {
       persona,
       sessionId: `test-${Date.now()}`,
@@ -871,6 +1219,20 @@ END ASSESSMENT`,
       agentActions: (agentResult as any).actions || [], // Include agent actions for transcript
       agentReasoning, // Include full reasoning
       agentLogs, // Include captured console logs
+      rawStreams: {
+        stdout: rawStdout,
+        stderr: rawStderr,
+      },
+      runtimeMetrics: {
+        navDurationMs,
+        executionDurationMs,
+        timedOut: wasTimeout || runTimedOut,
+        navigationRetries,
+        actionCount: ((agentResult as any).actions || []).length,
+        autoScreenshotCount: autoShotCount,
+        errorEvents,
+      },
+      runCaps,
     };
   } catch (unexpectedError: any) {
     log(`❌ Unexpected error during test: ${unexpectedError.message}`);
@@ -928,4 +1290,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   });
 }
 
-export { SAMPLE_PERSONAS, getPersonaByIndex, type UserPersona };
+// Re-exports removed - import directly from ./personas.js if needed

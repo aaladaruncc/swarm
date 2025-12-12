@@ -135,3 +135,5 @@ const { result, transcript } = await executeAgentWithLiveTranscript(
 
 Refer to `RESEARCH_STAGEHAND_STREAMING.md` for detailed analysis and all findings.
 
+
+

@@ -3,7 +3,8 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { eq, desc, inArray, and } from "drizzle-orm";
 import { db, schema } from "../db/index.js";
-import { runUserTestAgent, SAMPLE_PERSONAS } from "../lib/agent.js";
+import { runUserTestAgent } from "../lib/agent.js";
+import { SAMPLE_PERSONAS } from "../lib/personas.js";
 import type { Session } from "../lib/auth.js";
 import Browserbase from "@browserbasehq/sdk";
 
@@ -176,13 +177,17 @@ testsRoutes.get("/:id/transcript", async (c) => {
   const agentActions = fullReport?.agentActions || [];
   const agentReasoning = fullReport?.agentReasoning || "";
   const agentLogs = fullReport?.agentLogs || [];
+  const rawStreams = fullReport?.rawStreams || { stdout: [], stderr: [] };
 
   // Combine actions, logs, and screenshots into timeline
   const timeline: Array<{
-    type: "action" | "screenshot" | "reasoning" | "log";
+    type: "action" | "screenshot" | "reasoning" | "log" | "raw";
     timestamp: number;
     data: any;
   }> = [];
+
+  const baseTimestamp =
+    (testRun.startedAt ? new Date(testRun.startedAt).getTime() : Date.now()) || Date.now();
 
   // Add logs (agent thinking/INFO messages)
   agentLogs.forEach((log: any) => {
@@ -202,6 +207,85 @@ testsRoutes.get("/:id/transcript", async (c) => {
       type: "action",
       timestamp: action.timestamp || 0,
       data: action,
+    });
+  });
+
+  // Add raw stdout/stderr (unfiltered reasoning stream)
+  // Parse and split multi-line chunks, extract timestamps from Stagehand format
+  let rawIdx = 0;
+  (rawStreams.stdout || []).forEach((chunk: string) => {
+    // Remove ANSI color codes
+    const cleanChunk = chunk.replace(/\x1b\[[0-9;]*m/g, '');
+    const lines = cleanChunk.split('\n');
+    lines.forEach((line: string) => {
+      const trimmed = line.trim();
+      if (trimmed.length === 0) return;
+      
+      // Strip dev server prefixes (e.g., "apps/api dev: ")
+      const cleanLine = trimmed.replace(/^apps\/\w+\s+dev:\s*/i, '').trim();
+      if (cleanLine.length === 0) return;
+      
+      // Try to extract timestamp from Stagehand format: [2025-12-11 02:58:35.865 -0500] LEVEL: message
+      const timestampMatch = cleanLine.match(/\[([^\]]+)\]/);
+      let timestamp = baseTimestamp + rawIdx;
+      if (timestampMatch) {
+        try {
+          const parsed = new Date(timestampMatch[1]).getTime();
+          if (!isNaN(parsed)) {
+            timestamp = parsed;
+          }
+        } catch {
+          // Use default
+        }
+      }
+      
+      timeline.push({
+        type: "raw",
+        timestamp,
+        data: {
+          stream: "stdout",
+          message: cleanLine,
+        },
+      });
+      rawIdx++;
+    });
+  });
+
+  (rawStreams.stderr || []).forEach((chunk: string) => {
+    // Remove ANSI color codes
+    const cleanChunk = chunk.replace(/\x1b\[[0-9;]*m/g, '');
+    const lines = cleanChunk.split('\n');
+    lines.forEach((line: string) => {
+      const trimmed = line.trim();
+      if (trimmed.length === 0) return;
+      
+      // Strip dev server prefixes
+      const cleanLine = trimmed.replace(/^apps\/\w+\s+dev:\s*/i, '').trim();
+      if (cleanLine.length === 0) return;
+      
+      // Try to extract timestamp from Stagehand format
+      const timestampMatch = cleanLine.match(/\[([^\]]+)\]/);
+      let timestamp = baseTimestamp + rawIdx + 0.5;
+      if (timestampMatch) {
+        try {
+          const parsed = new Date(timestampMatch[1]).getTime();
+          if (!isNaN(parsed)) {
+            timestamp = parsed;
+          }
+        } catch {
+          // Use default
+        }
+      }
+      
+      timeline.push({
+        type: "raw",
+        timestamp,
+        data: {
+          stream: "stderr",
+          message: cleanLine,
+        },
+      });
+      rawIdx++;
     });
   });
 
@@ -238,6 +322,7 @@ testsRoutes.get("/:id/transcript", async (c) => {
     agentActions,
     agentReasoning,
     agentLogs,
+    rawStreams,
     screenshots,
     timeline,
     testRun: {

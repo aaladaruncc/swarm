@@ -45,3 +45,5 @@ userRoutes.patch("/me", authMiddleware, zValidator("json", updateUserSchema), as
 });
 
 export { userRoutes };
+
+
