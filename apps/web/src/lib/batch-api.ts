@@ -125,7 +125,7 @@ export interface SessionTranscript {
     createdAt: string;
   }>;
   timeline: Array<{
-    type: "action" | "screenshot" | "reasoning" | "log";
+    type: "action" | "screenshot" | "reasoning" | "log" | "raw";
     timestamp: number;
     data: any;
   }>;

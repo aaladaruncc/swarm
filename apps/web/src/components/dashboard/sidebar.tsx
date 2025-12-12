@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   User, 
   LogOut, 
-  Settings, 
+  Settings,
 } from "lucide-react";
 import { signOut, useSession } from "@/lib/auth-client";
 
@@ -64,16 +64,16 @@ export function DashboardSidebar() {
             exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.25, ease: "easeInOut" }}
             className="flex justify-center items-center w-full"
-          >
-            <Image
-              src={expanded ? "/images/vantage_regular.png" : "/images/vantage_small.png"}
-              alt="Vantage"
-              width={expanded ? 180 : 56}
-              height={expanded ? 54 : 56}
-              className={`object-contain ${
-                expanded ? "max-w-[80%] h-auto" : "w-14 h-14"
-              }`}
-            />
+            >
+              <Image
+                src={expanded ? "/images/vantage_regular.png" : "/images/vantage_small.png"}
+                alt="Vantage"
+                width={expanded ? 180 : 56}
+                height={expanded ? 54 : 56}
+                className={`object-contain ${
+                  expanded ? "max-w-[80%] h-auto" : "w-14 h-14"
+                }`}
+              />
           </motion.div>
         </AnimatePresence>
       </div>
