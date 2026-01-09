@@ -10,6 +10,7 @@ type Variables = {
 };    
 
 
+
 const swarmsRoutes = new Hono<{ Variables: Variables }>();
 
 // ============================================================================
