@@ -27,7 +27,8 @@ RUN pnpm --filter @ux-testing/api build
 # Production stage
 FROM node:20-slim AS runner
 
-# Install specific pnpm version
+# Install curl for health checks and pnpm
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm@10.24.0
 
 WORKDIR /app
