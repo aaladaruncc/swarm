@@ -77,6 +77,9 @@
   * {
     @apply border-border;
   }
+  html {
+    scroll-behavior: auto;
+  }
   body {
     @apply bg-background text-foreground;
   }
@@ -232,4 +235,67 @@
 
 .loading-bar-fill {
   animation: loading-bar-fill 2s ease-in-out infinite;
+}
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -30px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+}
+
+@keyframes float-reverse {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(-30px, 30px) scale(1.1);
+  }
+  66% {
+    transform: translate(20px, -20px) scale(0.9);
+  }
+}
+
+@keyframes float-medium {
+  0%, 100% {
+    transform: translate(-50%, 0) scale(1);
+  }
+  33% {
+    transform: translate(-50%, -30px) scale(1.1);
+  }
+  66% {
+    transform: translate(-50%, 20px) scale(0.9);
+  }
+}
+
+@keyframes particle-float {
+  0%, 100% {
+    transform: translate(0, 0);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translate(20px, -30px);
+    opacity: 0.8;
+  }
+}
+
+.animate-float-slow {
+  animation: float-slow 20s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: float-reverse 25s ease-in-out infinite;
+}
+
+.animate-float-medium {
+  animation: float-medium 30s ease-in-out infinite;
+}
+
+.animate-particle-float {
+  animation: particle-float ease-in-out infinite;
 }

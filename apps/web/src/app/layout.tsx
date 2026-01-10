@@ -10,10 +10,10 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Vantage",
+  title: "Swarm",
   description: "AI-powered user experience testing with realistic personas",
   icons: {
-    icon: "/images/vantage_favicon.png",
+    icon: "/images/swarm_favicon.png",
   },
 };
 
@@ -23,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" style={{ scrollBehavior: 'auto' }}>
       <body className={`${inter.variable} ${playfair.variable} ${inter.className}`} suppressHydrationWarning>
         {children}
       </body>

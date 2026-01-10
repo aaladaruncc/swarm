@@ -148,29 +148,29 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-8 w-full h-full overflow-hidden flex flex-col">
-      <div className="mb-12 border-b border-border pb-6 flex-shrink-0">
+    <div className="max-w-6xl mx-auto p-8 w-full h-full overflow-hidden">
+      <div className="mb-8 border-b border-border pb-4">
         <h1 className="text-3xl font-light tracking-tight text-foreground mb-2">Settings</h1>
         <p className="text-sm text-muted-foreground font-light">Manage your account and preferences.</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Profile Section */}
         <section>
-          <h2 className="text-lg font-medium text-foreground mb-6 uppercase tracking-widest text-xs border-b border-border pb-2">Profile Information</h2>
+          <h2 className="text-lg font-medium text-foreground mb-4 uppercase tracking-widest text-xs border-b border-border pb-2">Profile Information</h2>
           
           {message && (
-            <div className={`mb-6 p-4 text-sm ${message.type === 'success' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'} border`}>
+            <div className={`mb-4 p-3 text-sm ${message.type === 'success' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'} border`}>
               {message.text}
             </div>
           )}
 
-          <div className="bg-background border border-border rounded-none p-8">
+          <div className="bg-background border border-border rounded-none p-6">
             <form onSubmit={handleUpdateProfile}>
-              <div className="flex flex-col md:flex-row items-start gap-8">
+              <div className="flex items-start gap-6 mb-6">
                 {/* Profile Avatar */}
                 <div className="flex-shrink-0">
-                  <div className="w-24 h-24 bg-gradient-to-br from-neutral-700 via-neutral-900 to-black rounded-none flex items-center justify-center text-primary-foreground text-4xl font-light shadow-lg border border-primary">
+                  <div className="w-20 h-20 bg-gradient-to-br from-neutral-700 via-neutral-900 to-black rounded-none flex items-center justify-center text-primary-foreground text-3xl font-light shadow-lg border border-primary">
                     {session?.user?.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img 
@@ -179,17 +179,17 @@ export default function SettingsPage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      session?.user?.name?.[0]?.toUpperCase() || <User size={32} />
+                      session?.user?.name?.[0]?.toUpperCase() || <User size={28} />
                     )}
                   </div>
                 </div>
 
                 {/* Fields */}
-                <div className="flex-1 w-full space-y-6 max-w-lg">
+                <div className="flex-1 w-full space-y-4">
                   <div className="group">
-                    <label className="block text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Full Name</label>
-                    <div className="flex items-center gap-3 px-4 py-3 bg-background border border-border text-foreground text-sm font-light transition-colors focus-within:border-primary">
-                      <User size={16} className="text-muted-foreground" />
+                    <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Full Name</label>
+                    <div className="flex items-center gap-3 px-3 py-2 bg-background border border-border text-foreground text-sm font-light transition-colors focus-within:border-primary">
+                      <User size={14} className="text-muted-foreground" />
                       <input 
                         type="text" 
                         value={name}
@@ -200,9 +200,9 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <div className="group">
-                    <label className="block text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Email Address</label>
-                    <div className="flex items-center gap-3 px-4 py-3 bg-background border border-border text-foreground text-sm font-light transition-colors focus-within:border-primary">
-                      <Mail size={16} className="text-muted-foreground" />
+                    <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Email Address</label>
+                    <div className="flex items-center gap-3 px-3 py-2 bg-background border border-border text-foreground text-sm font-light transition-colors focus-within:border-primary">
+                      <Mail size={14} className="text-muted-foreground" />
                       <input 
                         type="email" 
                         value={email}
@@ -213,13 +213,13 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  <div className="pt-4">
+                  <div className="pt-2">
                     <button 
                       type="submit" 
                       disabled={isLoading || (name === session?.user?.name && email === session?.user?.email)}
-                      className="flex items-center gap-2 px-6 py-2 bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider"
+                      className="flex items-center gap-2 px-5 py-2 bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider"
                     >
-                      {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                      {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                       Save Changes
                     </button>
                   </div>
@@ -228,12 +228,12 @@ export default function SettingsPage() {
             </form>
             
             {/* Logout Button */}
-            <div className="mt-8 pt-8 border-t border-border">
+            <div className="pt-4 border-t border-border">
               <button
                 onClick={handleSignOut}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 border border-destructive/20 hover:border-destructive/30 transition-colors uppercase tracking-wider"
+                className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 border border-destructive/20 hover:border-destructive/30 transition-colors uppercase tracking-wider"
               >
-                <LogOut size={16} />
+                <LogOut size={14} />
                 Sign Out
               </button>
             </div>
@@ -241,31 +241,31 @@ export default function SettingsPage() {
         </section>
 
         {/* Notifications Section */}
-        <section className="mt-12">
-          <h2 className="text-lg font-medium text-foreground mb-6 uppercase tracking-widest text-xs border-b border-border pb-2">Notifications</h2>
+        <section>
+          <h2 className="text-lg font-medium text-foreground mb-4 uppercase tracking-widest text-xs border-b border-border pb-2">Notifications</h2>
           
-          <div className="bg-background border border-border rounded-none p-8">
-            <div className="flex items-center justify-between">
+          <div className="bg-background border border-border rounded-none p-6">
+            <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
                   {notificationsEnabled ? (
-                    <Bell size={20} className="text-primary" />
+                    <Bell size={18} className="text-primary" />
                   ) : (
-                    <BellOff size={20} className="text-muted-foreground" />
+                    <BellOff size={18} className="text-muted-foreground" />
                   )}
-                  <h3 className="text-base font-medium text-foreground">Test Completion Notifications</h3>
+                  <h3 className="text-sm font-medium text-foreground">Test Completion Notifications</h3>
                 </div>
-                <p className="text-sm text-muted-foreground font-light ml-8">
+                <p className="text-xs text-muted-foreground font-light ml-7 mb-2">
                   Get notified when your test runs complete. You'll receive a browser notification when the newest test finishes.
                 </p>
                 {notificationPermission === "denied" && (
-                  <p className="text-xs text-destructive mt-2 ml-8">
+                  <p className="text-xs text-destructive ml-7">
                     Notifications are blocked. Please enable them in your browser settings.
                   </p>
                 )}
               </div>
               
-              <div className="flex items-center">
+              <div className="flex items-center flex-shrink-0">
                 <button
                   onClick={handleToggleNotifications}
                   disabled={isRequestingPermission || notificationPermission === "denied"}

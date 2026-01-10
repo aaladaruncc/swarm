@@ -272,7 +272,7 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-3">
           <Link
-            href="/tests/new"
+            href="/dashboard/tests/new"
             className="group flex items-center justify-center gap-2 bg-neutral-900 text-white px-5 py-2.5 hover:bg-neutral-800 transition-all text-sm font-medium shadow-lg hover:shadow-xl hover:-translate-y-0.5 duration-300"
           >
             <Plus size={16} />
@@ -376,7 +376,7 @@ export default function Dashboard() {
                           Launch your first multi-agent batch simulation to start testing.
                         </p>
                         <Link
-                          href="/tests/new"
+                          href="/dashboard/tests/new"
                           className="inline-flex items-center justify-center gap-2 border border-neutral-200 bg-white text-neutral-900 px-5 py-2.5 hover:border-neutral-900 transition-all text-sm font-medium mt-2"
                         >
                           Start Simulation

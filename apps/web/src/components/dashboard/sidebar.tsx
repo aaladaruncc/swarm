@@ -66,8 +66,8 @@ export function DashboardSidebar() {
             className="flex justify-center items-center w-full"
             >
               <Image
-                src={expanded ? "/images/vantage_regular.png" : "/images/vantage_small.png"}
-                alt="Vantage"
+                src={expanded ? "/images/swarm_regular.png" : "/images/swarm_small.png"}
+                alt="Swarm"
                 width={expanded ? 180 : 56}
                 height={expanded ? 54 : 56}
                 className={`object-contain ${

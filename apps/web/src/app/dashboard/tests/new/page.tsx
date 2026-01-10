@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { generatePersonas, createBatchTest, getSwarms, type GeneratedPersona, type Swarm } from "@/lib/batch-api";
 import { GeneratingPersonasLoader } from "@/components/ui/generating-personas-loader";
-import { ArrowLeft, Globe, User, Loader2, Zap, Info, Check, Minus, Plus, Users, X, ArrowRight } from "lucide-react";
+import { Globe, User, Loader2, Zap, Info, Check, Minus, Plus, Users, X, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function NewTest() {
@@ -69,8 +69,8 @@ export default function NewTest() {
   // Early returns after all hooks
   if (isPending) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <Loader2 className="animate-spin w-8 h-8 text-neutral-300" />
+      <div className="h-full flex items-center justify-center bg-white text-neutral-900">
+        <Loader2 className="animate-spin w-8 h-8 text-neutral-400" />
       </div>
     );
   }
@@ -164,35 +164,38 @@ export default function NewTest() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-neutral-900 font-sans selection:bg-neutral-900 selection:text-white">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-neutral-100 h-16">
-        <div className="max-w-7xl mx-auto px-6 h-full flex items-center">
-          <Link href="/dashboard" className="text-sm font-light text-neutral-500 hover:text-neutral-900 transition-colors flex items-center gap-2">
-            <ArrowLeft size={16} />
-            Back to Dashboard
+    <div className="p-8 max-w-7xl mx-auto w-full h-full overflow-hidden">
+      {/* Breadcrumb */}
+      <div className="mb-6">
+        <nav className="flex items-center gap-2 text-sm">
+          <Link 
+            href="/dashboard"
+            className="text-neutral-500 hover:text-neutral-900 transition-colors font-light"
+          >
+            Playground
           </Link>
-        </div>
-      </header>
+          <span className="text-neutral-400">/</span>
+          <span className="text-neutral-900 font-medium">New Simulation</span>
+        </nav>
+      </div>
 
+      {/* Step 1: Describe */}
+      {step === "describe" && (
+        <>
+          <div className="mb-6">
+            <h1 className="text-3xl font-light tracking-tight mb-2">Initialize Batch Simulation</h1>
+            <p className="text-neutral-500 font-light text-sm">
+              Define your target environment and audience. AI will generate richer, behavior-driven personas to test your experience.
+            </p>
+          </div>
 
-      <main className="pt-32 pb-24 px-6 max-w-4xl mx-auto">
-        {/* Step 1: Describe */}
-        {step === "describe" && (
-          <>
-            <div className="mb-12">
-              <h1 className="text-4xl font-light tracking-tight mb-4">Initialize Batch Simulation</h1>
-              <p className="text-neutral-500 font-light text-lg">
-                Define your target environment and audience. AI will generate richer, behavior-driven personas (patience, trust, device expectations) to test your experience.
-              </p>
-            </div>
-
-            <form onSubmit={handleGeneratePersonas} className="space-y-12">
+          <form onSubmit={handleGeneratePersonas} className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Target URL */}
-              <section className="space-y-6">
+              <section className="space-y-4">
                 <div className="flex items-center gap-3 text-neutral-900 border-b border-neutral-100 pb-2">
-                  <Globe size={20} className="stroke-1" />
-                  <h2 className="text-xl font-medium">Target Environment</h2>
+                  <Globe size={18} className="stroke-1" />
+                  <h2 className="text-base font-medium">Target Environment</h2>
                 </div>
                 
                 <div className="space-y-2">
@@ -202,21 +205,20 @@ export default function NewTest() {
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     placeholder="https://example.com"
-                    className="w-full bg-white border border-neutral-200 text-neutral-900 px-4 py-4 focus:border-neutral-900 focus:ring-0 outline-none transition-all placeholder:text-neutral-300 font-light text-lg"
+                    className="w-full bg-white border border-neutral-200 text-neutral-900 px-3 py-2.5 focus:border-neutral-900 focus:ring-0 outline-none transition-all placeholder:text-neutral-300 font-light text-sm rounded-none"
                     required
                   />
                   <p className="text-xs text-neutral-400 font-light">
                     The agents will begin their sessions at this URL.
                   </p>
                 </div>
-
               </section>
 
               {/* Audience Description */}
-              <section className="space-y-6">
+              <section className="space-y-4">
                 <div className="flex items-center gap-3 text-neutral-900 border-b border-neutral-100 pb-2">
-                  <User size={20} className="stroke-1" />
-                  <h2 className="text-xl font-medium">Target Audience</h2>
+                  <User size={18} className="stroke-1" />
+                  <h2 className="text-base font-medium">Target Audience</h2>
                 </div>
                 
                 <div className="space-y-2">
@@ -224,15 +226,15 @@ export default function NewTest() {
                   <textarea
                     value={userDescription}
                     onChange={(e) => setUserDescription(e.target.value)}
-                    placeholder="Example: Busy professionals aged 25-45 who need quick meal planning. They have varying cooking skills and limited time. Some are tech-savvy, others prefer simple interfaces..."
-                    className="w-full bg-white border border-neutral-200 text-neutral-900 px-4 py-4 focus:border-neutral-900 focus:ring-0 outline-none transition-all placeholder:text-neutral-300 font-light min-h-[140px] resize-none"
+                    placeholder="Example: Busy professionals aged 25-45 who need quick meal planning..."
+                    className="w-full bg-white border border-neutral-200 text-neutral-900 px-3 py-2.5 focus:border-neutral-900 focus:ring-0 outline-none transition-all placeholder:text-neutral-300 font-light min-h-[100px] resize-none text-sm rounded-none"
                     required
                     minLength={10}
                     maxLength={2000}
                   />
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-neutral-400 font-light">
-                      Be specific: demographics, goals, tech comfort, pain points, accessibility needs.
+                      Be specific: demographics, goals, tech comfort, pain points.
                     </p>
                     
                     {/* Use Saved Swarms Box */}
@@ -243,284 +245,282 @@ export default function NewTest() {
                           setSwarmModalStep("select");
                           setShowSwarmSelector(true);
                         }}
-                        className="px-4 py-2 border border-neutral-200 hover:border-neutral-900 bg-white hover:bg-neutral-50 transition-all text-sm font-medium text-neutral-900 flex items-center gap-2 group"
+                        className="px-3 py-1.5 border border-neutral-200 hover:border-neutral-900 bg-white hover:bg-neutral-50 transition-all text-xs font-medium text-neutral-900 flex items-center gap-2 group rounded-none"
                       >
-                        <Users size={16} className="text-neutral-500 group-hover:text-neutral-900 transition-colors" />
-                        <span>Use Saved Swarms</span>
+                        <Users size={14} className="text-neutral-500 group-hover:text-neutral-900 transition-colors" />
+                        <span>Use Swarms</span>
                       </button>
                     )}
                   </div>
                 </div>
               </section>
+            </div>
 
-              {/* Agent Count */}
-              <section className="space-y-6">
-                <div className="flex items-center gap-3 text-neutral-900 border-b border-neutral-100 pb-2">
-                  <Zap size={20} className="stroke-1" />
-                  <h2 className="text-xl font-medium">Concurrency</h2>
+            {/* Agent Count */}
+            <section className="space-y-4 border-t border-neutral-100 pt-6">
+              <div className="flex items-center gap-3 text-neutral-900 border-b border-neutral-100 pb-2">
+                <Zap size={18} className="stroke-1" />
+                <h2 className="text-base font-medium">Concurrency</h2>
+              </div>
+              
+              <div className="flex items-center justify-between max-w-md">
+                <label className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Concurrent Agents</label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setAgentCount(Math.max(1, agentCount - 1))}
+                    className="w-8 h-8 border border-neutral-200 hover:border-neutral-900 transition-colors flex items-center justify-center"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span className="text-xl font-light w-8 text-center">{agentCount}</span>
+                  <button
+                    type="button"
+                    onClick={() => setAgentCount(Math.min(5, agentCount + 1))}
+                    className="w-8 h-8 border border-neutral-200 hover:border-neutral-900 transition-colors flex items-center justify-center"
+                  >
+                    <Plus size={14} />
+                  </button>
                 </div>
-                
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Concurrent Agents</label>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setAgentCount(Math.max(1, agentCount - 1))}
-                        className="w-8 h-8 border border-neutral-200 hover:border-neutral-900 transition-colors flex items-center justify-center"
-                      >
-                        <Minus size={14} />
-                      </button>
-                      <span className="text-2xl font-light w-8 text-center">{agentCount}</span>
-                      <button
-                        type="button"
-                        onClick={() => setAgentCount(Math.min(5, agentCount + 1))}
-                        className="w-8 h-8 border border-neutral-200 hover:border-neutral-900 transition-colors flex items-center justify-center"
-                      >
-                        <Plus size={14} />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-1 h-1">
-                    {[1, 2, 3, 4, 5].map((i) => (
+              </div>
+              
+              <div className="flex gap-1 h-1 max-w-md">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div
+                    key={i}
+                    className={`flex-1 transition-colors ${
+                      i <= agentCount ? 'bg-neutral-900' : 'bg-neutral-200'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <p className="text-xs text-neutral-400 font-light">
+                {agentCount === 1 && "Single agent — Slowest but zero rate limit risk"}
+                {agentCount === 2 && "2 agents — Safe with minimal rate limit risk"}
+                {agentCount === 3 && "3 agents — Balanced speed and safety (recommended)"}
+                {agentCount === 4 && "4 agents — Faster but slight rate limit risk"}
+                {agentCount === 5 && "5 agents — Fastest but higher rate limit risk"}
+              </p>
+            </section>
+
+            {error && (
+              <div className="p-3 bg-red-50 text-red-600 border border-red-100 text-xs font-light rounded-none">
+                <span className="font-medium">Error:</span> {error}
+              </div>
+            )}
+
+            <div className="flex items-start gap-3 p-3 bg-neutral-50 border border-neutral-100 text-xs font-light text-neutral-600">
+              <Info size={14} className="mt-0.5 shrink-0" />
+              <p>
+                AI will generate 10 diverse personas and automatically select the {agentCount} most relevant ones. Agents run with resilience checks and evidence capture.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-4 pt-4 border-t border-neutral-100">
+              <Link
+                href="/dashboard"
+                className="px-5 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-900 transition-colors"
+              >
+                Cancel
+              </Link>
+              <button
+                type="submit"
+                disabled={loading || !url || !userDescription}
+                className="bg-neutral-900 text-white px-6 py-2 hover:bg-neutral-800 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Generating...</span>
+                  </>
+                ) : (
+                  <span>Generate Personas</span>
+                )}
+              </button>
+            </div>
+          </form>
+        </>
+      )}
+
+      {/* Step 1.5: Generating */}
+      {step === "generating" && (
+        <GeneratingPersonasLoader />
+      )}
+
+      {/* Step 2: Select Personas */}
+      {step === "select" && (
+        <>
+          <div className="mb-6">
+            <h2 className="text-3xl font-light tracking-tight mb-2">Select Personas</h2>
+            <p className="text-neutral-500 font-light text-sm">
+              We've pre-selected {agentCount} personas. Adjust your selection if needed.
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            {/* Selection Status */}
+            <div className="flex items-center gap-3 p-3 border border-neutral-200 bg-white rounded-none">
+              <div className="flex-1">
+                <div className="flex items-center gap-4">
+                  <span className={`text-xs font-medium ${selectedIndices.length === agentCount ? 'text-green-600' : 'text-neutral-600'}`}>
+                    {selectedIndices.length}/{agentCount} personas selected
+                  </span>
+                  <div className="flex gap-1 flex-1 max-w-xs">
+                    {[...Array(agentCount)].map((_, i) => (
                       <div
                         key={i}
-                        className={`flex-1 transition-colors ${
-                          i <= agentCount ? 'bg-neutral-900' : 'bg-neutral-200'
+                        className={`h-1 flex-1 transition-colors rounded-full ${
+                          i < selectedIndices.length ? 'bg-neutral-900' : 'bg-neutral-200'
                         }`}
                       />
                     ))}
                   </div>
-
-                  <p className="text-xs text-neutral-400 font-light">
-                    {agentCount === 1 && "Single agent — Slowest but zero rate limit risk"}
-                    {agentCount === 2 && "2 agents — Safe with minimal rate limit risk"}
-                    {agentCount === 3 && "3 agents — Balanced speed and safety (recommended)"}
-                    {agentCount === 4 && "4 agents — Faster but slight rate limit risk"}
-                    {agentCount === 5 && "5 agents — Fastest but higher rate limit risk"}
-                  </p>
                 </div>
-              </section>
-
-              {error && (
-                <div className="p-4 bg-red-50 text-red-600 border border-red-100 text-sm font-light">
-                  <span className="font-medium">Error:</span> {error}
-                </div>
-              )}
-
-              <div className="flex items-start gap-3 p-4 bg-neutral-50 border border-neutral-100 text-sm font-light text-neutral-600">
-                <Info size={16} className="mt-0.5 shrink-0" />
-                <p>
-                  AI will generate 10 diverse personas (with patience, trust, and device heuristics) and automatically select the {agentCount} most relevant ones. Agents now run with added resilience checks and evidence capture.
+                <p className="text-xs text-neutral-400 font-light mt-1">
+                  {selectedIndices.length < agentCount 
+                    ? `Select ${agentCount - selectedIndices.length} more persona${agentCount - selectedIndices.length !== 1 ? 's' : ''}`
+                    : 'Ready to deploy agents'}
                 </p>
               </div>
-
-              {/* Actions */}
-              <div className="flex items-center justify-end gap-4 pt-4">
-                <Link
-                  href="/dashboard"
-                  className="px-8 py-3 text-sm font-medium text-neutral-500 hover:text-neutral-900 transition-colors"
-                >
-                  Cancel
-                </Link>
-                <button
-                  type="submit"
-                  disabled={loading || !url || !userDescription}
-                  className="bg-neutral-900 text-white px-8 py-3 hover:bg-neutral-800 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed min-w-[200px] justify-center"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Generating...</span>
-                    </>
-                  ) : (
-                    <span>Generate Personas</span>
-                  )}
-                </button>
-              </div>
-            </form>
-          </>
-        )}
-
-        {/* Step 1.5: Generating */}
-        {step === "generating" && (
-          <GeneratingPersonasLoader />
-        )}
-
-        {/* Step 2: Select Personas */}
-        {step === "select" && (
-          <>
-            <div className="mb-12">
-              <h1 className="text-4xl font-light tracking-tight mb-4">Select Personas</h1>
-              <p className="text-neutral-500 font-light text-lg">
-                We've pre-selected {agentCount} personas. Adjust your selection if needed.
-              </p>
             </div>
 
-            <div className="space-y-8">
-              {/* Selection Status */}
-              <div className="flex items-center gap-3 p-4 border border-neutral-200">
-                <div className="flex-1">
-                  <div className="flex items-center gap-4 mb-2">
-                    <span className={`text-sm font-medium ${selectedIndices.length === agentCount ? 'text-green-600' : 'text-neutral-600'}`}>
-                      {selectedIndices.length}/{agentCount} personas selected
-                    </span>
-                    <div className="flex gap-1 flex-1 max-w-xs">
-                      {[...Array(agentCount)].map((_, i) => (
-                        <div
-                          key={i}
-                          className={`h-1 flex-1 transition-colors ${
-                            i < selectedIndices.length ? 'bg-neutral-900' : 'bg-neutral-200'
-                          }`}
-                        />
-                      ))}
+            {/* Personas Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {personas.map((persona, index) => {
+                const isSelected = selectedIndices.includes(index);
+                const isRecommended = recommendedIndices.includes(index);
+                const canSelect = isSelected || selectedIndices.length < agentCount;
+                
+                return (
+                  <div
+                    key={index}
+                    onClick={() => canSelect && togglePersonaSelection(index)}
+                    className={`group cursor-pointer p-4 border transition-all duration-200 relative bg-white rounded-none ${
+                      isSelected
+                        ? "border-neutral-900 ring-1 ring-neutral-900 bg-neutral-50"
+                        : canSelect
+                        ? "border-neutral-200 hover:border-neutral-400 hover:shadow-sm"
+                        : "border-neutral-100 bg-neutral-50 opacity-50 cursor-not-allowed"
+                    }`}
+                  >
+                    {isRecommended && (
+                      <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-neutral-900 text-white text-[9px] font-medium uppercase tracking-wide rounded-none">
+                        Recommended
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="font-medium text-base mb-1">{persona.name}</h3>
+                        <div className="text-xs text-neutral-500 font-light flex items-center gap-2">
+                          <span>{persona.age} yrs</span>
+                          <span className="w-1 h-1 bg-neutral-300 rounded-full"></span>
+                          <span>{persona.country}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-0.5">
+                        {[...Array(3)].map((_, i) => (
+                          <div 
+                            key={i} 
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              i < (persona.techSavviness === 'beginner' ? 1 : persona.techSavviness === 'intermediate' ? 2 : 3)
+                                ? "bg-neutral-900" 
+                                : "bg-neutral-200"
+                            }`}
+                          />
+                        ))}
+                      </div>
                     </div>
+
+                    <p className="text-xs text-neutral-400 font-mono uppercase tracking-wider mb-2">
+                      {persona.occupation}
+                    </p>
+
+                    <p className="text-xs text-neutral-600 font-light leading-relaxed mb-3 line-clamp-2">
+                      {persona.primaryGoal}
+                    </p>
+
+                    <div className="text-xs text-neutral-400">
+                      Relevance: {persona.relevanceScore}/10
+                    </div>
+
+                    {/* Selection Indicator */}
+                    {isSelected && (
+                      <div className="absolute top-0 left-0 w-0 h-0 border-t-[24px] border-r-[24px] border-t-neutral-900 border-r-transparent">
+                        <Check size={12} className="absolute -top-[20px] left-[1px] text-white" />
+                      </div>
+                    )}
                   </div>
-                  <p className="text-xs text-neutral-400 font-light">
-                    {selectedIndices.length < agentCount 
-                      ? `Select ${agentCount - selectedIndices.length} more persona${agentCount - selectedIndices.length !== 1 ? 's' : ''}`
-                      : 'Ready to deploy agents'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Personas Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {personas.map((persona, index) => {
-                  const isSelected = selectedIndices.includes(index);
-                  const isRecommended = recommendedIndices.includes(index);
-                  const canSelect = isSelected || selectedIndices.length < agentCount;
-                  
-                  return (
-                    <div
-                      key={index}
-                      onClick={() => canSelect && togglePersonaSelection(index)}
-                      className={`group cursor-pointer p-6 border transition-all duration-200 relative ${
-                        isSelected
-                          ? "border-neutral-900 bg-neutral-50"
-                          : canSelect
-                          ? "border-neutral-200 bg-white hover:border-neutral-400"
-                          : "border-neutral-100 bg-neutral-50 opacity-50 cursor-not-allowed"
-                      }`}
-                    >
-                      {isRecommended && (
-                        <div className="absolute top-3 right-3 px-2 py-0.5 bg-neutral-900 text-white text-[10px] font-medium uppercase tracking-wide">
-                          Recommended
-                        </div>
-                      )}
-
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <h3 className="font-medium text-lg mb-1">{persona.name}</h3>
-                          <div className="text-xs text-neutral-500 font-light flex items-center gap-2">
-                            <span>{persona.age} yrs</span>
-                            <span className="w-1 h-1 bg-neutral-300 rounded-full"></span>
-                            <span>{persona.country}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex gap-0.5">
-                          {[...Array(3)].map((_, i) => (
-                            <div 
-                              key={i} 
-                              className={`w-1 h-1 rounded-full ${
-                                i < (persona.techSavviness === 'beginner' ? 1 : persona.techSavviness === 'intermediate' ? 2 : 3)
-                                  ? "bg-neutral-900" 
-                                  : "bg-neutral-200"
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-
-                      <p className="text-xs text-neutral-400 font-mono uppercase tracking-wider mb-3">
-                        {persona.occupation}
-                      </p>
-
-                      <p className="text-sm text-neutral-600 font-light leading-relaxed mb-3">
-                        {persona.primaryGoal}
-                      </p>
-
-                      <div className="text-xs text-neutral-400">
-                        Relevance: {persona.relevanceScore}/10
-                      </div>
-
-                      {/* Selection Indicator */}
-                      {isSelected && (
-                        <div className="absolute top-0 left-0 w-0 h-0 border-t-[28px] border-r-[28px] border-t-neutral-900 border-r-transparent">
-                          <Check size={12} className="absolute -top-6 left-1 text-white" />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {error && (
-                <div className="p-4 bg-red-50 text-red-600 border border-red-100 text-sm font-light">
-                  <span className="font-medium">Error:</span> {error}
-                </div>
-              )}
-
-              <div className="flex items-start gap-3 p-4 bg-neutral-50 border border-neutral-100 text-sm font-light text-neutral-600">
-                <Info size={16} className="mt-0.5 shrink-0" />
-                <p>
-                  Each agent will run concurrently with a ~6 minute cap and resilience (re-observe, single retry, 404 double-checks). Queue system prevents rate limits.
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center justify-between gap-4 pt-4">
-                <button
-                  onClick={() => setStep("describe")}
-                  className="px-8 py-3 text-sm font-medium text-neutral-500 hover:text-neutral-900 transition-colors"
-                >
-                  ← Back
-                </button>
-                <button
-                  onClick={handleStartBatchTest}
-                  disabled={loading || selectedIndices.length !== agentCount}
-                  className="bg-neutral-900 text-white px-8 py-3 hover:bg-neutral-800 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed min-w-[200px] justify-center"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Deploying...</span>
-                    </>
-                  ) : selectedIndices.length !== agentCount ? (
-                    <span>Select {agentCount - selectedIndices.length} more</span>
-                  ) : (
-                    <>
-                      <Zap size={16} />
-                      <span>Deploy {agentCount} Agent{agentCount !== 1 ? 's' : ''}</span>
-                    </>
-                  )}
-                </button>
-              </div>
+                );
+              })}
             </div>
-          </>
-        )}
 
-        {/* Step 3: Starting */}
-        {step === "starting" && (
-          <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
-            <Loader2 className="w-16 h-16 animate-spin text-neutral-300 mb-6" />
-            <h2 className="text-2xl font-light tracking-tight mb-2">Deploying Agents...</h2>
-            <p className="text-neutral-500 font-light">
-              Launching {agentCount} concurrent agent{agentCount !== 1 ? 's' : ''} to test your environment
-            </p>
-            {selectedSwarm && (
-              <p className="text-sm text-neutral-600 font-light mt-2">
-                Using swarm: <span className="font-medium">{selectedSwarm.name}</span>
-              </p>
+            {error && (
+              <div className="p-3 bg-red-50 text-red-600 border border-red-100 text-xs font-light rounded-none">
+                <span className="font-medium">Error:</span> {error}
+              </div>
             )}
-            <p className="text-xs text-neutral-400 font-light mt-2">
-              Queue system active • Rate limits prevented
-            </p>
+
+            <div className="flex items-start gap-3 p-3 bg-neutral-50 border border-neutral-100 text-xs font-light text-neutral-600">
+              <Info size={14} className="mt-0.5 shrink-0" />
+              <p>
+                Each agent will run concurrently with a ~6 minute cap and resilience. Queue system prevents rate limits.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-between gap-4 pt-4 border-t border-neutral-100">
+              <button
+                onClick={() => setStep("describe")}
+                className="px-5 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-900 transition-colors"
+              >
+                ← Back
+              </button>
+              <button
+                onClick={handleStartBatchTest}
+                disabled={loading || selectedIndices.length !== agentCount}
+                className="bg-neutral-900 text-white px-6 py-2 hover:bg-neutral-800 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Deploying...</span>
+                  </>
+                ) : selectedIndices.length !== agentCount ? (
+                  <span>Select {agentCount - selectedIndices.length} more</span>
+                ) : (
+                  <>
+                    <Zap size={16} />
+                    <span>Deploy {agentCount} Agent{agentCount !== 1 ? 's' : ''}</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
-        )}
-      </main>
+        </>
+      )}
+
+      {/* Step 3: Starting */}
+      {step === "starting" && (
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
+          <Loader2 className="w-16 h-16 animate-spin text-neutral-300 mb-6" />
+          <h2 className="text-2xl font-light tracking-tight mb-2">Deploying Agents...</h2>
+          <p className="text-neutral-500 font-light text-sm">
+            Launching {agentCount} concurrent agent{agentCount !== 1 ? 's' : ''} to test your environment
+          </p>
+          {selectedSwarm && (
+            <p className="text-sm text-neutral-600 font-light mt-2">
+              Using swarm: <span className="font-medium">{selectedSwarm.name}</span>
+            </p>
+          )}
+          <p className="text-xs text-neutral-400 font-light mt-2">
+            Queue system active • Rate limits prevented
+          </p>
+        </div>
+      )}
 
       {/* Swarm Selector Modal */}
       <AnimatePresence>
@@ -589,7 +589,7 @@ export default function NewTest() {
                             <Users size={48} className="mx-auto text-neutral-300 mb-4" />
                             <p className="text-neutral-500 font-light">No swarms available</p>
                             <Link
-                              href="/swarms/new"
+                              href="/dashboard/swarms/new"
                               className="text-sm text-neutral-900 underline hover:text-neutral-600 mt-2 inline-block"
                             >
                               Create your first swarm
@@ -601,7 +601,7 @@ export default function NewTest() {
                               <button
                                 key={swarm.id}
                                 onClick={() => handleSelectSwarm(swarm)}
-                                className="p-6 border border-neutral-200 hover:border-neutral-900 transition-all text-left group"
+                                className="p-6 border border-neutral-200 hover:border-neutral-900 transition-all text-left group rounded-none"
                               >
                                 <div className="flex items-start justify-between mb-3">
                                   <div className="flex-1">
@@ -650,14 +650,6 @@ export default function NewTest() {
                       animate={{ x: 0, opacity: 1 }}
                       exit={{ x: 100, opacity: 0 }}
                       transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
-                      // Other variations to try:
-                      // transition={{ duration: 0.15, ease: [0.3, 0, 0.2, 1] }} // Fast, smooth cubic-bezier
-                      // transition={{ duration: 0.2, ease: "easeOut" }} // Standard ease out
-                      // transition={{ duration: 0.12, ease: [0.4, 0, 0.2, 1] }} // Very fast, smooth
-                      // transition={{ duration: 0.25, ease: "easeInOut" }} // Slower, balanced
-                      // transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }} // Custom smooth curve
-                      // transition={{ duration: 0.2, ease: "circOut" }} // Circular ease out
-                      // transition={{ type: "spring", stiffness: 300, damping: 30 }} // Spring animation
                       className="w-full flex flex-col shrink-0"
                     >
                       {/* Header */}
@@ -728,7 +720,7 @@ export default function NewTest() {
                           <button
                             onClick={handleConfirmSwarm}
                             disabled={loading}
-                            className="bg-neutral-900 text-white px-8 py-2 hover:bg-neutral-800 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="bg-neutral-900 text-white px-8 py-2 hover:bg-neutral-800 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
                           >
                             {loading ? (
                               <>

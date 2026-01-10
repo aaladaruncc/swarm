@@ -135,7 +135,7 @@ export default function SwarmsPage() {
           <p className="text-neutral-500 font-light">Manage your persona groups and audiences.</p>
         </div>
         <Link
-          href="/swarms/new"
+          href="/dashboard/swarms/new"
           className="group flex items-center justify-center gap-2 bg-neutral-900 text-white px-5 py-2.5 hover:bg-neutral-800 transition-all text-sm font-medium shadow-lg hover:shadow-xl hover:-translate-y-0.5 duration-300 rounded-none"
         >
           <Plus size={16} />
@@ -158,7 +158,7 @@ export default function SwarmsPage() {
                   Create a reusable group of personas to efficiently test your applications.
                 </p>
                 <Link
-                  href="/swarms/new"
+                  href="/dashboard/swarms/new"
                   className="inline-flex items-center justify-center gap-2 border border-neutral-200 bg-white text-neutral-900 px-5 py-2.5 hover:border-neutral-900 transition-all text-sm font-medium rounded-none mt-2"
                 >
                   Create Swarm
