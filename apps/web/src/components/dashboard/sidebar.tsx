@@ -13,14 +13,14 @@ import {
 import { signOut, useSession } from "@/lib/auth-client";
 
 export function DashboardSidebar() {
-  const [isHovered, setIsHovered] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
 
-  // Sidebar is expanded if hovered
-  const expanded = isHovered;
+  // Sidebar is expanded based on state
+  const expanded = isExpanded;
 
   const navItems = [
     {
@@ -44,12 +44,10 @@ export function DashboardSidebar() {
 
   return (
     <motion.aside
-      initial={{ width: 80 }}
+      initial={{ width: 260 }}
       animate={{ width: expanded ? 260 : 80 }}
       transition={{ duration: 0.2, ease: "easeInOut" }}
-      onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
-        setIsHovered(false);
         setProfileOpen(false);
       }}
       className="h-screen bg-white border-r border-neutral-200 flex flex-col sticky top-0 z-20 overflow-hidden"
@@ -57,13 +55,14 @@ export function DashboardSidebar() {
       {/* Header / Logo */}
       <div className="h-28 flex items-center justify-center border-b border-neutral-200 w-full">
         <AnimatePresence mode="wait">
-          <motion.div
+          <motion.button
             key={expanded ? "expanded" : "collapsed"}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.25, ease: "easeInOut" }}
-            className="flex justify-center items-center w-full"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex justify-center items-center w-full cursor-pointer hover:opacity-80 transition-opacity"
             >
               <Image
                 src={expanded ? "/images/swarm_regular.png" : "/images/swarm_small.png"}
@@ -74,7 +73,7 @@ export function DashboardSidebar() {
                   expanded ? "max-w-[80%] h-auto" : "w-14 h-14"
                 }`}
               />
-          </motion.div>
+          </motion.button>
         </AnimatePresence>
       </div>
 
@@ -119,16 +118,16 @@ export function DashboardSidebar() {
 
       {/* Profile Section */}
       <div className="p-3 border-t border-neutral-200 relative">
-        <button
-          onClick={() => expanded && setProfileOpen(!profileOpen)}
-          className={`w-full flex items-center ${expanded ? "gap-3 p-2" : "justify-center p-2"} transition-colors ${
-            profileOpen ? "bg-neutral-100 border border-neutral-200" : "hover:bg-neutral-100"
-          }`}
-        >
-          <div className="w-9 h-9 bg-gradient-to-br from-neutral-700 via-neutral-900 to-black flex items-center justify-center flex-shrink-0 text-white font-medium text-sm rounded-none shadow-sm border border-neutral-800">
-            {session?.user?.name?.[0]?.toUpperCase() || <User size={18} strokeWidth={1.5} />}
-          </div>
-          {expanded && (
+        {expanded ? (
+          <button
+            onClick={() => setProfileOpen(!profileOpen)}
+            className={`w-full flex items-center gap-3 p-2 transition-colors ${
+              profileOpen ? "bg-neutral-100 border border-neutral-200" : "hover:bg-neutral-100"
+            }`}
+          >
+            <div className="w-9 h-9 bg-gradient-to-br from-neutral-700 via-neutral-900 to-black flex items-center justify-center flex-shrink-0 text-white font-medium text-sm rounded-none shadow-sm border border-neutral-800">
+              {session?.user?.name?.[0]?.toUpperCase() || <User size={18} strokeWidth={1.5} />}
+            </div>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -142,8 +141,17 @@ export function DashboardSidebar() {
                 {session?.user?.email}
               </div>
             </motion.div>
-          )}
-        </button>
+          </button>
+        ) : (
+          <Link
+            href="/dashboard/settings"
+            className="w-full flex items-center justify-center p-2 transition-colors hover:bg-neutral-100"
+          >
+            <div className="w-9 h-9 bg-gradient-to-br from-neutral-700 via-neutral-900 to-black flex items-center justify-center flex-shrink-0 text-white font-medium text-sm rounded-none shadow-sm border border-neutral-800">
+              {session?.user?.name?.[0]?.toUpperCase() || <User size={18} strokeWidth={1.5} />}
+            </div>
+          </Link>
+        )}
 
         {/* Profile Popup Menu */}
         <AnimatePresence>
