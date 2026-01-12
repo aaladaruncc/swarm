@@ -22,6 +22,7 @@ dependencies = [
     "anthropic>=0.69.0",
     "beautifulsoup4>=4.13.4",
     "boto3>=1.37.3",
+    "browserbase>=0.3.0",
     "click>=8.1.8",
     "dominate>=2.9.1",
     "flask>=3.0.3",

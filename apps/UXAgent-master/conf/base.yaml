@@ -92,7 +92,8 @@ survey:
 # LLM CONFIGURATION
 # ============================================================================
 # Large Language Model provider settings
-llm_provider: "aws"     # Provider: "openai" or "aws" or "anthropic"
+# Set via LLM_PROVIDER env var. Options: "gemini", "anthropic", "openai", "aws"
+llm_provider: ${oc.decode:${oc.env:LLM_PROVIDER,gemini}}
 
 # ============================================================================
 # GENERAL SETTINGS

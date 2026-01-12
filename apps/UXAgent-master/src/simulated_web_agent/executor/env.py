@@ -3,14 +3,18 @@ import base64
 import contextlib
 import inspect
 import logging
+import os
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Awaitable, Callable, ClassVar, Optional
+from typing import Any, Awaitable, Callable, ClassVar, Optional, TYPE_CHECKING
 
 import numpy
 from omegaconf import DictConfig, OmegaConf
 from playwright.async_api import Playwright, async_playwright
+
+if TYPE_CHECKING:
+    from .browserbase_connector import BrowserBaseConnector
 
 
 class ElementHighlight:
@@ -305,6 +309,7 @@ class WebAgentEnv:
         before_action_hook: Callable[[], None] = None,
         after_action_hook: Callable[[], None] = None,
         wait_hook: Callable[[], None] = None,
+        browser_mode: str | None = None,  # "local" or "browserbase"
     ):
         self.config = environment_config
         self.before_action_hook = before_action_hook
@@ -324,6 +329,10 @@ class WebAgentEnv:
         self.task_config: dict | None = None
         self.model_answer: str | None = None  # Model's final answer/response
         self.trace_file_path: str | None = None  # Path to the current trace file
+        
+        # Browser mode: "local" or "browserbase"
+        self.browser_mode = browser_mode or os.getenv("BROWSER_MODE", "local")
+        self.browserbase_connector: Optional["BrowserBaseConnector"] = None
 
         # Disable evaluation if recording is enabled
         if getattr(self.config, "recording", {}).get("enabled", False):
@@ -455,66 +464,101 @@ class WebAgentEnv:
         self.task_config = task_config
         self.context_manager = await self._ensure_playwright()
 
-        # Get launch options from config and convert to dict
-        launch_options = OmegaConf.to_container(
-            self.config.browser.launch_options, resolve=True
-        )
-
-        if headless is not None:
-            # update both the runtime options AND the config object,
-            # so other code (like highlight_element’s “respect_headless”) reads the same value.
-            launch_options["headless"] = bool(headless)
-            try:
-                self.config.browser.launch_options.headless = bool(headless)
-            except Exception:
-                pass
-
-        # Add cache directory if configured
-        if hasattr(self.config.browser, "cache_dir") and self.config.browser.cache_dir:
-            # Use absolute path for cache directory
-            cache_dir = Path(self.config.browser.cache_dir).resolve()
-            cache_dir.mkdir(parents=True, exist_ok=True)  # Ensure directory exists
-            cache_arg = f"--disk-cache-dir={cache_dir}"
-            launch_options["args"] = launch_options.get("args", []) + [cache_arg]
-            self.logger.info(f"Browser cache configured: {cache_arg}")
-
-        # Get context options from config and convert to dict
-        context_options = OmegaConf.to_container(
-            self.config.browser.context_options, resolve=True
-        )
-
-        # Check if user_data_dir is specified - use launch_persistent_context if so
-        user_data_dir = None
-        if (
-            hasattr(self.config.browser, "user_data_dir")
-            and self.config.browser.user_data_dir
-        ):
-            user_data_dir = self.config.browser.user_data_dir
-
-        if user_data_dir:
-            # Use launch_persistent_context for user data directory
-            # Remove --disk-cache-dir from args since persistent context manages its own cache
-            persistent_options = {**launch_options, **context_options}
-            if "args" in persistent_options:
-                persistent_options["args"] = [
-                    arg
-                    for arg in persistent_options["args"]
-                    if not arg.startswith("--disk-cache-dir")
-                ]
-
-            self.context = (
-                await self.context_manager.chromium.launch_persistent_context(
-                    user_data_dir, **persistent_options
-                )
-            )
-            self.browser = self.context.browser
+        # =====================================================================
+        # BROWSERBASE MODE: Connect to remote browser via CDP
+        # =====================================================================
+        if self.browser_mode == "browserbase":
+            from .browserbase_connector import BrowserBaseConnector
+            
+            self.browserbase_connector = BrowserBaseConnector()
+            await self.browserbase_connector.create_session()
+            
             self.logger.info(
-                f"Using persistent context with cache in user data dir: {user_data_dir}"
+                f"Connecting to BrowserBase session: {self.browserbase_connector.session_id}"
             )
+            self.logger.info(
+                f"View session: {self.browserbase_connector.get_session_url()}"
+            )
+            
+            # Connect via CDP
+            self.browser = await self.browserbase_connector.connect_browser(
+                self.context_manager
+            )
+            
+            # Use existing context or create new one
+            if self.browser.contexts:
+                self.context = self.browser.contexts[0]
+            else:
+                # Get context options from config for viewport, etc.
+                context_options = OmegaConf.to_container(
+                    self.config.browser.context_options, resolve=True
+                )
+                self.context = await self.browser.new_context(**context_options)
+        
+        # =====================================================================
+        # LOCAL MODE: Launch local Chromium browser
+        # =====================================================================
         else:
-            # Regular launch without persistent context
-            self.browser = await self.context_manager.chromium.launch(**launch_options)
-            self.context = await self.browser.new_context(**context_options)
+            # Get launch options from config and convert to dict
+            launch_options = OmegaConf.to_container(
+                self.config.browser.launch_options, resolve=True
+            )
+
+            if headless is not None:
+                # update both the runtime options AND the config object,
+                # so other code (like highlight_element's "respect_headless") reads the same value.
+                launch_options["headless"] = bool(headless)
+                try:
+                    self.config.browser.launch_options.headless = bool(headless)
+                except Exception:
+                    pass
+
+            # Add cache directory if configured
+            if hasattr(self.config.browser, "cache_dir") and self.config.browser.cache_dir:
+                # Use absolute path for cache directory
+                cache_dir = Path(self.config.browser.cache_dir).resolve()
+                cache_dir.mkdir(parents=True, exist_ok=True)  # Ensure directory exists
+                cache_arg = f"--disk-cache-dir={cache_dir}"
+                launch_options["args"] = launch_options.get("args", []) + [cache_arg]
+                self.logger.info(f"Browser cache configured: {cache_arg}")
+
+            # Get context options from config and convert to dict
+            context_options = OmegaConf.to_container(
+                self.config.browser.context_options, resolve=True
+            )
+
+            # Check if user_data_dir is specified - use launch_persistent_context if so
+            user_data_dir = None
+            if (
+                hasattr(self.config.browser, "user_data_dir")
+                and self.config.browser.user_data_dir
+            ):
+                user_data_dir = self.config.browser.user_data_dir
+
+            if user_data_dir:
+                # Use launch_persistent_context for user data directory
+                # Remove --disk-cache-dir from args since persistent context manages its own cache
+                persistent_options = {**launch_options, **context_options}
+                if "args" in persistent_options:
+                    persistent_options["args"] = [
+                        arg
+                        for arg in persistent_options["args"]
+                        if not arg.startswith("--disk-cache-dir")
+                    ]
+
+                self.context = (
+                    await self.context_manager.chromium.launch_persistent_context(
+                        user_data_dir, **persistent_options
+                    )
+                )
+                self.browser = self.context.browser
+                self.logger.info(
+                    f"Using persistent context with cache in user data dir: {user_data_dir}"
+                )
+            else:
+                # Regular launch without persistent context
+                self.browser = await self.context_manager.chromium.launch(**launch_options)
+                self.context = await self.browser.new_context(**context_options)
 
         # Start tracing if enabled
         await self._setup_tracing()
@@ -625,6 +669,41 @@ class WebAgentEnv:
         else:
             self.logger.warning("No start_url specified in task config")
         return await self.observation()
+
+    async def close(self):
+        """
+        Close the browser environment and cleanup all resources.
+        
+        This should be called when done with the environment to properly
+        close BrowserBase sessions and release browser resources.
+        """
+        try:
+            # Stop tracing if active
+            await self._stop_tracing()
+            
+            # Close BrowserBase session if connected
+            if self.browserbase_connector:
+                await self.browserbase_connector.close_session()
+                self.browserbase_connector = None
+            
+            # Close browser context
+            if self.context:
+                await self.context.close()
+                self.context = None
+            
+            # Close browser
+            if self.browser:
+                await self.browser.close()
+                self.browser = None
+            
+            # Cleanup shared Playwright instance
+            await self._cleanup_playwright()
+            
+            self.logger.info("Browser environment closed successfully")
+            
+        except Exception as e:
+            self.logger.warning(f"Error during environment cleanup: {e}")
+
 
     async def step(
         self,

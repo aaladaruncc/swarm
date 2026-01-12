@@ -51,6 +51,12 @@ chat_router = Router(
             },
         },
         {
+            "model_name": "gemini",
+            "litellm_params": {
+                "model": "gemini/gemini-2.0-flash",
+            },
+        },
+        {
             "model_name": "openai_thinking",
             "litellm_params": {
                 "model": "openai/gpt-5-mini",
@@ -75,6 +81,12 @@ chat_router = Router(
                     "type": "enabled",
                     "budget_tokens": 32000,
                 },
+            },
+        },
+        {
+            "model_name": "gemini_thinking",
+            "litellm_params": {
+                "model": "gemini/gemini-2.0-flash-thinking-exp",
             },
         },
     ]
@@ -102,6 +114,12 @@ slow_chat_router = Router(
             },
         },
         {
+            "model_name": "gemini",
+            "litellm_params": {
+                "model": "gemini/gemini-2.0-flash",
+            },
+        },
+        {
             "model_name": "openai_thinking",
             "litellm_params": {"model": "openai/gpt-5", "reasoning_effort": "high"},
         },
@@ -125,6 +143,12 @@ slow_chat_router = Router(
                 },
             },
         },
+        {
+            "model_name": "gemini_thinking",
+            "litellm_params": {
+                "model": "gemini/gemini-2.0-flash-thinking-exp",
+            },
+        },
     ]
 )
 
@@ -141,6 +165,15 @@ embed_router = Router(
                 "input_type": "search_document",
                 "truncate": "END",
             },
+        },
+        {
+            # Anthropic doesn't have embeddings, so use Gemini as fallback
+            "model_name": "anthropic",
+            "litellm_params": {"model": "gemini/text-embedding-004"},
+        },
+        {
+            "model_name": "gemini",
+            "litellm_params": {"model": "gemini/text-embedding-004"},
         },
     ]
 )
