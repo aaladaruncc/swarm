@@ -14,6 +14,7 @@ resource "aws_ecs_cluster" "api" {
   }
 }
 
+
 # CloudWatch Log Group
 resource "aws_cloudwatch_log_group" "api" {
   name              = "/ecs/${var.app_name}"
