@@ -40,26 +40,26 @@ export default function LoginPage() {
     try {
       if (isLogin) {
         const res = await signIn.email({ email, password });
-        
+
         if (res?.error) {
           setError(res.error.message || "Authentication failed");
           setLoading(false);
           return;
         }
-        
+
         setLoginSuccess(true);
-        
+
         // Wait a moment for cookies to be set, then use window.location for full page reload
         await new Promise(resolve => setTimeout(resolve, 300));
-        
+
         // Use window.location.href for full page reload to ensure cookies are sent
         window.location.href = "/dashboard";
       } else {
         const res = await signUp.email({ email, password, name });
         if (res?.error) {
-           setError(res.error.message || "Signup failed");
-           setLoading(false);
-           return;
+          setError(res.error.message || "Signup failed");
+          setLoading(false);
+          return;
         }
         setSuccess("Account created successfully! Redirecting to login...");
         setTimeout(() => {
@@ -80,9 +80,9 @@ export default function LoginPage() {
       setLoading(false);
     } finally {
       if (isLogin && loginSuccess) {
-         // keep loading if successful login to avoid flash
+        // keep loading if successful login to avoid flash
       } else {
-         setLoading(false);
+        setLoading(false);
       }
     }
   };
@@ -98,7 +98,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-50 font-sans selection:bg-neutral-900 selection:text-white p-4">
       {/* Background Pattern */}
-      <div 
+      <div
         className="absolute inset-0 opacity-[0.03] pointer-events-none"
         style={{
           backgroundImage: `radial-gradient(circle at 1px 1px, rgba(0,0,0,0.1) 1px, transparent 0)`,
@@ -111,14 +111,14 @@ export default function LoginPage() {
         <div className="w-full lg:w-7/12 flex flex-col justify-center p-8 lg:p-16 relative">
           <div className="max-w-md mx-auto w-full">
             {/* Logo */}
-            <Link 
-              href="/" 
+            <Link
+              href="/"
               className="mb-10 hover:opacity-80 transition-opacity inline-flex items-center -ml-[2px]"
             >
-              <Image 
-                src="/images/swarm_small.png" 
-                alt="Swarm" 
-                width={120} 
+              <Image
+                src="/images/swarm_small.png"
+                alt="Swarm"
+                width={120}
                 height={40}
                 className="h-8 w-auto object-contain"
                 priority
@@ -150,7 +150,7 @@ export default function LoginPage() {
               ) : (
                 <div className="h-[74px]" aria-hidden />
               )}
-              
+
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-neutral-700 uppercase tracking-wide">Email</label>
                 <input
@@ -158,7 +158,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-white border border-neutral-200 text-neutral-900 px-4 py-2.5 text-sm focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900 outline-none transition-all placeholder:text-neutral-400 rounded-none font-light"
-                  placeholder="ada@example.com"
+                  placeholder="test@example.com"
                   required
                 />
               </div>

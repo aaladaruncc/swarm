@@ -45,7 +45,7 @@ variable "memory" {
 variable "desired_count" {
   description = "Number of tasks to run"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "health_check_path" {
