@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.80",
+    "@aws-sdk/client-s3": "^3.600.0",
+    "@aws-sdk/s3-request-presigner": "^3.600.0",
     "@browserbasehq/sdk": "^2.6.0",
     "@browserbasehq/stagehand": "3.0.3",
     "@hono/node-server": "^1.13.7",
