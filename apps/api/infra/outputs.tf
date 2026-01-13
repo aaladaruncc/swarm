@@ -54,3 +54,39 @@ output "docker_push_commands" {
     docker push ${aws_ecr_repository.api.repository_url}:latest
   EOT
 }
+
+# RDS Outputs
+output "rds_endpoint" {
+  description = "RDS endpoint (host:port)"
+  value       = aws_db_instance.main.endpoint
+}
+
+output "rds_host" {
+  description = "RDS hostname"
+  value       = aws_db_instance.main.address
+}
+
+output "database_url" {
+  description = "PostgreSQL connection URL (add password manually)"
+  value       = "postgresql://${var.db_username}:PASSWORD@${aws_db_instance.main.endpoint}/${var.db_name}"
+  sensitive   = true
+}
+
+output "migration_command" {
+  description = "Command to migrate from Neon to RDS"
+  value       = <<-EOT
+    # Export from Neon, import to RDS:
+    pg_dump "$NEON_DATABASE_URL" --no-owner | psql "postgresql://${var.db_username}:YOUR_PASSWORD@${aws_db_instance.main.endpoint}/${var.db_name}"
+  EOT
+}
+
+# S3 Outputs
+output "s3_bucket_name" {
+  description = "S3 bucket name for screenshots"
+  value       = aws_s3_bucket.screenshots.id
+}
+
+output "s3_bucket_arn" {
+  description = "S3 bucket ARN"
+  value       = aws_s3_bucket.screenshots.arn
+}
