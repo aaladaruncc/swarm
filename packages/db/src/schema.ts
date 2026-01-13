@@ -166,8 +166,8 @@ export const screenshots = pgTable("screenshots", {
     .references(() => testRuns.id, { onDelete: "cascade" }),
   stepNumber: integer("step_number").notNull(),
   description: text("description"),
-  url: text("url"), // URL to stored screenshot (S3, R2, etc.)
-  base64Data: text("base64_data"), // Alternative: store as base64
+  s3Key: text("s3_key"), // S3 object key for the screenshot
+  s3Url: text("s3_url"), // Full S3 URL or presigned URL
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -181,6 +181,70 @@ export const swarms = pgTable("swarms", {
   description: text("description"),
   personas: jsonb("personas").$type<any[]>(), // Array of persona objects
   agentCount: integer("agent_count").notNull().default(3),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// ============================================================================
+// API KEYS - Internal service-to-service authentication
+// ============================================================================
+
+export const apiKeys = pgTable("api_keys", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  keyHash: text("key_hash").notNull(),
+  keyPrefix: text("key_prefix").notNull(),
+  scopes: jsonb("scopes").$type<string[]>(),
+  isActive: boolean("is_active").notNull().default(true),
+  lastUsedAt: timestamp("last_used_at"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// ============================================================================
+// UXAGENT RUNS - Store UXAgent execution data
+// ============================================================================
+
+export const uxagentRuns = pgTable("uxagent_runs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  testRunId: uuid("test_run_id").references(() => testRuns.id, { onDelete: "cascade" }),
+  userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+
+  // Run metadata
+  runId: text("run_id").notNull(),
+  intent: text("intent").notNull(),
+  startUrl: text("start_url").notNull(),
+  personaData: jsonb("persona_data"),
+
+  // Status
+  status: text("status").notNull().default("running"),
+  score: integer("score"),
+  terminated: boolean("terminated").default(false),
+
+  // Traces (JSON data)
+  basicInfo: jsonb("basic_info"),
+  actionTrace: jsonb("action_trace"),
+  memoryTrace: jsonb("memory_trace"),
+  observationTrace: jsonb("observation_trace"),
+
+  // Full log
+  logContent: text("log_content"),
+
+  // Timestamps
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const uxagentScreenshots = pgTable("uxagent_screenshots", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  uxagentRunId: uuid("uxagent_run_id")
+    .notNull()
+    .references(() => uxagentRuns.id, { onDelete: "cascade" }),
+  stepNumber: integer("step_number").notNull(),
+  filename: text("filename"),
+  s3Key: text("s3_key"), // S3 object key for the screenshot
+  s3Url: text("s3_url"), // Full S3 URL
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -211,3 +275,12 @@ export type NewScreenshot = typeof screenshots.$inferInsert;
 
 export type Swarm = typeof swarms.$inferSelect;
 export type NewSwarm = typeof swarms.$inferInsert;
+
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type NewApiKey = typeof apiKeys.$inferInsert;
+
+export type UxagentRun = typeof uxagentRuns.$inferSelect;
+export type NewUxagentRun = typeof uxagentRuns.$inferInsert;
+
+export type UxagentScreenshot = typeof uxagentScreenshots.$inferSelect;
+export type NewUxagentScreenshot = typeof uxagentScreenshots.$inferInsert;
