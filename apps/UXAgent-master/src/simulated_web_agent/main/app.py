@@ -1,10 +1,40 @@
 # app.py
+import os
+import json
+import aiohttp
+import asyncio
+from functools import wraps
 from flask import Flask, jsonify, request
 from werkzeug.exceptions import BadRequest
+from flask_cors import CORS
 
 from .run import run  # your run() from the module you showed
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
+
+# API Key authentication
+INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY")
+
+
+def require_api_key(f):
+    """Decorator to require API key authentication for endpoints"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # Skip auth if no key is configured (local dev mode)
+        if not INTERNAL_API_KEY:
+            return f(*args, **kwargs)
+        
+        api_key = request.headers.get("X-API-Key")
+        if not api_key:
+            return jsonify({"error": "Missing X-API-Key header"}), 401
+        
+        if api_key != INTERNAL_API_KEY:
+            return jsonify({"error": "Invalid API key"}), 403
+        
+        return f(*args, **kwargs)
+    return decorated
+
 
 # Friendly labels + simple state (latest counts per phase)
 PHASE_LABELS = {
@@ -71,8 +101,35 @@ def log_progress(evt: dict):
         print(f"[PROGRESS] {evt}", flush=True)
 
 
+async def send_results_to_callback(callback_url: str, api_key: str, run_data: dict):
+    """Send run results to the callback URL (main API)"""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                callback_url,
+                json=run_data,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-API-Key": api_key,
+                },
+            ) as response:
+                if response.status != 200:
+                    print(f"[CALLBACK] Failed to send results: {response.status}", flush=True)
+                else:
+                    print(f"[CALLBACK] Results sent successfully", flush=True)
+    except Exception as e:
+        print(f"[CALLBACK] Error sending results: {e}", flush=True)
+
+
 @app.post("/run")
+@require_api_key
 def run_endpoint():
+    # Get callback info from headers
+    callback_url = request.headers.get("X-Callback-URL")
+    callback_api_key = request.headers.get("X-API-Key")
+    user_id = request.headers.get("X-User-ID")
+    test_run_id = request.headers.get("X-Test-Run-ID")
+    
     # Parse JSON body
     payload = request.get_json(silent=True)
     if payload is None:
@@ -109,6 +166,25 @@ def run_endpoint():
             headless=headless,
             on_progress=log_progress,
         )
+        
+        # If callback URL provided, send results back to main API
+        if callback_url and callback_api_key:
+            run_data = {
+                "runId": result.get("run_id", "unknown"),
+                "intent": payload["general_intent"],
+                "startUrl": payload["start_url"],
+                "testRunId": test_run_id if test_run_id else None,
+                "status": "completed" if result.get("success") else "failed",
+                "score": result.get("score"),
+                "terminated": result.get("terminated", False),
+                "basicInfo": result.get("basic_info"),
+                "actionTrace": result.get("action_trace"),
+                "memoryTrace": result.get("memory_trace"),
+                "logContent": result.get("log_content"),
+            }
+            # Run async callback in background
+            asyncio.run(send_results_to_callback(callback_url, callback_api_key, run_data))
+        
         return jsonify(result), 200
 
     except BadRequest:
@@ -124,6 +200,12 @@ def progress_endpoint():
     return jsonify(_format_progress()), 200
 
 
+@app.get("/health")
+def health_endpoint():
+    return jsonify({"status": "ok"}), 200
+
+
 if __name__ == "__main__":
     # Minimal dev server
     app.run(host="0.0.0.0", port=8000, debug=True, use_reloader=False, threaded=True)
+
