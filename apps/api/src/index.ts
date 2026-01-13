@@ -8,6 +8,8 @@ import { userRoutes } from "./routes/user.js";
 import { testsRoutes } from "./routes/tests.js";
 import { batchTestsRoutes } from "./routes/batch-tests.js";
 import { swarmsRoutes } from "./routes/swarms.js";
+import { apiKeysRoutes } from "./routes/api-keys.js";
+import { uxagentRoutes } from "./routes/uxagent.js";
 import { authMiddleware } from "./middleware/auth.js";
 
 const app = new Hono();
@@ -41,16 +43,22 @@ app.route("/api/auth", authRoutes);
 // User routes (protected inside)
 app.route("/api/user", userRoutes);
 
-// Protected routes
-app.use("/api/tests", authMiddleware); // Match base path
-app.use("/api/tests/*", authMiddleware); // Match child paths
-app.use("/api/batch-tests", authMiddleware); // Match base path
-app.use("/api/batch-tests/*", authMiddleware); // Match child paths
-app.use("/api/swarms", authMiddleware); // Match base path
-app.use("/api/swarms/*", authMiddleware); // Match child paths
+// Protected routes (user auth required)
+app.use("/api/tests", authMiddleware);
+app.use("/api/tests/*", authMiddleware);
+app.use("/api/batch-tests", authMiddleware);
+app.use("/api/batch-tests/*", authMiddleware);
+app.use("/api/swarms", authMiddleware);
+app.use("/api/swarms/*", authMiddleware);
+app.use("/api/api-keys", authMiddleware);
+app.use("/api/api-keys/*", authMiddleware);
 app.route("/api/tests", testsRoutes);
 app.route("/api/batch-tests", batchTestsRoutes);
 app.route("/api/swarms", swarmsRoutes);
+app.route("/api/api-keys", apiKeysRoutes);
+
+// UXAgent routes (API key auth handled internally)
+app.route("/api/uxagent", uxagentRoutes);
 
 // Start server
 const port = parseInt(process.env.PORT || "8080", 10);
