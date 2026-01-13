@@ -7,6 +7,7 @@ import { runUserTestAgent } from "../lib/agent.js";
 import { SAMPLE_PERSONAS } from "../lib/personas.js";
 import type { Session } from "../lib/auth.js";
 import Browserbase from "@browserbasehq/sdk";
+import { uploadScreenshot, generateScreenshotKey } from "../lib/s3.js";
 
 type Variables = {
   user: Session["user"];
@@ -220,11 +221,11 @@ testsRoutes.get("/:id/transcript", async (c) => {
     lines.forEach((line: string) => {
       const trimmed = line.trim();
       if (trimmed.length === 0) return;
-      
+
       // Strip dev server prefixes (e.g., "apps/api dev: ")
       const cleanLine = trimmed.replace(/^apps\/\w+\s+dev:\s*/i, '').trim();
       if (cleanLine.length === 0) return;
-      
+
       // Try to extract timestamp from Stagehand format: [2025-12-11 02:58:35.865 -0500] LEVEL: message
       const timestampMatch = cleanLine.match(/\[([^\]]+)\]/);
       let timestamp = baseTimestamp + rawIdx;
@@ -238,7 +239,7 @@ testsRoutes.get("/:id/transcript", async (c) => {
           // Use default
         }
       }
-      
+
       timeline.push({
         type: "raw",
         timestamp,
@@ -258,11 +259,11 @@ testsRoutes.get("/:id/transcript", async (c) => {
     lines.forEach((line: string) => {
       const trimmed = line.trim();
       if (trimmed.length === 0) return;
-      
+
       // Strip dev server prefixes
       const cleanLine = trimmed.replace(/^apps\/\w+\s+dev:\s*/i, '').trim();
       if (cleanLine.length === 0) return;
-      
+
       // Try to extract timestamp from Stagehand format
       const timestampMatch = cleanLine.match(/\[([^\]]+)\]/);
       let timestamp = baseTimestamp + rawIdx + 0.5;
@@ -276,7 +277,7 @@ testsRoutes.get("/:id/transcript", async (c) => {
           // Use default
         }
       }
-      
+
       timeline.push({
         type: "raw",
         timestamp,
@@ -295,21 +296,21 @@ testsRoutes.get("/:id/transcript", async (c) => {
     const fullReportScreenshot = (fullReport?.screenshots || []).find(
       (s: any) => s.stepNumber === screenshot.stepNumber
     );
-    
+
     // Use stored timestamp, or estimate based on step number
-    const timestamp = fullReportScreenshot?.timestamp 
+    const timestamp = fullReportScreenshot?.timestamp
       ? fullReportScreenshot.timestamp
-      : testRun.startedAt 
+      : testRun.startedAt
         ? new Date(testRun.startedAt).getTime() + (screenshot.stepNumber * 5000) // ~5 seconds per step
         : Date.now();
-    
+
     timeline.push({
       type: "screenshot",
       timestamp,
       data: {
         stepNumber: screenshot.stepNumber,
         description: screenshot.description,
-        base64Data: screenshot.base64Data,
+        s3Url: screenshot.s3Url,
         createdAt: screenshot.createdAt,
       },
     });
@@ -360,8 +361,8 @@ testsRoutes.get("/:id/recording", async (c) => {
     try {
       const debugInfo = await bb.sessions.debug(testRun.browserbaseSessionId);
       const liveViewUrl = debugInfo.debuggerFullscreenUrl || debugInfo.debuggerUrl;
-      
-      return c.json({ 
+
+      return c.json({
         liveViewUrl,
         debugUrl: liveViewUrl,
         sessionId: testRun.browserbaseSessionId,
@@ -370,23 +371,23 @@ testsRoutes.get("/:id/recording", async (c) => {
       // If session is stopped (410), return a fallback viewer URL
       if (debugError.status === 410 || debugError.error?.message === "Session stopped") {
         console.log(`Session ${testRun.browserbaseSessionId} has stopped, using fallback viewer`);
-        
+
         // Return the Browserbase session page as fallback
         // This will show the recording on Browserbase's platform
-        return c.json({ 
+        return c.json({
           liveViewUrl: `https://www.browserbase.com/sessions/${testRun.browserbaseSessionId}`,
           debugUrl: `https://www.browserbase.com/sessions/${testRun.browserbaseSessionId}`,
           sessionId: testRun.browserbaseSessionId,
           isFallback: true,
         });
       }
-      
+
       // Re-throw other errors
       throw debugError;
     }
   } catch (error) {
     console.error(`Failed to fetch session viewer for ${testRun.browserbaseSessionId}:`, error);
-    return c.json({ 
+    return c.json({
       error: "Failed to fetch session viewer",
       details: error instanceof Error ? error.message : "Unknown error"
     }, 500);
@@ -410,7 +411,7 @@ testsRoutes.get("/personas", async (c) => {
 // Background test runner
 async function runTestInBackground(testRunId: string, targetUrl: string, personaIndex: number) {
   console.log(`[${testRunId}] Starting background test...`);
-  
+
   try {
     // Update status to running
     await db
@@ -447,14 +448,18 @@ async function runTestInBackground(testRunId: string, targetUrl: string, persona
 
     console.log(`[${testRunId}] Report saved, saving ${result.screenshots.length} screenshots...`);
 
-    // Save screenshots (handle errors individually)
+    // Save screenshots to S3 (handle errors individually)
     for (const screenshot of result.screenshots) {
       try {
+        const key = generateScreenshotKey(testRunId, screenshot.stepNumber);
+        const { s3Key, s3Url } = await uploadScreenshot(key, screenshot.base64Data);
+
         await db.insert(schema.screenshots).values({
           testRunId,
           stepNumber: screenshot.stepNumber,
           description: screenshot.description,
-          base64Data: screenshot.base64Data,
+          s3Key,
+          s3Url,
         });
       } catch (screenshotError) {
         console.error(`[${testRunId}] Failed to save screenshot ${screenshot.stepNumber}:`, screenshotError);
