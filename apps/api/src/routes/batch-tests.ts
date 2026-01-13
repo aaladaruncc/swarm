@@ -9,6 +9,7 @@ import { aggregateReports } from "../lib/report-aggregator.js";
 import { globalTestQueue } from "../lib/queue-manager.js";
 import type { Session } from "../lib/auth.js";
 import type { AgentResult } from "../lib/agent.js";
+import { uploadScreenshot, generateScreenshotKey } from "../lib/s3.js";
 
 type Variables = {
   user: Session["user"];
@@ -48,7 +49,7 @@ batchTestsRoutes.post(
 
     try {
       console.log(`[${user.id}] Generating personas for ${targetUrl} (will select ${agentCount})...`);
-      
+
       const result = await generatePersonas(userDescription, targetUrl);
       const selection = selectTopPersonas(result.personas, agentCount || 3);
 
@@ -167,7 +168,7 @@ batchTestsRoutes.get("/:id", async (c) => {
         .select()
         .from(schema.reports)
         .where(eq(schema.reports.testRunId, testRun.id));
-      
+
       return { testRun, report };
     })
   );
@@ -222,7 +223,7 @@ batchTestsRoutes.post("/:id/terminate", async (c) => {
 
     // Update all running/pending test runs to terminated
     const runningTestRuns = testRuns.filter(tr => tr.status === "running" || tr.status === "pending");
-    
+
     for (const testRun of runningTestRuns) {
       await db
         .update(schema.testRuns)
@@ -252,7 +253,7 @@ batchTestsRoutes.post("/:id/terminate", async (c) => {
       .from(schema.batchTestRuns)
       .where(eq(schema.batchTestRuns.id, batchId));
 
-    return c.json({ 
+    return c.json({
       message: "Batch test terminated successfully",
       batchTestRun: updatedBatchTestRun
     });
@@ -306,7 +307,7 @@ async function runBatchTestInBackground(
 
     const testRuns = await Promise.all(testRunPromises);
     console.log(`[${batchTestRunId}] Created ${testRuns.length} test run records`);
-    
+
     // Get queue status before adding
     const queueStatusBefore = globalTestQueue.getStatus();
     console.log(`[${batchTestRunId}] Queue status before adding: ${queueStatusBefore.running} running, ${queueStatusBefore.queued} queued`);
@@ -333,44 +334,48 @@ async function runBatchTestInBackground(
             onProgress: (msg) => console.log(`[${testRun.id}] ${msg}`),
           });
 
-        console.log(`[${testRun.id}] Test completed. Score: ${result.overallExperience.score}/10`);
+          console.log(`[${testRun.id}] Test completed. Score: ${result.overallExperience.score}/10`);
 
-        // Save the report (round score to integer)
-        await db.insert(schema.reports).values({
-          testRunId: testRun.id,
-          score: Math.round(result.overallExperience.score),
-          summary: result.overallExperience.summary,
-          fullReport: result as any,
-          positiveAspects: result.positiveAspects,
-          usabilityIssues: result.usabilityIssues,
-          accessibilityNotes: result.accessibilityNotes,
-          recommendations: result.recommendations,
-          totalDuration: result.totalDuration,
-        });
+          // Save the report (round score to integer)
+          await db.insert(schema.reports).values({
+            testRunId: testRun.id,
+            score: Math.round(result.overallExperience.score),
+            summary: result.overallExperience.summary,
+            fullReport: result as any,
+            positiveAspects: result.positiveAspects,
+            usabilityIssues: result.usabilityIssues,
+            accessibilityNotes: result.accessibilityNotes,
+            recommendations: result.recommendations,
+            totalDuration: result.totalDuration,
+          });
 
-        // Save screenshots
-        for (const screenshot of result.screenshots) {
-          try {
-            await db.insert(schema.screenshots).values({
-              testRunId: testRun.id,
-              stepNumber: screenshot.stepNumber,
-              description: screenshot.description,
-              base64Data: screenshot.base64Data,
-            });
-          } catch (screenshotError) {
-            console.error(`[${testRun.id}] Failed to save screenshot:`, screenshotError);
+          // Save screenshots to S3
+          for (const screenshot of result.screenshots) {
+            try {
+              const key = generateScreenshotKey(testRun.id, screenshot.stepNumber);
+              const { s3Key, s3Url } = await uploadScreenshot(key, screenshot.base64Data);
+
+              await db.insert(schema.screenshots).values({
+                testRunId: testRun.id,
+                stepNumber: screenshot.stepNumber,
+                description: screenshot.description,
+                s3Key,
+                s3Url,
+              });
+            } catch (screenshotError) {
+              console.error(`[${testRun.id}] Failed to save screenshot:`, screenshotError);
+            }
           }
-        }
 
-        // Update status to completed
-        await db
-          .update(schema.testRuns)
-          .set({
-            status: "completed",
-            completedAt: new Date(),
-            browserbaseSessionId: result.browserbaseSessionId,
-          })
-          .where(eq(schema.testRuns.id, testRun.id));
+          // Update status to completed
+          await db
+            .update(schema.testRuns)
+            .set({
+              status: "completed",
+              completedAt: new Date(),
+              browserbaseSessionId: result.browserbaseSessionId,
+            })
+            .where(eq(schema.testRuns.id, testRun.id));
 
           return result;
         } catch (error) {
@@ -394,7 +399,7 @@ async function runBatchTestInBackground(
     const queueStatusAfter = globalTestQueue.getStatus();
     console.log(`[${batchTestRunId}] Queue status after adding: ${queueStatusAfter.running} running, ${queueStatusAfter.queued} queued`);
     console.log(`[${batchTestRunId}] Waiting for all tests to complete...`);
-    
+
     const results = await Promise.all(testPromises);
     const successfulResults = results.filter((r): r is AgentResult => r !== null);
 
