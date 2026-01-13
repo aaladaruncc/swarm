@@ -31,9 +31,12 @@ export interface UXAgentRunRequest {
 }
 
 export interface UXAgentRunResponse {
-    success: boolean;
+    status?: string;  // "accepted" for async
+    run_id?: string;
+    message?: string;
+    success?: boolean;  // Legacy sync response
     agent_count: number;
-    personas_generated: number;
+    personas_generated?: number;
     error?: string;
 }
 
@@ -69,14 +72,15 @@ export async function startUXAgentRun(
         body: JSON.stringify(request),
     });
 
-    if (!response.ok) {
+    // Accept both 200 (sync) and 202 (async) as success
+    if (!response.ok && response.status !== 202) {
         const errorText = await response.text();
         console.error(`[UXAgent Client] Error: ${response.status} - ${errorText}`);
         throw new Error(`UXAgent request failed: ${response.status} - ${errorText}`);
     }
 
     const result = await response.json() as UXAgentRunResponse;
-    console.log(`[UXAgent Client] Run started successfully`);
+    console.log(`[UXAgent Client] Run started successfully (status: ${response.status})`);
 
     return result;
 }

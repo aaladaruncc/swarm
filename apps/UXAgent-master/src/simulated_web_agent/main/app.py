@@ -185,51 +185,82 @@ def run_endpoint():
     if missing:
         raise BadRequest(f"Missing required fields: {', '.join(missing)}")
 
-    try:
-        # Optional flags with defaults
-        headless = bool(payload.get("headless", True))
+    # Optional flags with defaults
+    headless = bool(payload.get("headless", True))
+    
+    # Generate a unique run ID for tracking
+    import uuid
+    from datetime import datetime
+    run_id = f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_{uuid.uuid4().hex[:4]}"
 
-        # Call the pipeline
-        result = run(
-            total_personas=int(payload["total_personas"]),
-            demographics=payload["demographics"],
-            general_intent=payload["general_intent"],
-            start_url=payload["start_url"],
-            max_steps=int(payload["max_steps"]),
-            concurrency=int(payload.get("concurrency", 4)),
-            example_persona=payload.get("example_persona", None),
-            questionnaire=payload["questionnaire"],
-            headless=headless,
-            on_progress=log_progress,
-        )
-        
-        # Send each agent result to the callback
-        if callback_url and callback_api_key:
-            for agent_result in result.get("agent_results", []):
+    def background_run():
+        """Run the agent pipeline in background and send results via callback"""
+        try:
+            print(f"[RUN {run_id}] Starting background agent run...", flush=True)
+            
+            # Call the pipeline
+            result = run(
+                total_personas=int(payload["total_personas"]),
+                demographics=payload["demographics"],
+                general_intent=payload["general_intent"],
+                start_url=payload["start_url"],
+                max_steps=int(payload["max_steps"]),
+                concurrency=int(payload.get("concurrency", 4)),
+                example_persona=payload.get("example_persona", None),
+                questionnaire=payload["questionnaire"],
+                headless=headless,
+                on_progress=log_progress,
+            )
+            
+            print(f"[RUN {run_id}] Agent run completed, sending results...", flush=True)
+            
+            # Send each agent result to the callback
+            if callback_url and callback_api_key:
+                for agent_result in result.get("agent_results", []):
+                    try:
+                        asyncio.run(send_agent_result(
+                            callback_url=callback_url,
+                            api_key=callback_api_key,
+                            agent_data=agent_result,
+                            test_run_id=test_run_id,
+                        ))
+                    except Exception as e:
+                        print(f"[RUN {run_id}] Error sending agent result: {e}", flush=True)
+            
+            print(f"[RUN {run_id}] All results sent successfully", flush=True)
+                        
+        except Exception as e:
+            print(f"[RUN {run_id}] Background run failed: {e}", flush=True)
+            # Send error notification via callback
+            if callback_url and callback_api_key:
                 try:
-                    asyncio.run(send_agent_result(
+                    asyncio.run(send_results_to_callback(
                         callback_url=callback_url,
                         api_key=callback_api_key,
-                        agent_data=agent_result,
-                        test_run_id=test_run_id,
+                        run_data={
+                            "runId": run_id,
+                            "intent": payload.get("general_intent", ""),
+                            "startUrl": payload.get("start_url", ""),
+                            "testRunId": test_run_id,
+                            "status": "failed",
+                            "error": str(e),
+                        },
                     ))
-                except Exception as e:
-                    print(f"[CALLBACK] Error sending agent result: {e}", flush=True)
-        
-        # Return summary (not full data - too large)
-        response_data = {
-            "success": result.get("success", False),
-            "agent_count": len(result.get("agent_results", [])),
-            "personas_generated": len(result.get("personas", [])),
-            "error": result.get("error"),
-        }
-        
-        return jsonify(response_data), 200
+                except Exception as cb_error:
+                    print(f"[RUN {run_id}] Failed to send error callback: {cb_error}", flush=True)
 
-    except BadRequest:
-        raise
-    except Exception as e:
-        return jsonify({"status": "error", "error": str(e)}), 500
+    # Start background thread
+    import threading
+    thread = threading.Thread(target=background_run, daemon=True)
+    thread.start()
+    
+    # Return immediately with accepted status
+    return jsonify({
+        "status": "accepted",
+        "run_id": run_id,
+        "message": "Agent run started in background. Results will be sent to callback URL.",
+        "agent_count": int(payload["total_personas"]),
+    }), 202  # HTTP 202 Accepted
 
 
 @app.get("/progress")

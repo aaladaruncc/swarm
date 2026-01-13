@@ -66,6 +66,7 @@ interface UXAgentScreenshot {
   filename: string | null;
   s3Key: string | null;
   s3Url: string | null;
+  signedUrl?: string; // Presigned URL for secure access
   createdAt: string;
 }
 

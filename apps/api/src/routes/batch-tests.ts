@@ -9,7 +9,7 @@ import { aggregateReports } from "../lib/report-aggregator.js";
 import { globalTestQueue } from "../lib/queue-manager.js";
 import type { Session } from "../lib/auth.js";
 import type { AgentResult } from "../lib/agent.js";
-import { uploadScreenshot, generateScreenshotKey } from "../lib/s3.js";
+import { uploadScreenshot, generateScreenshotKey, getPresignedUrl } from "../lib/s3.js";
 import { startUXAgentRun, checkUXAgentHealth } from "../lib/uxagent-client.js";
 
 type Variables = {
@@ -234,13 +234,30 @@ batchTestsRoutes.get("/:id", async (c) => {
         uxagentRuns.push(...runs);
       }
 
-      // Get screenshots for each uxagent run
+      // Get screenshots for each uxagent run and generate presigned URLs
       for (const run of uxagentRuns) {
         const screenshots = await db
           .select()
           .from(schema.uxagentScreenshots)
           .where(eq(schema.uxagentScreenshots.uxagentRunId, run.id));
-        run.screenshots = screenshots;
+
+        // Generate presigned URLs for each screenshot
+        run.screenshots = await Promise.all(
+          screenshots.map(async (s) => {
+            let signedUrl = s.s3Url; // Default to stored URL
+            if (s.s3Key) {
+              try {
+                signedUrl = await getPresignedUrl(s.s3Key, 3600); // 1 hour expiry
+              } catch (err) {
+                console.error(`Failed to generate presigned URL for ${s.s3Key}:`, err);
+              }
+            }
+            return {
+              ...s,
+              signedUrl,
+            };
+          })
+        );
       }
     }
   }

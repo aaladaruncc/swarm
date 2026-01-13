@@ -44,6 +44,9 @@ resource "aws_lb" "uxagent" {
   subnets            = data.aws_subnets.default.ids
 
   enable_deletion_protection = false
+  
+  # Increase idle timeout to 5 minutes for long-running agent requests
+  idle_timeout = 300
 
   tags = {
     Name = "${var.app_name}-alb"

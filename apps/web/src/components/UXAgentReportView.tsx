@@ -42,8 +42,8 @@ export function UXAgentReportView({ uxagentRuns, targetUrl }: UXAgentReportViewP
                             key={run.id}
                             onClick={() => setExpandedRun(run.id)}
                             className={`px-4 py-2 border text-sm font-medium transition-colors ${expandedRun === run.id
-                                    ? "border-neutral-900 bg-neutral-900 text-white"
-                                    : "border-neutral-200 hover:border-neutral-400"
+                                ? "border-neutral-900 bg-neutral-900 text-white"
+                                : "border-neutral-200 hover:border-neutral-400"
                                 }`}
                         >
                             Agent {idx + 1}
@@ -113,8 +113,8 @@ export function UXAgentReportView({ uxagentRuns, targetUrl }: UXAgentReportViewP
                                         key={key}
                                         onClick={() => setActiveTab(key as any)}
                                         className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors ${activeTab === key
-                                                ? "border-b-2 border-neutral-900 text-neutral-900"
-                                                : "text-neutral-500 hover:text-neutral-900"
+                                            ? "border-b-2 border-neutral-900 text-neutral-900"
+                                            : "text-neutral-500 hover:text-neutral-900"
                                             }`}
                                     >
                                         <Icon size={16} />
@@ -224,10 +224,10 @@ function ActionsTab({ actions }: { actions: any[] }) {
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
                                     <span className={`px-2 py-0.5 text-xs font-medium rounded ${action.action === "click" ? "bg-blue-100 text-blue-700" :
-                                            action.action === "type" ? "bg-purple-100 text-purple-700" :
-                                                action.action === "goto_url" ? "bg-green-100 text-green-700" :
-                                                    action.action === "terminate" ? "bg-red-100 text-red-700" :
-                                                        "bg-neutral-100 text-neutral-700"
+                                        action.action === "type" ? "bg-purple-100 text-purple-700" :
+                                            action.action === "goto_url" ? "bg-green-100 text-green-700" :
+                                                action.action === "terminate" ? "bg-red-100 text-red-700" :
+                                                    "bg-neutral-100 text-neutral-700"
                                         }`}>
                                         {action.action}
                                     </span>
@@ -355,14 +355,14 @@ function ScreenshotsTab({ screenshots }: { screenshots: any[] }) {
                             key={ss.id}
                             onClick={() => setSelectedIdx(idx)}
                             className={`w-full p-2 border transition-colors ${selectedIdx === idx
-                                    ? "border-neutral-900 bg-neutral-100"
-                                    : "border-neutral-200 hover:border-neutral-400"
+                                ? "border-neutral-900 bg-neutral-100"
+                                : "border-neutral-200 hover:border-neutral-400"
                                 }`}
                         >
                             <div className="text-xs font-medium mb-1">Step {ss.stepNumber}</div>
-                            {ss.s3Url && (
+                            {(ss.signedUrl || ss.s3Url) && (
                                 <img
-                                    src={ss.s3Url}
+                                    src={ss.signedUrl || ss.s3Url}
                                     alt={`Step ${ss.stepNumber}`}
                                     className="w-full h-16 object-cover object-top"
                                 />
@@ -396,10 +396,10 @@ function ScreenshotsTab({ screenshots }: { screenshots: any[] }) {
                         </button>
                     </div>
                 </div>
-                {currentScreenshot.s3Url ? (
+                {(currentScreenshot.signedUrl || currentScreenshot.s3Url) ? (
                     <div className="p-4 bg-neutral-100">
                         <img
-                            src={currentScreenshot.s3Url}
+                            src={currentScreenshot.signedUrl || currentScreenshot.s3Url}
                             alt={`Step ${currentScreenshot.stepNumber}`}
                             className="w-full h-auto border border-neutral-200 shadow-lg"
                         />
