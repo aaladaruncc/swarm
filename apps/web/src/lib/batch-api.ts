@@ -161,10 +161,13 @@ export async function createBatchTest(
   userDescription: string,
   generatedPersonas: GeneratedPersona[],
   selectedPersonaIndices: number[],
-  agentCount?: number
+  agentCount?: number,
+  useUXAgent: boolean = false,
+  maxSteps: number = 20
 ): Promise<{
   batchTestRun: BatchTestRun;
   message: string;
+  useUXAgent?: boolean;
 }> {
   return fetchWithAuth("/api/batch-tests", {
     method: "POST",
@@ -174,6 +177,8 @@ export async function createBatchTest(
       generatedPersonas,
       selectedPersonaIndices,
       agentCount,
+      useUXAgent,
+      maxSteps,
     }),
   });
 }

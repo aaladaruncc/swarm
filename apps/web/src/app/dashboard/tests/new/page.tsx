@@ -6,34 +6,37 @@ import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { generatePersonas, createBatchTest, getSwarms, type GeneratedPersona, type Swarm } from "@/lib/batch-api";
 import { GeneratingPersonasLoader } from "@/components/ui/generating-personas-loader";
-import { Globe, User, Loader2, Zap, Info, Check, Minus, Plus, Users, X, ArrowRight } from "lucide-react";
+import { Globe, User, Loader2, Zap, Info, Check, Minus, Plus, Users, X, ArrowRight, Bot } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function NewTest() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
-  
+
   // Step 1: URL and Description
   const [url, setUrl] = useState("");
   const [userDescription, setUserDescription] = useState("");
   const [agentCount, setAgentCount] = useState(3);
-  
+
   // Step 2: Generated Personas
   const [personas, setPersonas] = useState<GeneratedPersona[]>([]);
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [recommendedIndices, setRecommendedIndices] = useState<number[]>([]);
-  
+
   // Swarm Selection
   const [swarms, setSwarms] = useState<Swarm[]>([]);
   const [isLoadingSwarms, setIsLoadingSwarms] = useState(false);
   const [showSwarmSelector, setShowSwarmSelector] = useState(false);
   const [selectedSwarm, setSelectedSwarm] = useState<Swarm | null>(null);
   const [swarmModalStep, setSwarmModalStep] = useState<"select" | "confirm">("select");
-  
+
   // UI State
   const [step, setStep] = useState<"describe" | "generating" | "select" | "starting">("describe");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // UXAgent toggle
+  const [useUXAgent, setUseUXAgent] = useState(false);
 
   const loadSwarms = useCallback(async () => {
     setIsLoadingSwarms(true);
@@ -111,7 +114,9 @@ export default function NewTest() {
         swarm.description || `Test using ${swarm.name}`,
         personasToUse,
         selectedIndices,
-        swarm.agentCount
+        swarm.agentCount,
+        useUXAgent,
+        20
       );
       router.push(`/tests/${result.batchTestRun.id}`);
     } catch (err) {
@@ -153,7 +158,7 @@ export default function NewTest() {
     setStep("starting");
 
     try {
-      const result = await createBatchTest(url, userDescription, personas, selectedIndices, agentCount);
+      const result = await createBatchTest(url, userDescription, personas, selectedIndices, agentCount, useUXAgent, 20);
       router.push(`/tests/${result.batchTestRun.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start batch test");
@@ -168,7 +173,7 @@ export default function NewTest() {
       {/* Breadcrumb */}
       <div className="mb-6">
         <nav className="flex items-center gap-2 text-sm">
-          <Link 
+          <Link
             href="/dashboard"
             className="text-neutral-500 hover:text-neutral-900 transition-colors font-light"
           >
@@ -197,7 +202,7 @@ export default function NewTest() {
                   <Globe size={18} className="stroke-1" />
                   <h2 className="text-base font-medium">Target Environment</h2>
                 </div>
-                
+
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Website URL</label>
                   <input
@@ -220,7 +225,7 @@ export default function NewTest() {
                   <User size={18} className="stroke-1" />
                   <h2 className="text-base font-medium">Target Audience</h2>
                 </div>
-                
+
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Audience Description</label>
                   <textarea
@@ -236,7 +241,7 @@ export default function NewTest() {
                     <p className="text-xs text-neutral-400 font-light">
                       Be specific: demographics, goals, tech comfort, pain points.
                     </p>
-                    
+
                     {/* Use Saved Swarms Box */}
                     {url && (
                       <button
@@ -262,7 +267,7 @@ export default function NewTest() {
                 <Zap size={18} className="stroke-1" />
                 <h2 className="text-base font-medium">Concurrency</h2>
               </div>
-              
+
               <div className="flex items-center justify-between max-w-md">
                 <label className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Concurrent Agents</label>
                 <div className="flex items-center gap-3">
@@ -283,14 +288,13 @@ export default function NewTest() {
                   </button>
                 </div>
               </div>
-              
+
               <div className="flex gap-1 h-1 max-w-md">
                 {[1, 2, 3, 4, 5].map((i) => (
                   <div
                     key={i}
-                    className={`flex-1 transition-colors ${
-                      i <= agentCount ? 'bg-neutral-900' : 'bg-neutral-200'
-                    }`}
+                    className={`flex-1 transition-colors ${i <= agentCount ? 'bg-neutral-900' : 'bg-neutral-200'
+                      }`}
                   />
                 ))}
               </div>
@@ -302,6 +306,40 @@ export default function NewTest() {
                 {agentCount === 4 && "4 agents — Faster but slight rate limit risk"}
                 {agentCount === 5 && "5 agents — Fastest but higher rate limit risk"}
               </p>
+            </section>
+
+            {/* UXAgent Toggle */}
+            <section className="space-y-4 border-t border-neutral-100 pt-6">
+              <div className="flex items-center gap-3 text-neutral-900 border-b border-neutral-100 pb-2">
+                <Bot size={18} className="stroke-1" />
+                <h2 className="text-base font-medium">Agent Engine</h2>
+              </div>
+
+              <div className="flex items-center justify-between max-w-md">
+                <div>
+                  <label className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Use UXAgent Service</label>
+                  <p className="text-xs text-neutral-400 font-light mt-1">
+                    Advanced AI agent with persona-driven exploration
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setUseUXAgent(!useUXAgent)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${useUXAgent ? 'bg-neutral-900' : 'bg-neutral-200'
+                    }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${useUXAgent ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                  />
+                </button>
+              </div>
+
+              {useUXAgent && (
+                <div className="p-3 bg-blue-50 border border-blue-100 text-xs font-light text-blue-700 rounded-none">
+                  <span className="font-medium">UXAgent enabled:</span> Each agent will explore your site with AI-driven decision making, capturing detailed action traces and observations.
+                </div>
+              )}
             </section>
 
             {error && (
@@ -371,15 +409,14 @@ export default function NewTest() {
                     {[...Array(agentCount)].map((_, i) => (
                       <div
                         key={i}
-                        className={`h-1 flex-1 transition-colors rounded-full ${
-                          i < selectedIndices.length ? 'bg-neutral-900' : 'bg-neutral-200'
-                        }`}
+                        className={`h-1 flex-1 transition-colors rounded-full ${i < selectedIndices.length ? 'bg-neutral-900' : 'bg-neutral-200'
+                          }`}
                       />
                     ))}
                   </div>
                 </div>
                 <p className="text-xs text-neutral-400 font-light mt-1">
-                  {selectedIndices.length < agentCount 
+                  {selectedIndices.length < agentCount
                     ? `Select ${agentCount - selectedIndices.length} more persona${agentCount - selectedIndices.length !== 1 ? 's' : ''}`
                     : 'Ready to deploy agents'}
                 </p>
@@ -392,18 +429,17 @@ export default function NewTest() {
                 const isSelected = selectedIndices.includes(index);
                 const isRecommended = recommendedIndices.includes(index);
                 const canSelect = isSelected || selectedIndices.length < agentCount;
-                
+
                 return (
                   <div
                     key={index}
                     onClick={() => canSelect && togglePersonaSelection(index)}
-                    className={`group cursor-pointer p-4 border transition-all duration-200 relative bg-white rounded-none ${
-                      isSelected
-                        ? "border-neutral-900 ring-1 ring-neutral-900 bg-neutral-50"
-                        : canSelect
+                    className={`group cursor-pointer p-4 border transition-all duration-200 relative bg-white rounded-none ${isSelected
+                      ? "border-neutral-900 ring-1 ring-neutral-900 bg-neutral-50"
+                      : canSelect
                         ? "border-neutral-200 hover:border-neutral-400 hover:shadow-sm"
                         : "border-neutral-100 bg-neutral-50 opacity-50 cursor-not-allowed"
-                    }`}
+                      }`}
                   >
                     {isRecommended && (
                       <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-neutral-900 text-white text-[9px] font-medium uppercase tracking-wide rounded-none">
@@ -420,16 +456,15 @@ export default function NewTest() {
                           <span>{persona.country}</span>
                         </div>
                       </div>
-                      
+
                       <div className="flex gap-0.5">
                         {[...Array(3)].map((_, i) => (
-                          <div 
-                            key={i} 
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              i < (persona.techSavviness === 'beginner' ? 1 : persona.techSavviness === 'intermediate' ? 2 : 3)
-                                ? "bg-neutral-900" 
-                                : "bg-neutral-200"
-                            }`}
+                          <div
+                            key={i}
+                            className={`w-1.5 h-1.5 rounded-full ${i < (persona.techSavviness === 'beginner' ? 1 : persona.techSavviness === 'intermediate' ? 2 : 3)
+                              ? "bg-neutral-900"
+                              : "bg-neutral-200"
+                              }`}
                           />
                         ))}
                       </div>
@@ -525,7 +560,7 @@ export default function NewTest() {
       {/* Swarm Selector Modal */}
       <AnimatePresence>
         {showSwarmSelector && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
             onClick={() => {
               if (swarmModalStep === "select") {
@@ -538,7 +573,7 @@ export default function NewTest() {
               }
             }}
           >
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -621,7 +656,7 @@ export default function NewTest() {
                                     </span>
                                   </div>
                                 </div>
-                                
+
                                 <div className="flex items-center gap-4 text-xs text-neutral-400 font-mono uppercase tracking-wider">
                                   <span>{swarm.personas.length} Persona{swarm.personas.length !== 1 ? 's' : ''}</span>
                                   <span>•</span>

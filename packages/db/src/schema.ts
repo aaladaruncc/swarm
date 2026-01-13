@@ -220,6 +220,8 @@ export const uxagentRuns = pgTable("uxagent_runs", {
   status: text("status").notNull().default("running"),
   score: integer("score"),
   terminated: boolean("terminated").default(false),
+  stepsToken: integer("steps_taken"),
+  errorMessage: text("error_message"),
 
   // Traces (JSON data)
   basicInfo: jsonb("basic_info"),

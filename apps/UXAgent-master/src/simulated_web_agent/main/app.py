@@ -15,6 +15,8 @@ CORS(app)  # Enable CORS for all routes
 
 # API Key authentication
 INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY")
+MAIN_API_URL = os.environ.get("MAIN_API_URL", "")
+MAIN_API_KEY = os.environ.get("MAIN_API_KEY", "")
 
 
 def require_api_key(f):
@@ -112,21 +114,56 @@ async def send_results_to_callback(callback_url: str, api_key: str, run_data: di
                     "Content-Type": "application/json",
                     "X-API-Key": api_key,
                 },
+                timeout=aiohttp.ClientTimeout(total=60),
             ) as response:
                 if response.status != 200:
-                    print(f"[CALLBACK] Failed to send results: {response.status}", flush=True)
+                    text = await response.text()
+                    print(f"[CALLBACK] Failed to send results: {response.status} - {text}", flush=True)
                 else:
                     print(f"[CALLBACK] Results sent successfully", flush=True)
     except Exception as e:
         print(f"[CALLBACK] Error sending results: {e}", flush=True)
 
 
+async def send_agent_result(callback_url: str, api_key: str, agent_data: dict, test_run_id: str = None):
+    """Send a single agent's result to the callback URL"""
+    payload = {
+        "runId": agent_data.get("run_id"),
+        "intent": agent_data.get("intent"),
+        "startUrl": agent_data.get("start_url"),
+        "testRunId": test_run_id,
+        "personaData": agent_data.get("persona_info"),
+        "status": "failed" if agent_data.get("error") else ("completed" if agent_data.get("terminated") else "completed"),
+        "score": agent_data.get("score"),
+        "terminated": agent_data.get("terminated", False),
+        "basicInfo": {
+            "persona": agent_data.get("persona"),
+            "intent": agent_data.get("intent"),
+        },
+        "actionTrace": agent_data.get("actions", []),
+        "memoryTrace": agent_data.get("memories", []),
+        "observationTrace": agent_data.get("observations", []),
+        "logContent": agent_data.get("final_memory_text"),
+        "stepsToken": agent_data.get("steps_taken"),
+        "screenshots": [
+            {
+                "stepNumber": s.get("step"),
+                "base64Data": s.get("base64"),
+            }
+            for s in agent_data.get("screenshots", [])
+        ],
+        "error": agent_data.get("error"),
+    }
+    
+    await send_results_to_callback(callback_url, api_key, payload)
+
+
 @app.post("/run")
 @require_api_key
 def run_endpoint():
-    # Get callback info from headers
-    callback_url = request.headers.get("X-Callback-URL")
-    callback_api_key = request.headers.get("X-API-Key")
+    # Get callback info from headers or env
+    callback_url = request.headers.get("X-Callback-URL") or f"{MAIN_API_URL}/api/uxagent/runs"
+    callback_api_key = request.headers.get("X-Callback-API-Key") or MAIN_API_KEY
     user_id = request.headers.get("X-User-ID")
     test_run_id = request.headers.get("X-Test-Run-ID")
     
@@ -152,7 +189,7 @@ def run_endpoint():
         # Optional flags with defaults
         headless = bool(payload.get("headless", True))
 
-        # Call your pipeline
+        # Call the pipeline
         result = run(
             total_personas=int(payload["total_personas"]),
             demographics=payload["demographics"],
@@ -162,36 +199,36 @@ def run_endpoint():
             concurrency=int(payload.get("concurrency", 4)),
             example_persona=payload.get("example_persona", None),
             questionnaire=payload["questionnaire"],
-            # optional
             headless=headless,
             on_progress=log_progress,
         )
         
-        # If callback URL provided, send results back to main API
+        # Send each agent result to the callback
         if callback_url and callback_api_key:
-            run_data = {
-                "runId": result.get("run_id", "unknown"),
-                "intent": payload["general_intent"],
-                "startUrl": payload["start_url"],
-                "testRunId": test_run_id if test_run_id else None,
-                "status": "completed" if result.get("success") else "failed",
-                "score": result.get("score"),
-                "terminated": result.get("terminated", False),
-                "basicInfo": result.get("basic_info"),
-                "actionTrace": result.get("action_trace"),
-                "memoryTrace": result.get("memory_trace"),
-                "logContent": result.get("log_content"),
-            }
-            # Run async callback in background
-            asyncio.run(send_results_to_callback(callback_url, callback_api_key, run_data))
+            for agent_result in result.get("agent_results", []):
+                try:
+                    asyncio.run(send_agent_result(
+                        callback_url=callback_url,
+                        api_key=callback_api_key,
+                        agent_data=agent_result,
+                        test_run_id=test_run_id,
+                    ))
+                except Exception as e:
+                    print(f"[CALLBACK] Error sending agent result: {e}", flush=True)
         
-        return jsonify(result), 200
+        # Return summary (not full data - too large)
+        response_data = {
+            "success": result.get("success", False),
+            "agent_count": len(result.get("agent_results", [])),
+            "personas_generated": len(result.get("personas", [])),
+            "error": result.get("error"),
+        }
+        
+        return jsonify(response_data), 200
 
     except BadRequest:
-        # re-raise validation errors as-is
         raise
     except Exception as e:
-        # Minimal error surface; expand logging as needed
         return jsonify({"status": "error", "error": str(e)}), 500
 
 
@@ -208,4 +245,3 @@ def health_endpoint():
 if __name__ == "__main__":
     # Minimal dev server
     app.run(host="0.0.0.0", port=8000, debug=True, use_reloader=False, threaded=True)
-

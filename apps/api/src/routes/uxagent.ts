@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { db, schema } from "../db/index.js";
 import { validateApiKey } from "./api-keys.js";
 import { uploadScreenshot, generateScreenshotKey, getPresignedUrl } from "../lib/s3.js";
@@ -36,16 +36,18 @@ const storeRunSchema = z.object({
     runId: z.string(),
     intent: z.string(),
     startUrl: z.string().url(),
-    testRunId: z.string().uuid().optional(),
+    testRunId: z.string().uuid().optional().nullable(),
     personaData: z.any().optional(),
     status: z.enum(["running", "completed", "failed", "terminated"]),
-    score: z.number().optional(),
+    score: z.number().optional().nullable(),
     terminated: z.boolean().optional(),
+    stepsToken: z.number().optional().nullable(),
+    error: z.string().optional().nullable(),
     basicInfo: z.any().optional(),
     actionTrace: z.any().optional(),
     memoryTrace: z.any().optional(),
     observationTrace: z.any().optional(),
-    logContent: z.string().optional(),
+    logContent: z.string().optional().nullable(),
     startedAt: z.string().datetime().optional(),
     completedAt: z.string().datetime().optional(),
     screenshots: z.array(z.object({
@@ -60,6 +62,8 @@ uxagentRoutes.post("/runs", apiKeyAuth, zValidator("json", storeRunSchema), asyn
     const userId = c.get("apiKeyUserId");
     const data = c.req.valid("json");
 
+    console.log(`[UXAgent Callback] Received run result: ${data.runId}, status: ${data.status}`);
+
     // Insert the run record
     const [run] = await db
         .insert(schema.uxagentRuns)
@@ -73,18 +77,21 @@ uxagentRoutes.post("/runs", apiKeyAuth, zValidator("json", storeRunSchema), asyn
             status: data.status,
             score: data.score,
             terminated: data.terminated,
+            stepsToken: data.stepsToken,
+            errorMessage: data.error,
             basicInfo: data.basicInfo,
             actionTrace: data.actionTrace,
             memoryTrace: data.memoryTrace,
             observationTrace: data.observationTrace,
             logContent: data.logContent,
             startedAt: data.startedAt ? new Date(data.startedAt) : null,
-            completedAt: data.completedAt ? new Date(data.completedAt) : null,
+            completedAt: data.completedAt ? new Date(data.completedAt) : new Date(),
         })
         .returning();
 
     // Upload screenshots to S3 if provided
     if (data.screenshots && data.screenshots.length > 0) {
+        console.log(`[UXAgent Callback] Uploading ${data.screenshots.length} screenshots to S3...`);
         const screenshotPromises = data.screenshots.map(async (s) => {
             if (s.base64Data) {
                 const key = generateScreenshotKey(run.id, s.stepNumber);
@@ -108,6 +115,73 @@ uxagentRoutes.post("/runs", apiKeyAuth, zValidator("json", storeRunSchema), asyn
 
         const screenshotRecords = await Promise.all(screenshotPromises);
         await db.insert(schema.uxagentScreenshots).values(screenshotRecords);
+        console.log(`[UXAgent Callback] Uploaded ${screenshotRecords.length} screenshots`);
+    }
+
+    // If this run is linked to a batch test, update test_run status and check completion
+    if (data.testRunId) {
+        console.log(`[UXAgent Callback] Linked to batch test: ${data.testRunId}`);
+
+        // Find a pending test_run in this batch and update it
+        const [pendingTestRun] = await db
+            .select()
+            .from(schema.testRuns)
+            .where(and(
+                eq(schema.testRuns.batchTestRunId, data.testRunId),
+                eq(schema.testRuns.status, "pending")
+            ))
+            .limit(1);
+
+        if (pendingTestRun) {
+            // Update this test run with the result
+            await db
+                .update(schema.testRuns)
+                .set({
+                    status: data.status === "completed" ? "completed" : "failed",
+                    completedAt: new Date(),
+                    errorMessage: data.error,
+                })
+                .where(eq(schema.testRuns.id, pendingTestRun.id));
+
+            // Create a report for this test run
+            if (data.status === "completed") {
+                await db.insert(schema.reports).values({
+                    testRunId: pendingTestRun.id,
+                    score: data.score || 5,
+                    summary: data.logContent?.substring(0, 500) || "UXAgent test completed",
+                    fullReport: {
+                        uxagentRunId: run.id,
+                        actionTrace: data.actionTrace,
+                        memoryTrace: data.memoryTrace,
+                        intent: data.intent,
+                    } as any,
+                });
+            }
+
+            console.log(`[UXAgent Callback] Updated test run: ${pendingTestRun.id}`);
+        }
+
+        // Check if all test runs in the batch are complete
+        const remainingPending = await db
+            .select({ count: schema.testRuns.id })
+            .from(schema.testRuns)
+            .where(and(
+                eq(schema.testRuns.batchTestRunId, data.testRunId),
+                eq(schema.testRuns.status, "pending")
+            ));
+
+        if (remainingPending.length === 0 || !remainingPending[0]) {
+            console.log(`[UXAgent Callback] All runs complete for batch: ${data.testRunId}`);
+
+            // Update batch status to completed
+            await db
+                .update(schema.batchTestRuns)
+                .set({
+                    status: "completed",
+                    completedAt: new Date(),
+                })
+                .where(eq(schema.batchTestRuns.id, data.testRunId));
+        }
     }
 
     return c.json({

@@ -10,6 +10,7 @@ import { globalTestQueue } from "../lib/queue-manager.js";
 import type { Session } from "../lib/auth.js";
 import type { AgentResult } from "../lib/agent.js";
 import { uploadScreenshot, generateScreenshotKey } from "../lib/s3.js";
+import { startUXAgentRun, checkUXAgentHealth } from "../lib/uxagent-client.js";
 
 type Variables = {
   user: Session["user"];
@@ -33,6 +34,9 @@ const createBatchTestSchema = z.object({
   generatedPersonas: z.array(z.any()),
   selectedPersonaIndices: z.array(z.number()).min(1).max(5),
   agentCount: z.number().min(1).max(5).optional().default(3),
+  useUXAgent: z.boolean().optional().default(false), // Use UXAgent service instead of internal agent
+  maxSteps: z.number().min(5).max(50).optional().default(20), // Max steps for UXAgent
+  questionnaire: z.any().optional(), // Questionnaire for UXAgent surveys
 });
 
 // ============================================================================
@@ -78,7 +82,16 @@ batchTestsRoutes.post(
   zValidator("json", createBatchTestSchema),
   async (c) => {
     const user = c.get("user");
-    const { targetUrl, userDescription, generatedPersonas, selectedPersonaIndices, agentCount } = c.req.valid("json");
+    const {
+      targetUrl,
+      userDescription,
+      generatedPersonas,
+      selectedPersonaIndices,
+      agentCount,
+      useUXAgent,
+      maxSteps,
+      questionnaire,
+    } = c.req.valid("json");
 
     try {
       // Validate that selectedPersonaIndices length matches agentCount
@@ -108,12 +121,29 @@ batchTestsRoutes.post(
 
       console.log(`[${batchTestRun.id}] Created batch test run with ${selectedPersonaIndices.length} personas`);
 
-      // Start the batch test in the background
-      runBatchTestInBackground(batchTestRun.id, targetUrl, generatedPersonas, selectedPersonaIndices);
+      // Choose which runner to use
+      if (useUXAgent) {
+        // Use UXAgent service
+        console.log(`[${batchTestRun.id}] Using UXAgent service for agent orchestration`);
+        runBatchTestWithUXAgent(
+          batchTestRun.id,
+          targetUrl,
+          generatedPersonas,
+          selectedPersonaIndices,
+          user.id,
+          maxSteps || 20,
+          questionnaire || {},
+        );
+      } else {
+        // Use internal agent (existing flow)
+        console.log(`[${batchTestRun.id}] Using internal agent for orchestration`);
+        runBatchTestInBackground(batchTestRun.id, targetUrl, generatedPersonas, selectedPersonaIndices);
+      }
 
       return c.json({
         batchTestRun,
         message: "Batch test started",
+        useUXAgent: useUXAgent || false,
       });
     } catch (error) {
       console.error("Failed to create batch test:", error);
@@ -447,6 +477,105 @@ async function runBatchTestInBackground(
     console.log(`[${batchTestRunId}] ✅ Batch test completed successfully!`);
   } catch (error) {
     console.error(`[${batchTestRunId}] ❌ Batch test failed:`, error);
+
+    await db
+      .update(schema.batchTestRuns)
+      .set({
+        status: "failed",
+        completedAt: new Date(),
+        errorMessage: error instanceof Error ? error.message : "Unknown error",
+      })
+      .where(eq(schema.batchTestRuns.id, batchTestRunId));
+  }
+}
+
+/**
+ * Run batch test using UXAgent service.
+ * UXAgent handles all persona runs with its own concurrency,
+ * and calls back to /api/uxagent/runs with results.
+ */
+async function runBatchTestWithUXAgent(
+  batchTestRunId: string,
+  targetUrl: string,
+  generatedPersonas: any[],
+  selectedPersonaIndices: number[],
+  userId: string,
+  maxSteps: number,
+  questionnaire: Record<string, any>,
+) {
+  console.log(`[${batchTestRunId}] Starting batch test with UXAgent service...`);
+
+  try {
+    // Check UXAgent health first
+    const isHealthy = await checkUXAgentHealth();
+    if (!isHealthy) {
+      throw new Error("UXAgent service is not available");
+    }
+
+    // Get selected personas
+    const selectedPersonas = selectedPersonaIndices.map(idx => generatedPersonas[idx]);
+
+    console.log(`[${batchTestRunId}] Calling UXAgent with ${selectedPersonas.length} personas...`);
+
+    // Create test run records for each persona (so UXAgent can link results)
+    const testRunPromises = selectedPersonas.map(async (persona, index) => {
+      const [testRun] = await db
+        .insert(schema.testRuns)
+        .values({
+          batchTestRunId,
+          userId,
+          targetUrl,
+          personaIndex: selectedPersonaIndices[index],
+          personaData: persona,
+          personaName: persona.name,
+          status: "pending",
+        })
+        .returning();
+
+      return testRun;
+    });
+
+    const testRuns = await Promise.all(testRunPromises);
+    console.log(`[${batchTestRunId}] Created ${testRuns.length} test run records`);
+
+    // Build demographics from selected personas
+    const demographics = selectedPersonas.map(p => ({
+      category: p.occupation || p.name || "General User",
+      percentage: Math.round(100 / selectedPersonas.length),
+    }));
+
+    // Call UXAgent service
+    const result = await startUXAgentRun(
+      {
+        total_personas: selectedPersonas.length,
+        demographics,
+        general_intent: selectedPersonas[0]?.intent || "Test the website user experience",
+        start_url: targetUrl,
+        max_steps: maxSteps,
+        questionnaire: questionnaire || {},
+        concurrency: Math.min(selectedPersonas.length, 4),
+        headless: true,
+        example_persona: selectedPersonas[0]?.persona,
+      },
+      undefined, // Use default callback URL
+      batchTestRunId, // Pass batch test ID so UXAgent can link results
+      userId,
+    );
+
+    console.log(`[${batchTestRunId}] UXAgent run started: ${result.agent_count} agents`);
+
+    // Update batch status - UXAgent will callback with results
+    // The status will be updated when callbacks are received
+    await db
+      .update(schema.batchTestRuns)
+      .set({ status: "running_uxagent" })
+      .where(eq(schema.batchTestRuns.id, batchTestRunId));
+
+    // Note: The actual completion will be handled when UXAgent sends callbacks
+    // to /api/uxagent/runs. We need to update uxagent.ts to handle batch completion.
+
+  } catch (error) {
+    console.error(`[${batchTestRunId}] ❌ UXAgent batch test failed:`, error);
 
     await db
       .update(schema.batchTestRuns)
