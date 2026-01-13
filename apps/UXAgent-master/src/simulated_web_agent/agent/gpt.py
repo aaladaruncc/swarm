@@ -31,7 +31,7 @@ chat_router = Router(
         {
             "model_name": "openai",
             "litellm_params": {
-                "model": "openai/gpt-5-mini",
+                "model": "openai/gpt-4o-mini",
                 "reasoning_effort": "minimal",
             },
         },
@@ -59,7 +59,7 @@ chat_router = Router(
         {
             "model_name": "openai_thinking",
             "litellm_params": {
-                "model": "openai/gpt-5-mini",
+                "model": "openai/gpt-4o-mini",
                 "reasoning_effort": "high",
             },
         },
@@ -96,7 +96,7 @@ slow_chat_router = Router(
     model_list=[
         {
             "model_name": "openai",
-            "litellm_params": {"model": "openai/gpt-5", "reasoning_effort": "minimal"},
+            "litellm_params": {"model": "openai/gpt-4o", "reasoning_effort": "minimal"},
         },
         {
             "model_name": "aws",
@@ -121,7 +121,7 @@ slow_chat_router = Router(
         },
         {
             "model_name": "openai_thinking",
-            "litellm_params": {"model": "openai/gpt-5", "reasoning_effort": "high"},
+            "litellm_params": {"model": "openai/gpt-4o", "reasoning_effort": "high"},
         },
         {
             "model_name": "aws_thinking",
@@ -293,6 +293,8 @@ async def async_chat(
         **call_kwargs,
         tools=None,
     )
+    if not response.choices:
+        raise Exception(f"No choices returned from LLM. Response: {response}")
     content = response.choices[0].message.get("content", "")
 
     finish_reason = response.choices[0].finish_reason
@@ -355,6 +357,8 @@ def chat(
             drop_params=True,  # do not forward unused params, such as thinking for openai
             **call_kwargs,
         )
+        if not response.choices:
+            raise Exception(f"No choices returned from LLM. Response: {response}")
         return response.choices[0].message["content"]
     except Exception as e:
         print(messages)

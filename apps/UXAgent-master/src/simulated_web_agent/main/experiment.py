@@ -147,7 +147,11 @@ async def _run_for_persona_and_intent(
             
             # Save observation text
             with open(trace_dir / "observation_trace" / f"observation_trace_{steps_taken}.txt", "w") as f:
-                f.write(policy.agent.observation)
+                obs_data = policy.agent.observation
+                if isinstance(obs_data, dict):
+                    f.write(json.dumps(obs_data, indent=2))
+                else:
+                    f.write(str(obs_data))
             
             # Collect memory trace
             collected_data["memories"] = policy.agent.memory.memories.copy()

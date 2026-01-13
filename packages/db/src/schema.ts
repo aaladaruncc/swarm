@@ -77,6 +77,7 @@ export const batchTestRuns = pgTable("batch_test_runs", {
   generatedPersonas: jsonb("generated_personas").$type<any[]>(), // 10 AI-generated personas
   selectedPersonaIndices: jsonb("selected_persona_indices").$type<number[]>(), // Which 5 were selected
   status: text("status").notNull().default("pending"), // pending, generating_personas, running_tests, aggregating, completed, failed
+  useUXAgent: boolean("use_ux_agent").default(false), // Whether UXAgent service was used
   createdAt: timestamp("created_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
   errorMessage: text("error_message"),

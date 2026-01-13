@@ -116,6 +116,7 @@ batchTestsRoutes.post(
           generatedPersonas,
           selectedPersonaIndices,
           status: "running_tests",
+          useUXAgent: useUXAgent || false,
         })
         .returning();
 
@@ -213,10 +214,42 @@ batchTestsRoutes.get("/:id", async (c) => {
     aggregatedReport = aggReport;
   }
 
+  // If UXAgent was used, fetch uxagent runs linked to the test runs
+  let uxagentRuns: any[] = [];
+  if (batchTestRun.useUXAgent) {
+    const testRunIds = testRuns.map(tr => tr.id);
+    if (testRunIds.length > 0) {
+      // Get all uxagent runs for these test runs
+      const allUxagentRuns = await db
+        .select()
+        .from(schema.uxagentRuns)
+        .where(eq(schema.uxagentRuns.testRunId, testRunIds[0])); // Start with first
+
+      // Get all uxagent runs for all test runs in the batch
+      for (const testRunId of testRunIds) {
+        const runs = await db
+          .select()
+          .from(schema.uxagentRuns)
+          .where(eq(schema.uxagentRuns.testRunId, testRunId));
+        uxagentRuns.push(...runs);
+      }
+
+      // Get screenshots for each uxagent run
+      for (const run of uxagentRuns) {
+        const screenshots = await db
+          .select()
+          .from(schema.uxagentScreenshots)
+          .where(eq(schema.uxagentScreenshots.uxagentRunId, run.id));
+        run.screenshots = screenshots;
+      }
+    }
+  }
+
   return c.json({
     batchTestRun,
     testRuns: reports,
     aggregatedReport,
+    uxagentRuns,
   });
 });
 

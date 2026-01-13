@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
-import { getBatchTest, terminateBatchTest, type TestRunWithReport, type AggregatedReport, type BatchTestRun } from "@/lib/batch-api";
+import { getBatchTest, terminateBatchTest, type TestRunWithReport, type AggregatedReport, type BatchTestRun, type UXAgentRun } from "@/lib/batch-api";
 import ReactMarkdown from "react-markdown";
 import { ArrowLeft, Loader2, ExternalLink, Download, X, CheckCircle2, AlertCircle, Play } from "lucide-react";
 import { SessionTranscriptViewer } from "@/components/SessionTranscriptViewer";
 import { pdf } from '@react-pdf/renderer';
 import { AggregatedReportPDF } from '@/components/pdf/AggregatedReportPDF';
 import { PersonaReportPDF } from '@/components/pdf/PersonaReportPDF';
+import { UXAgentReportView } from "@/components/UXAgentReportView";
 
 export default function TestDetails() {
   const router = useRouter();
@@ -19,9 +20,10 @@ export default function TestDetails() {
   const [batchTestRun, setBatchTestRun] = useState<BatchTestRun | null>(null);
   const [testRuns, setTestRuns] = useState<TestRunWithReport[]>([]);
   const [aggregatedReport, setAggregatedReport] = useState<AggregatedReport | null>(null);
+  const [uxagentRuns, setUxagentRuns] = useState<UXAgentRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [selectedView, setSelectedView] = useState<"aggregated" | number>("aggregated");
+  const [selectedView, setSelectedView] = useState<"aggregated" | "uxagent" | number>("aggregated");
   const [exportingPDF, setExportingPDF] = useState(false);
   const [isTerminating, setIsTerminating] = useState(false);
   const [showTerminateConfirm, setShowTerminateConfirm] = useState(false);
@@ -31,17 +33,17 @@ export default function TestDetails() {
 
   const handleExportAggregatedPDF = async () => {
     if (!batchTestRun || !aggregatedReport) return;
-    
+
     setExportingPDF(true);
     try {
       const blob = await pdf(
-        <AggregatedReportPDF 
+        <AggregatedReportPDF
           batchTestRun={batchTestRun}
           aggregatedReport={aggregatedReport}
           agentCount={testRuns.length}
         />
       ).toBlob();
-      
+
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -58,16 +60,16 @@ export default function TestDetails() {
 
   const handleExportPersonaPDF = async (index: number) => {
     if (!testRuns[index] || !batchTestRun) return;
-    
+
     setExportingPDF(true);
     try {
       const blob = await pdf(
-        <PersonaReportPDF 
+        <PersonaReportPDF
           testRun={testRuns[index]}
           targetUrl={batchTestRun.targetUrl}
         />
       ).toBlob();
-      
+
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -88,6 +90,11 @@ export default function TestDetails() {
       setBatchTestRun(data.batchTestRun);
       setTestRuns(data.testRuns);
       setAggregatedReport(data.aggregatedReport);
+      setUxagentRuns(data.uxagentRuns || []);
+      // Default to uxagent view if UXAgent was used
+      if (data.batchTestRun?.useUXAgent && data.uxagentRuns?.length > 0) {
+        setSelectedView("uxagent");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load test");
     } finally {
@@ -110,10 +117,10 @@ export default function TestDetails() {
   // Poll for status updates when test is running or aggregating
   useEffect(() => {
     if (!batchTestRun) return;
-    
+
     const status = batchTestRun.status;
-    const isActive = ["running_tests", "aggregating"].includes(status);
-    
+    const isActive = ["running_tests", "aggregating", "running_uxagent"].includes(status);
+
     if (!isActive) return;
 
     const pollInterval = setInterval(() => {
@@ -159,7 +166,7 @@ export default function TestDetails() {
       failed: "bg-red-50 text-red-700 border-red-200",
       terminated: "bg-orange-50 text-orange-700 border-orange-200",
     };
-    
+
     const labels: Record<string, string> = {
       pending: "Queued",
       running_tests: "Running",
@@ -218,7 +225,7 @@ export default function TestDetails() {
             <ArrowLeft size={16} />
             Back to Dashboard
           </Link>
-          
+
           {batchTestRun?.status === "completed" && aggregatedReport && (
             <button
               onClick={selectedView === "aggregated" ? handleExportAggregatedPDF : () => typeof selectedView === "number" && handleExportPersonaPDF(selectedView)}
@@ -283,21 +290,20 @@ export default function TestDetails() {
                   const isRunning = status === "running";
                   const isFailed = status === "failed";
                   const isTerminated = status === "terminated";
-                  
+
                   return (
-                    <div 
-                      key={i} 
-                      className={`flex items-center gap-2 px-3 py-2 border text-xs rounded-none ${
-                        isCompleted 
-                          ? "border-emerald-200 bg-emerald-50" 
-                          : isRunning 
-                          ? "border-blue-200 bg-blue-50" 
+                    <div
+                      key={i}
+                      className={`flex items-center gap-2 px-3 py-2 border text-xs rounded-none ${isCompleted
+                        ? "border-emerald-200 bg-emerald-50"
+                        : isRunning
+                          ? "border-blue-200 bg-blue-50"
                           : isFailed
-                          ? "border-red-200 bg-red-50"
-                          : isTerminated
-                          ? "border-orange-200 bg-orange-50"
-                          : "border-neutral-200 bg-neutral-50"
-                      }`}
+                            ? "border-red-200 bg-red-50"
+                            : isTerminated
+                              ? "border-orange-200 bg-orange-50"
+                              : "border-neutral-200 bg-neutral-50"
+                        }`}
                     >
                       {isCompleted ? (
                         <CheckCircle2 size={14} className="text-emerald-600" />
@@ -310,13 +316,12 @@ export default function TestDetails() {
                       ) : (
                         <div className="w-3 h-3 border border-neutral-300" />
                       )}
-                      <span className={`font-medium ${
-                        isCompleted ? "text-emerald-700" :
+                      <span className={`font-medium ${isCompleted ? "text-emerald-700" :
                         isRunning ? "text-blue-700" :
-                        isFailed ? "text-red-700" :
-                        isTerminated ? "text-orange-700" :
-                        "text-neutral-600"
-                      }`}>
+                          isFailed ? "text-red-700" :
+                            isTerminated ? "text-orange-700" :
+                              "text-neutral-600"
+                        }`}>
                         {tr.testRun.personaName}
                       </span>
                     </div>
@@ -326,17 +331,23 @@ export default function TestDetails() {
             </div>
 
             {/* Running State */}
-            {["running_tests", "aggregating"].includes(batchTestRun.status) && (
+            {["running_tests", "aggregating", "running_uxagent"].includes(batchTestRun.status) && (
               <div className="border border-neutral-200 p-8 flex items-center gap-6">
                 <Loader2 className="w-10 h-10 animate-spin text-neutral-400 shrink-0" />
                 <div className="flex-1">
                   <h3 className="text-lg font-medium mb-1">
-                    {batchTestRun.status === "aggregating" ? "Aggregating Results" : "Tests Running"}
+                    {batchTestRun.status === "aggregating"
+                      ? "Aggregating Results"
+                      : batchTestRun.status === "running_uxagent"
+                        ? "UXAgent Running"
+                        : "Tests Running"}
                   </h3>
                   <p className="text-neutral-500 font-light text-sm">
                     {batchTestRun.status === "aggregating"
                       ? "AI is analyzing all test results to create a comprehensive report"
-                      : `${testRuns.filter(t => t.testRun.status === "completed").length}/${testRuns.length} agents completed`}
+                      : batchTestRun.status === "running_uxagent"
+                        ? "UXAgent is exploring your website with AI-driven decision making"
+                        : `${testRuns.filter(t => t.testRun.status === "completed").length}/${testRuns.length} agents completed`}
                   </p>
                 </div>
               </div>
@@ -363,30 +374,43 @@ export default function TestDetails() {
             )}
 
             {/* Completed - Show Reports */}
-            {batchTestRun.status === "completed" && aggregatedReport && (
+            {(batchTestRun.status === "completed" || (batchTestRun.useUXAgent && uxagentRuns.length > 0)) && (
               <>
                 {/* View Tabs */}
                 <div className="border-b border-neutral-200 overflow-x-auto">
                   <div className="flex gap-1 min-w-max">
-                    <button
-                      onClick={() => setSelectedView("aggregated")}
-                      className={`px-6 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
-                        selectedView === "aggregated"
+                    {/* UXAgent Tab - Show first if UXAgent was used */}
+                    {batchTestRun.useUXAgent && uxagentRuns.length > 0 && (
+                      <button
+                        onClick={() => setSelectedView("uxagent")}
+                        className={`px-6 py-3 text-sm font-medium transition-colors whitespace-nowrap ${selectedView === "uxagent"
                           ? "border-b-2 border-neutral-900 text-neutral-900"
                           : "text-neutral-500 hover:text-neutral-900"
-                      }`}
-                    >
-                      Aggregated Report
-                    </button>
+                          }`}
+                      >
+                        🤖 UXAgent Results
+                      </button>
+                    )}
+                    {/* Aggregated Report Tab - Only show if we have one */}
+                    {aggregatedReport && (
+                      <button
+                        onClick={() => setSelectedView("aggregated")}
+                        className={`px-6 py-3 text-sm font-medium transition-colors whitespace-nowrap ${selectedView === "aggregated"
+                          ? "border-b-2 border-neutral-900 text-neutral-900"
+                          : "text-neutral-500 hover:text-neutral-900"
+                          }`}
+                      >
+                        Aggregated Report
+                      </button>
+                    )}
                     {testRuns.map((tr, index) => (
                       <button
                         key={index}
                         onClick={() => setSelectedView(index)}
-                        className={`px-6 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
-                          selectedView === index
-                            ? "border-b-2 border-neutral-900 text-neutral-900"
-                            : "text-neutral-500 hover:text-neutral-900"
-                        }`}
+                        className={`px-6 py-3 text-sm font-medium transition-colors whitespace-nowrap ${selectedView === index
+                          ? "border-b-2 border-neutral-900 text-neutral-900"
+                          : "text-neutral-500 hover:text-neutral-900"
+                          }`}
                       >
                         {tr.testRun.personaName}
                       </button>
@@ -394,8 +418,16 @@ export default function TestDetails() {
                   </div>
                 </div>
 
+                {/* UXAgent Report View */}
+                {selectedView === "uxagent" && batchTestRun.useUXAgent && (
+                  <UXAgentReportView
+                    uxagentRuns={uxagentRuns}
+                    targetUrl={batchTestRun.targetUrl}
+                  />
+                )}
+
                 {/* Aggregated Report View */}
-                {selectedView === "aggregated" && (
+                {selectedView === "aggregated" && aggregatedReport && (
                   <div className="space-y-8">
                     {/* Overall Score */}
                     <div className="border border-neutral-200 p-8">

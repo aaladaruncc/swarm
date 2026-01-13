@@ -63,13 +63,77 @@ uxagentRoutes.post("/runs", apiKeyAuth, zValidator("json", storeRunSchema), asyn
     const data = c.req.valid("json");
 
     console.log(`[UXAgent Callback] Received run result: ${data.runId}, status: ${data.status}`);
+    console.log(`[DEBUG] UXAgent Callback Logic v2 Loaded. data.testRunId=${data.testRunId}`);
+
+    let finalTestRunId = data.testRunId; // Default to assuming it's a valid ID
+    let batchTestRunId: string | null = null; // Store batch ID if we discover it
+
+    // Check if the ID provided is actually a batch ID (by trying to find pending runs for it)
+    // Or if it's a direct ID, verify it exists.
+    if (data.testRunId) {
+        // First check if it's a direct Test Run ID
+        const [directRun] = await db.select().from(schema.testRuns).where(eq(schema.testRuns.id, data.testRunId)).limit(1);
+
+        if (directRun) {
+            // It's a valid direct ID
+            finalTestRunId = directRun.id;
+            batchTestRunId = directRun.batchTestRunId;
+
+            // Update the status
+            await db
+                .update(schema.testRuns)
+                .set({
+                    status: data.status === "completed" ? "completed" : "failed",
+                    completedAt: new Date(),
+                    errorMessage: data.error,
+                })
+                .where(eq(schema.testRuns.id, directRun.id));
+
+            console.log(`[UXAgent Callback] Updated direct test run: ${directRun.id}`);
+
+        } else {
+            // Not a direct ID, assume it might be a Batch ID
+            // Find a pending test_run in this batch and claim it
+            // We lock the row to avoid race conditions with other callbacks 
+            const [claimedRun] = await db
+                .select()
+                .from(schema.testRuns)
+                .where(and(
+                    eq(schema.testRuns.batchTestRunId, data.testRunId),
+                    eq(schema.testRuns.status, "pending")
+                ))
+                .limit(1);
+
+            if (claimedRun) {
+                console.log(`[UXAgent Callback] Found pending run ${claimedRun.id} for batch ${data.testRunId}`);
+                finalTestRunId = claimedRun.id;
+                batchTestRunId = data.testRunId; // The input WAS the batch ID
+
+                // Update this test run with the result
+                await db
+                    .update(schema.testRuns)
+                    .set({
+                        status: data.status === "completed" ? "completed" : "failed",
+                        completedAt: new Date(),
+                        errorMessage: data.error,
+                    })
+                    .where(eq(schema.testRuns.id, claimedRun.id));
+            } else {
+                console.warn(`[UXAgent Callback] No pending run found for ID ${data.testRunId}. It might be invalid or already completed.`);
+                // If we can't link it, we set testRunId to null to avoid FK error
+                finalTestRunId = null;
+                // We assume input might be batch ID for completion check
+                batchTestRunId = data.testRunId;
+            }
+        }
+    }
 
     // Insert the run record
     const [run] = await db
         .insert(schema.uxagentRuns)
         .values({
             userId,
-            testRunId: data.testRunId,
+            testRunId: finalTestRunId,
             runId: data.runId,
             intent: data.intent,
             startUrl: data.startUrl,
@@ -118,60 +182,34 @@ uxagentRoutes.post("/runs", apiKeyAuth, zValidator("json", storeRunSchema), asyn
         console.log(`[UXAgent Callback] Uploaded ${screenshotRecords.length} screenshots`);
     }
 
-    // If this run is linked to a batch test, update test_run status and check completion
-    if (data.testRunId) {
-        console.log(`[UXAgent Callback] Linked to batch test: ${data.testRunId}`);
+    // Generate report if we have a valid test run
+    if (finalTestRunId && data.status === "completed") {
+        await db.insert(schema.reports).values({
+            testRunId: finalTestRunId,
+            score: data.score || 5,
+            summary: data.logContent?.substring(0, 500) || "UXAgent test completed",
+            fullReport: {
+                uxagentRunId: run.id,
+                actionTrace: data.actionTrace,
+                memoryTrace: data.memoryTrace,
+                intent: data.intent,
+            } as any,
+        });
+    }
 
-        // Find a pending test_run in this batch and update it
-        const [pendingTestRun] = await db
-            .select()
-            .from(schema.testRuns)
-            .where(and(
-                eq(schema.testRuns.batchTestRunId, data.testRunId),
-                eq(schema.testRuns.status, "pending")
-            ))
-            .limit(1);
-
-        if (pendingTestRun) {
-            // Update this test run with the result
-            await db
-                .update(schema.testRuns)
-                .set({
-                    status: data.status === "completed" ? "completed" : "failed",
-                    completedAt: new Date(),
-                    errorMessage: data.error,
-                })
-                .where(eq(schema.testRuns.id, pendingTestRun.id));
-
-            // Create a report for this test run
-            if (data.status === "completed") {
-                await db.insert(schema.reports).values({
-                    testRunId: pendingTestRun.id,
-                    score: data.score || 5,
-                    summary: data.logContent?.substring(0, 500) || "UXAgent test completed",
-                    fullReport: {
-                        uxagentRunId: run.id,
-                        actionTrace: data.actionTrace,
-                        memoryTrace: data.memoryTrace,
-                        intent: data.intent,
-                    } as any,
-                });
-            }
-
-            console.log(`[UXAgent Callback] Updated test run: ${pendingTestRun.id}`);
-        }
-
+    // Check if batch is complete
+    if (batchTestRunId) {
         // Check if all test runs in the batch are complete
         const remainingPending = await db
             .select({ count: schema.testRuns.id })
             .from(schema.testRuns)
             .where(and(
-                eq(schema.testRuns.batchTestRunId, data.testRunId),
+                eq(schema.testRuns.batchTestRunId, batchTestRunId),
                 eq(schema.testRuns.status, "pending")
             ));
 
-        if (remainingPending.length === 0 || !remainingPending[0]) {
-            console.log(`[UXAgent Callback] All runs complete for batch: ${data.testRunId}`);
+        if (remainingPending.length === 0) {
+            console.log(`[UXAgent Callback] All runs complete for batch: ${batchTestRunId}`);
 
             // Update batch status to completed
             await db
@@ -180,7 +218,7 @@ uxagentRoutes.post("/runs", apiKeyAuth, zValidator("json", storeRunSchema), asyn
                     status: "completed",
                     completedAt: new Date(),
                 })
-                .where(eq(schema.batchTestRuns.id, data.testRunId));
+                .where(eq(schema.batchTestRuns.id, batchTestRunId));
         }
     }
 

@@ -595,11 +595,27 @@ class WebAgentEnv:
 
         # Navigate to start URL from task config
         if self.task_config and "start_url" in self.task_config:
-            await self.page.goto(
-                self.task_config["start_url"],
-                wait_until="domcontentloaded",
-                timeout=self.config.browser.timeouts.page_load_domcontent,
-            )
+            start_url = self.task_config["start_url"]
+            self.logger.info(f"Navigating to start URL: {start_url}")
+            try:
+                # Try networkidle first for SPA pages
+                await self.page.goto(
+                    start_url,
+                    wait_until="networkidle",
+                    timeout=self.config.browser.timeouts.page_load_networkidle + 5000,
+                )
+                self.logger.info("Page loaded with networkidle")
+            except Exception as e:
+                self.logger.warning(f"networkidle timeout, falling back to domcontentloaded: {e}")
+                # Fallback to domcontentloaded
+                try:
+                    await self.page.goto(
+                        start_url,
+                        wait_until="domcontentloaded",
+                        timeout=self.config.browser.timeouts.page_load_domcontent,
+                    )
+                except Exception as e2:
+                    self.logger.error(f"Page navigation failed: {e2}")
         else:
             self.logger.warning("No start_url specified in task config")
         return await self.observation()
@@ -1248,26 +1264,43 @@ class WebAgentEnv:
         except Exception as e:
             self.logger.warning(f"Page load wait timeout: {e}")
 
-        # Additional safety check - wait for body element
-        # try:
-        #     await self.page.wait_for_selector(
-        #         "body", timeout=self.config.browser.timeouts.element_wait
-        #     )
-        # except Exception as e:
-        #     self.logger.warning(f"Body element not found: {e}")
+        # Additional safety check - wait for body element with content
+        try:
+            await self.page.wait_for_selector(
+                "body", timeout=self.config.browser.timeouts.element_wait
+            )
+            # Wait a bit for JavaScript frameworks (React, Vue, etc.) to render
+            await asyncio.sleep(1)
+        except Exception as e:
+            self.logger.warning(f"Body element not found: {e}")
+        
+        # Debug: Log raw HTML length before parsing
+        raw_html = await self.page.content()
+        self.logger.info(f"Raw HTML length before parsing: {len(raw_html)}")
+        if len(raw_html) < 500:
+            self.logger.warning(f"Page appears empty. Raw HTML: {raw_html[:200]}")
+
 
         if parser_script_path.exists():
             with open(parser_script_path) as f:
                 parser_code = f.read()
             try:
                 content = await self.page.evaluate(parser_code)
+                # Check if parser returned too little content (likely visibility filtering issue)
+                parsed_html_len = len(content.get("html", ""))
+                if parsed_html_len < 100 and len(raw_html) > 500:
+                    self.logger.warning(
+                        f"Parser returned only {parsed_html_len} chars but raw HTML is {len(raw_html)} chars. "
+                        "Using raw HTML fallback."
+                    )
+                    content["html"] = raw_html
             except Exception as e:
                 self.logger.error(f"Parser script failed: {e}")
                 # Fallback to basic HTML content
-                content = {"html": await self.page.content()}
+                content = {"html": raw_html}
         else:
             self.logger.warning(f"Parser script not found: {parser_script_path}")
-            content = {"html": await self.page.content()}
+            content = {"html": raw_html}
 
         # Add tabs information to the observation
         content["tabs"] = await self._get_tabs_info()

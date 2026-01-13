@@ -81,9 +81,22 @@ class Agent:
             result = await async_chat(request, json_mode=True, max_tokens=64000)
             result = json.loads(result)
             print(result)
+            if not result.get("observations"):
+                logger.warning("No observations returned from LLM")
+                # Create a dummy observation or retry
+                self.observation = {"page": "Error loading page", "url": "", "clickables": []}
+                # Convert dict to JSON string for embedding compatibility
+                obs_content = json.dumps(self.observation) if isinstance(self.observation, dict) else str(self.observation)
+                await self.memory.add_memory_piece(
+                    Observation(obs_content, self.memory, environment)
+                )
+                return
+
             self.observation = result["observations"][0]
+            # Convert observation to string for embedding compatibility
+            obs_content = json.dumps(self.observation) if isinstance(self.observation, dict) else str(self.observation)
             await self.memory.add_memory_piece(
-                Observation(result["observations"][0], self.memory, environment)
+                Observation(obs_content, self.memory, environment)
             )
 
     @staticmethod

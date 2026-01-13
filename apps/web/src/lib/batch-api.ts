@@ -21,6 +21,7 @@ interface BatchTestRun {
   generatedPersonas: GeneratedPersona[];
   selectedPersonaIndices: number[];
   status: string;
+  useUXAgent: boolean;
   createdAt: string;
   completedAt: string | null;
   errorMessage: string | null;
@@ -55,6 +56,41 @@ interface TestRunWithReport {
     totalDuration: string | null;
     createdAt: string;
   } | null;
+}
+
+// UXAgent specific types
+interface UXAgentScreenshot {
+  id: string;
+  uxagentRunId: string;
+  stepNumber: number;
+  filename: string | null;
+  s3Key: string | null;
+  s3Url: string | null;
+  createdAt: string;
+}
+
+interface UXAgentRun {
+  id: string;
+  testRunId: string | null;
+  userId: string | null;
+  runId: string;
+  intent: string;
+  startUrl: string;
+  personaData: any;
+  status: string;
+  score: number | null;
+  terminated: boolean;
+  stepsToken: number | null;
+  errorMessage: string | null;
+  basicInfo: any;
+  actionTrace: any[];
+  memoryTrace: any[];
+  observationTrace: any[];
+  logContent: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  screenshots: UXAgentScreenshot[];
 }
 
 interface AggregatedReport {
@@ -191,6 +227,7 @@ export async function getBatchTest(id: string): Promise<{
   batchTestRun: BatchTestRun;
   testRuns: TestRunWithReport[];
   aggregatedReport: AggregatedReport | null;
+  uxagentRuns: UXAgentRun[];
 }> {
   return fetchWithAuth(`/api/batch-tests/${id}`);
 }
@@ -255,4 +292,6 @@ export type {
   TestRunWithReport,
   AggregatedReport,
   Swarm,
+  UXAgentRun,
+  UXAgentScreenshot,
 };
