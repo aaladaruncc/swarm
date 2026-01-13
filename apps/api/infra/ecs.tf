@@ -123,12 +123,24 @@ resource "aws_ecs_task_definition" "api" {
         }
       ]
 
-      environment = [
-        for key, value in var.env_vars : {
-          name  = key
-          value = value
-        }
-      ]
+      environment = concat(
+        [
+          {
+            name  = "S3_BUCKET_NAME"
+            value = aws_s3_bucket.screenshots.id
+          },
+          {
+            name  = "AWS_REGION"
+            value = data.aws_region.current.name
+          }
+        ],
+        [
+          for key, value in var.env_vars : {
+            name  = key
+            value = value
+          }
+        ]
+      )
 
       logConfiguration = {
         logDriver = "awslogs"
