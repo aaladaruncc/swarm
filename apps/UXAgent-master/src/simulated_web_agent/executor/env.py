@@ -811,7 +811,29 @@ class WebAgentEnv:
 
             elif action_name == "terminate":
                 answer = action_data.get("answer", "")
-                await self.terminate(answer)
+                reason = action_data.get("reason", "")
+                await self.terminate(answer or reason)
+
+            # UX Testing Actions
+            elif action_name == "read":
+                duration = action_data.get("duration_ms", 3000)
+                target = action_data.get("target")
+                await self.read(duration, target)
+
+            elif action_name == "tab_focus":
+                times = action_data.get("times", 1)
+                await self.tab_focus(times)
+
+            elif action_name == "shift_tab_focus":
+                times = action_data.get("times", 1)
+                await self.shift_tab_focus(times)
+
+            elif action_name == "scroll_to_element":
+                await self.scroll_to_element(action_data["target"])
+
+            elif action_name == "wait":
+                duration = action_data.get("duration_ms", 2000)
+                await self.wait(duration)
 
             else:
                 self.logger.error(f"Unknown action: {action_name}")
@@ -1114,6 +1136,136 @@ class WebAgentEnv:
                 self.logger.info(f"Task terminated with answer: {answer}")
             else:
                 self.logger.info("Task terminated without answer")
+
+    # ============================================================
+    # UX Testing Actions
+    # ============================================================
+
+    async def read(self, duration_ms: int = 3000, semantic_id: str = None) -> None:
+        """
+        Simulate a user pausing to read content (dwell time).
+        Used for UX testing to simulate realistic reading behavior.
+
+        Args:
+            duration_ms: Time in milliseconds to pause (1000-10000)
+            semantic_id: Optional element to focus on while reading
+
+        Example:
+            await env.read(3000)  # Pause for 3 seconds
+            await env.read(5000, "main_content")  # Read specific element
+        """
+        # Clamp duration to reasonable bounds
+        duration_ms = max(1000, min(10000, duration_ms))
+        
+        if semantic_id:
+            # Scroll element into view if specified
+            try:
+                selector = f'[parser-semantic-id="{semantic_id}"]'
+                element = self.page.locator(selector).first
+                await element.scroll_into_view_if_needed(timeout=500)
+            except Exception:
+                pass  # Continue even if element not found
+        
+        await asyncio.sleep(duration_ms / 1000)
+        self.logger.info(f"Simulated reading for {duration_ms}ms" + 
+                        (f" on element: {semantic_id}" if semantic_id else ""))
+
+    async def tab_focus(self, times: int = 1) -> None:
+        """
+        Press Tab key to move focus to the next focusable element.
+        Used for accessibility testing of keyboard navigation.
+
+        Args:
+            times: Number of times to press Tab (default 1)
+
+        Example:
+            await env.tab_focus()  # Focus next element
+            await env.tab_focus(3)  # Tab through 3 elements
+        """
+        times = max(1, min(20, times))  # Limit to reasonable range
+        
+        for i in range(times):
+            await self.page.keyboard.press("Tab")
+            await asyncio.sleep(0.1)  # Small delay between tabs
+        
+        # Get currently focused element info
+        focused_info = await self.page.evaluate("""
+            () => {
+                const el = document.activeElement;
+                if (!el) return null;
+                return {
+                    tagName: el.tagName,
+                    id: el.id || null,
+                    className: el.className || null,
+                    ariaLabel: el.getAttribute('aria-label') || null,
+                    text: el.textContent?.substring(0, 50) || null
+                };
+            }
+        """)
+        self.logger.info(f"Tabbed {times} time(s), focused: {focused_info}")
+
+    async def shift_tab_focus(self, times: int = 1) -> None:
+        """
+        Press Shift+Tab to move focus to the previous focusable element.
+        Used for accessibility testing of keyboard navigation.
+
+        Args:
+            times: Number of times to press Shift+Tab (default 1)
+
+        Example:
+            await env.shift_tab_focus()  # Focus previous element
+            await env.shift_tab_focus(2)  # Go back 2 elements
+        """
+        times = max(1, min(20, times))
+        
+        for i in range(times):
+            await self.page.keyboard.press("Shift+Tab")
+            await asyncio.sleep(0.1)
+        
+        focused_info = await self.page.evaluate("""
+            () => {
+                const el = document.activeElement;
+                if (!el) return null;
+                return {
+                    tagName: el.tagName,
+                    id: el.id || null,
+                    ariaLabel: el.getAttribute('aria-label') || null
+                };
+            }
+        """)
+        self.logger.info(f"Shift+Tabbed {times} time(s), focused: {focused_info}")
+
+    async def scroll_to_element(self, semantic_id: str) -> None:
+        """
+        Scroll the page to bring a specific element into view.
+
+        Args:
+            semantic_id: The parser-semantic-id of the element to scroll to
+
+        Example:
+            await env.scroll_to_element("footer")
+            await env.scroll_to_element("product_details")
+        """
+        async with ElementHighlight(semantic_id, sleep=0.5, center=True):
+            selector = f'[parser-semantic-id="{semantic_id}"]'
+            element = self.page.locator(selector).first
+            
+            await element.scroll_into_view_if_needed(timeout=2000)
+            self.logger.info(f"Scrolled to element: {semantic_id}")
+
+    async def wait(self, duration_ms: int = 2000) -> None:
+        """
+        Wait for a specified duration (for loading states, animations, etc.).
+
+        Args:
+            duration_ms: Time in milliseconds to wait (500-10000)
+
+        Example:
+            await env.wait(2000)  # Wait 2 seconds for loading
+        """
+        duration_ms = max(500, min(10000, duration_ms))
+        await asyncio.sleep(duration_ms / 1000)
+        self.logger.info(f"Waited for {duration_ms}ms")
 
     async def _wait_for_custom_network_idle(
         self, timeout_ms: int = 10000, idle_time_ms: int = 500

@@ -149,6 +149,9 @@ export function UXAgentReportView({ uxagentRuns, targetUrl }: UXAgentReportViewP
 // Overview Tab
 function OverviewTab({ run }: { run: UXAgentRun }) {
     const observations = run.observationTrace || [];
+    const basicInfo = run.basicInfo as any || {};
+    const timingMetrics = basicInfo.timing_metrics || {};
+    const persona = basicInfo.persona || "";
 
     return (
         <div className="space-y-6">
@@ -160,6 +163,62 @@ function OverviewTab({ run }: { run: UXAgentRun }) {
                         Error
                     </div>
                     <p className="text-red-600 text-sm font-light">{run.errorMessage}</p>
+                </div>
+            )}
+
+            {/* Timing Metrics */}
+            {Object.keys(timingMetrics).length > 0 && (
+                <div className="border border-neutral-200 p-6">
+                    <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                        <Clock size={18} />
+                        Timing Metrics
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-neutral-50 p-4 border border-neutral-200">
+                            <p className="text-xs text-neutral-500 uppercase tracking-wide">Total Duration</p>
+                            <p className="text-xl font-light">{(timingMetrics.total_duration_ms / 1000).toFixed(1)}s</p>
+                        </div>
+                        <div className="bg-neutral-50 p-4 border border-neutral-200">
+                            <p className="text-xs text-neutral-500 uppercase tracking-wide">Time to First Action</p>
+                            <p className="text-xl font-light">{(timingMetrics.time_to_first_action_ms / 1000).toFixed(1)}s</p>
+                        </div>
+                        <div className="bg-neutral-50 p-4 border border-neutral-200">
+                            <p className="text-xs text-neutral-500 uppercase tracking-wide">Avg Action Interval</p>
+                            <p className="text-xl font-light">{(timingMetrics.average_action_interval_ms / 1000).toFixed(1)}s</p>
+                        </div>
+                        <div className="bg-neutral-50 p-4 border border-neutral-200">
+                            <p className="text-xs text-neutral-500 uppercase tracking-wide">Backtracks</p>
+                            <p className="text-xl font-light">{timingMetrics.backtrack_count || 0}</p>
+                        </div>
+                    </div>
+
+                    {/* Hesitation Moments */}
+                    {timingMetrics.hesitation_moments?.length > 0 && (
+                        <div className="mt-4">
+                            <p className="text-sm font-medium text-amber-700 mb-2">
+                                ⚠️ {timingMetrics.hesitation_moments.length} Hesitation Moment(s) Detected
+                            </p>
+                            <div className="space-y-2">
+                                {timingMetrics.hesitation_moments.slice(0, 3).map((h: any, idx: number) => (
+                                    <div key={idx} className="text-xs bg-amber-50 border border-amber-200 p-2">
+                                        <span className="font-medium">Step {h.step}:</span> Paused for {(h.duration_ms / 1000).toFixed(1)}s
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Persona Information */}
+            {persona && (
+                <div className="border border-neutral-200 p-6">
+                    <h3 className="text-lg font-medium mb-4">Agent Persona</h3>
+                    <div className="bg-neutral-50 p-4 max-h-40 overflow-y-auto">
+                        <pre className="text-sm text-neutral-700 whitespace-pre-wrap font-light">
+                            {typeof persona === 'string' ? persona.slice(0, 1000) : JSON.stringify(persona, null, 2)}
+                        </pre>
+                    </div>
                 </div>
             )}
 

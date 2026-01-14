@@ -4,6 +4,7 @@ import json
 import logging
 import pathlib
 import shutil
+import time
 import traceback
 import uuid
 from datetime import datetime
@@ -59,6 +60,17 @@ async def _run_for_persona_and_intent(
     
     # ============ Data collectors (in-memory) ============
     steps_taken = 0
+    session_start_time = time.time()
+    first_action_time = None
+    last_action_time = session_start_time
+    page_times = []  # Track time spent on each page
+    current_page_url = start_url
+    current_page_start = session_start_time
+    hesitation_threshold_ms = 5000  # 5 seconds = hesitation
+    hesitations = []
+    backtrack_count = 0
+    last_url = None
+    
     collected_data = {
         "run_id": run_id,
         "persona": persona,
@@ -73,6 +85,16 @@ async def _run_for_persona_and_intent(
         "score": None,
         "steps_taken": 0,
         "error": None,
+        # Timing metrics for UX analysis
+        "timing_metrics": {
+            "session_start_time": session_start_time,
+            "time_to_first_action_ms": 0,
+            "total_duration_ms": 0,
+            "time_per_page": [],
+            "hesitation_moments": [],
+            "backtrack_count": 0,
+            "average_action_interval_ms": 0,
+        }
     }
 
     async def before_action_hook():
@@ -161,7 +183,51 @@ async def _run_for_persona_and_intent(
             log.info(f"Taking action {action}")
             log.info(f"Action: {steps_taken + 1} out of {max_steps}")
             
+            # Track timing before action
+            action_start = time.time()
+            
             obs = await env.step(action)
+            
+            # Track timing after action
+            action_end = time.time()
+            action_duration_ms = int((action_end - action_start) * 1000)
+            
+            # Track first action time
+            if first_action_time is None:
+                first_action_time = action_end
+                collected_data["timing_metrics"]["time_to_first_action_ms"] = int(
+                    (first_action_time - session_start_time) * 1000
+                )
+            
+            # Track time between actions (hesitation detection)
+            time_since_last = int((action_start - last_action_time) * 1000)
+            if time_since_last > hesitation_threshold_ms and steps_taken > 0:
+                hesitations.append({
+                    "step": steps_taken,
+                    "duration_ms": time_since_last,
+                    "before_action": action[:100] if isinstance(action, str) else str(action)[:100]
+                })
+            last_action_time = action_end
+            
+            # Track page navigation and time per page
+            current_url = obs.get("tabs", [{}])[0].get("url") if obs.get("tabs") else None
+            if current_url and current_url != current_page_url:
+                # Finished with previous page
+                page_duration_ms = int((action_end - current_page_start) * 1000)
+                page_times.append({
+                    "url": current_page_url,
+                    "duration_ms": page_duration_ms,
+                    "step_range": f"{current_page_start}-{steps_taken}"
+                })
+                
+                # Check for backtracking (returning to previous URL)
+                if last_url and current_url == last_url:
+                    backtrack_count += 1
+                
+                last_url = current_page_url
+                current_page_url = current_url
+                current_page_start = action_end
+            
             steps_taken += 1
 
             if obs.get("terminated"):
@@ -169,11 +235,33 @@ async def _run_for_persona_and_intent(
                 collected_data["score"] = obs.get("score")
                 break
 
+        # Finalize timing metrics
+        session_end_time = time.time()
+        total_duration_ms = int((session_end_time - session_start_time) * 1000)
+        
+        # Add final page time
+        if current_page_url:
+            page_times.append({
+                "url": current_page_url,
+                "duration_ms": int((session_end_time - current_page_start) * 1000),
+                "step_range": f"{int(current_page_start)}-end"
+            })
+        
+        collected_data["timing_metrics"].update({
+            "total_duration_ms": total_duration_ms,
+            "time_per_page": page_times,
+            "hesitation_moments": hesitations,
+            "backtrack_count": backtrack_count,
+            "average_action_interval_ms": total_duration_ms // max(steps_taken, 1),
+        })
+        
         collected_data["steps_taken"] = steps_taken
         
         log.info(
             f"Finished persona run: terminated={collected_data['terminated']}, "
-            f"score={collected_data['score']}, steps={steps_taken}"
+            f"score={collected_data['score']}, steps={steps_taken}, "
+            f"duration={total_duration_ms}ms, hesitations={len(hesitations)}, "
+            f"backtracks={backtrack_count}"
         )
 
         # Save final memory trace
