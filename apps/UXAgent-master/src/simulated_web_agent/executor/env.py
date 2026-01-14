@@ -960,26 +960,37 @@ class WebAgentEnv:
 
     async def scroll(self, direction: str, amount: int) -> None:
         """
-        Performs a mouse scroll at the page inside the viewport.
+        Performs a scroll at the page inside the viewport.
 
         Args:
             direction: "up", "down", "left", or "right". The direction to scroll by.
-            amount: The amount of times to perform the scroll in that direction.
+            amount: The amount in pixels to scroll. Capped at 2000 to prevent issues.
         """
         if direction not in ["up", "down", "left", "right"]:
             raise ValueError(f"Invalid direction: {direction}")
 
-        scroll_button = {
-            "up": "ArrowUp",
-            "down": "ArrowDown",
-            "left": "ArrowLeft",
-            "right": "ArrowRight",
-        }[direction]
+        # Cap the amount to prevent browser crashes
+        amount = min(abs(amount), 2000)
+        
+        # Use JavaScript scrollBy for smooth, reliable scrolling
+        scroll_x = 0
+        scroll_y = 0
+        
+        if direction == "down":
+            scroll_y = amount
+        elif direction == "up":
+            scroll_y = -amount
+        elif direction == "right":
+            scroll_x = amount
+        elif direction == "left":
+            scroll_x = -amount
+            
+        await self.page.evaluate(f"window.scrollBy({scroll_x}, {scroll_y})")
+        
+        # Small delay to let the scroll complete
+        await asyncio.sleep(0.3)
 
-        for _ in range(amount*3): # one mouse scroll event ~= 3 arrow keys
-            await self.page.keyboard.press(scroll_button, delay=50)
-
-        self.logger.info(f"Scrolled the page {direction} by {amount} times")
+        self.logger.info(f"Scrolled the page {direction} by {amount}px")
 
     async def hover(self, semantic_id: str) -> None:
         """

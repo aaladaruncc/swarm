@@ -73,12 +73,12 @@ Each action must include an `action` key specifying the type. Include required f
 
 ## Scroll (NEW - for exploring content)
 ```json
-{ "action": "scroll", "direction": "down", "amount": 500, "description": "Scrolling to see more content..." }
+{ "action": "scroll", "direction": "down", "amount": 400, "description": "Scrolling to see more content..." }
 { "action": "scroll", "direction": "up", "amount": 300, "description": "Scrolling back up..." }
 { "action": "scroll_to_element", "target": "<element_semantic_id>", "description": "Scrolling to element..." }
 ```
 - `direction`: "up" | "down" | "left" | "right"
-- `amount`: pixels to scroll (default 500)
+- `amount`: pixels to scroll (200-800 recommended, max 2000)
 
 ## Read/Dwell (NEW - for UX evaluation)
 ```json
