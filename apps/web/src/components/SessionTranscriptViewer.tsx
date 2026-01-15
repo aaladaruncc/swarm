@@ -160,8 +160,14 @@ export function SessionTranscriptViewer({ testRunId, personaName, onClose }: Ses
                   if (item.type === "screenshot") {
                     const screenshot = item.data;
                     const screenshotIndex = screenshots.findIndex(s => s.stepNumber === screenshot.stepNumber);
+                    const hasImage = Boolean(screenshot.base64Data);
                     return (
-                      <div key={`screenshot-${index}`} className="border border-neutral-900 rounded-none p-4 hover:bg-neutral-50 transition-colors">
+                      <div
+                        key={`screenshot-${index}`}
+                        className={`border border-neutral-900 rounded-none p-4 transition-colors ${
+                          hasImage ? "hover:bg-neutral-50" : "opacity-50"
+                        }`}
+                      >
                         <div className="flex items-start gap-4">
                           <div className="flex-shrink-0 w-10 h-10 bg-neutral-900 flex items-center justify-center">
                             <ImageIcon size={18} className="text-white" />
@@ -175,7 +181,7 @@ export function SessionTranscriptViewer({ testRunId, personaName, onClose }: Ses
                             {screenshot.description && (
                               <p className="text-sm text-neutral-600 mb-3 font-light">{screenshot.description}</p>
                             )}
-                            {screenshot.base64Data && (
+                            {hasImage ? (
                               <button
                                 onClick={() => setSelectedScreenshot(screenshotIndex >= 0 ? screenshotIndex : 0)}
                                 className="block w-full"
@@ -186,6 +192,10 @@ export function SessionTranscriptViewer({ testRunId, personaName, onClose }: Ses
                                   className="w-full rounded-none border border-neutral-900 hover:opacity-90 transition-opacity cursor-pointer max-h-64 object-contain bg-neutral-50"
                                 />
                               </button>
+                            ) : (
+                              <div className="border border-neutral-200 bg-neutral-50 px-3 py-4 text-xs text-neutral-500 font-light">
+                                Screenshot unavailable in this environment
+                              </div>
                             )}
                           </div>
                         </div>
@@ -247,42 +257,49 @@ export function SessionTranscriptViewer({ testRunId, personaName, onClose }: Ses
           </div>
 
           {/* Screenshot Sidebar */}
-          {screenshots.length > 0 && (
-            <div className="w-80 border-l border-neutral-900 bg-white overflow-y-auto p-4">
-              <h3 className="text-sm font-light text-neutral-900 mb-4">Screenshots</h3>
-              <div className="space-y-3">
-                {screenshots.map((screenshot, index) => (
-                  <button
-                    key={screenshot.id}
-                    onClick={() => {
-                      setSelectedScreenshot(index);
-                    }}
-                    className="w-full text-left"
-                  >
-                    <div className="border border-neutral-900 rounded-none overflow-hidden hover:border-neutral-600 transition-colors bg-white">
-                      {screenshot.base64Data && (
-                        <img
-                          src={`data:image/png;base64,${screenshot.base64Data}`}
-                          alt={`Screenshot ${screenshot.stepNumber}`}
-                          className="w-full h-32 object-cover"
-                        />
-                      )}
-                      <div className="p-2">
-                        <p className="text-xs font-light text-neutral-900">
-                          Step {screenshot.stepNumber}
-                        </p>
-                        {screenshot.description && (
-                          <p className="text-xs text-neutral-500 mt-1 line-clamp-2 font-light">
-                            {screenshot.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                ))}
+          <div className="w-80 border-l border-neutral-900 bg-white overflow-y-auto p-4">
+            <h3 className="text-sm font-light text-neutral-900 mb-4">Screenshots</h3>
+            {screenshots.length === 0 ? (
+              <div className="border border-neutral-200 bg-neutral-50 px-3 py-4 text-xs text-neutral-500 font-light">
+                Screenshots are disabled in this environment
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="space-y-3">
+                {screenshots.map((screenshot, index) => {
+                  const hasImage = Boolean(screenshot.base64Data);
+                  return (
+                    <button
+                      key={screenshot.id}
+                      onClick={() => {
+                        if (hasImage) setSelectedScreenshot(index);
+                      }}
+                      className={`w-full text-left ${hasImage ? "" : "pointer-events-none opacity-50"}`}
+                    >
+                      <div className="border border-neutral-900 rounded-none overflow-hidden hover:border-neutral-600 transition-colors bg-white">
+                        {hasImage && (
+                          <img
+                            src={`data:image/png;base64,${screenshot.base64Data}`}
+                            alt={`Screenshot ${screenshot.stepNumber}`}
+                            className="w-full h-32 object-cover"
+                          />
+                        )}
+                        <div className="p-2">
+                          <p className="text-xs font-light text-neutral-900">
+                            Step {screenshot.stepNumber}
+                          </p>
+                          {screenshot.description && (
+                            <p className="text-xs text-neutral-500 mt-1 line-clamp-2 font-light">
+                              {screenshot.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </motion.div>
 

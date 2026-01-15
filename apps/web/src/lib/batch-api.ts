@@ -224,6 +224,13 @@ export async function getBatchTests(): Promise<{ batchTests: BatchTestRun[] }> {
   return fetchWithAuth("/api/batch-tests");
 }
 
+export async function deleteBatchTests(ids: string[]): Promise<{ message: string }> {
+  return fetchWithAuth("/api/batch-tests", {
+    method: "DELETE",
+    body: JSON.stringify({ ids }),
+  });
+}
+
 export async function getBatchTest(id: string): Promise<{
   batchTestRun: BatchTestRun;
   testRuns: TestRunWithReport[];
