@@ -22,6 +22,16 @@ export default function NewTest() {
   const [personas, setPersonas] = useState<GeneratedPersona[]>([]);
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [recommendedIndices, setRecommendedIndices] = useState<number[]>([]);
+  const orderedPersonas = personas
+    .map((persona, index) => ({ persona, index }))
+    .sort((a, b) => {
+      const aRecommended = recommendedIndices.includes(a.index);
+      const bRecommended = recommendedIndices.includes(b.index);
+      if (aRecommended !== bRecommended) {
+        return aRecommended ? -1 : 1;
+      }
+      return (b.persona.relevanceScore || 0) - (a.persona.relevanceScore || 0);
+    });
 
   // Swarm Selection
   const [swarms, setSwarms] = useState<Swarm[]>([]);
@@ -425,7 +435,7 @@ export default function NewTest() {
 
             {/* Personas Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {personas.map((persona, index) => {
+              {orderedPersonas.map(({ persona, index }) => {
                 const isSelected = selectedIndices.includes(index);
                 const isRecommended = recommendedIndices.includes(index);
                 const canSelect = isSelected || selectedIndices.length < agentCount;

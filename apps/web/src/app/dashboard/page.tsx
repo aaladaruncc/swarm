@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
-import { getBatchTests, getBatchTest, type BatchTestRun } from "@/lib/batch-api";
+import { getBatchTests, getBatchTest, deleteBatchTests, type BatchTestRun } from "@/lib/batch-api";
 import { Plus, Loader2, Trash2, CheckSquare, FileText, Download, Check, ChevronUp, ChevronDown } from "lucide-react";
 import { pdf } from '@react-pdf/renderer';
 import { AggregatedReportPDF } from '@/components/pdf/AggregatedReportPDF';
@@ -17,6 +17,7 @@ export default function Dashboard() {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [exportingPDF, setExportingPDF] = useState(false);
   const [error, setError] = useState("");
   const [sortField, setSortField] = useState<"date" | "agents" | "status" | "targetUrl" | null>(null);
@@ -117,16 +118,17 @@ export default function Dashboard() {
     }
   };
 
-  const handleArchive = async () => {
+  const handleArchiveClick = () => {
     if (selectedTests.length === 0) return;
-    
-    if (!confirm(`Are you sure you want to archive ${selectedTests.length} test(s)?`)) return;
+    setShowArchiveConfirm(true);
+  };
+
+  const handleArchiveConfirm = async () => {
+    if (selectedTests.length === 0) return;
 
     setIsArchiving(true);
     try {
-      // TODO: Implement batch test deletion API
-      // await deleteBatchTests(selectedTests);
-      // Remove locally
+      await deleteBatchTests(selectedTests);
       setBatchTests(prev => prev.filter(t => !selectedTests.includes(t.id)));
       setSelectedTests([]);
       setIsSelectionMode(false);
@@ -134,6 +136,7 @@ export default function Dashboard() {
       setError(err instanceof Error ? err.message : "Failed to archive tests");
     } finally {
       setIsArchiving(false);
+      setShowArchiveConfirm(false);
     }
   };
 
@@ -314,7 +317,7 @@ export default function Dashboard() {
                       <span>Export PDF ({selectedTests.length})</span>
                     </button>
                     <button
-                      onClick={handleArchive}
+                      onClick={handleArchiveClick}
                       disabled={isArchiving}
                       className="flex items-center justify-center gap-2 text-red-600 hover:text-red-700 transition-all text-xs font-medium uppercase tracking-wide"
                     >
@@ -428,6 +431,34 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {showArchiveConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md border border-neutral-900 bg-white p-6 rounded-none shadow-2xl">
+            <h3 className="text-lg font-light text-neutral-900 mb-2">Archive tests</h3>
+            <p className="text-sm text-neutral-600 font-light mb-6">
+              Archive {selectedTests.length} selected test{selectedTests.length === 1 ? "" : "s"}?
+              You can restore them later from the archive.
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setShowArchiveConfirm(false)}
+                className="px-4 py-2 text-sm font-light text-neutral-600 hover:text-neutral-900"
+                disabled={isArchiving}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleArchiveConfirm}
+                className="px-4 py-2 text-sm font-light text-white bg-neutral-900 hover:bg-neutral-800 disabled:opacity-50"
+                disabled={isArchiving}
+              >
+                {isArchiving ? "Archiving..." : "Archive"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

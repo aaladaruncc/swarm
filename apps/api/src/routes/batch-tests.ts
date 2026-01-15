@@ -3,7 +3,9 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { eq, desc } from "drizzle-orm";
 import { db, schema } from "../db/index.js";
-import { generatePersonas, selectTopPersonas } from "../lib/persona-generator.js";
+import { selectTopPersonas } from "../lib/persona-generator.js";
+import { generatePersonasV2 } from "../lib/persona-generator-v2.js";
+import { and, inArray } from "drizzle-orm";
 import { runUserTestAgent } from "../lib/agent.js";
 import { aggregateReports } from "../lib/report-aggregator.js";
 import { globalTestQueue } from "../lib/queue-manager.js";
@@ -54,7 +56,7 @@ batchTestsRoutes.post(
     try {
       console.log(`[${user.id}] Generating personas for ${targetUrl} (will select ${agentCount})...`);
 
-      const result = await generatePersonas(userDescription, targetUrl);
+      const result = await generatePersonasV2(userDescription, targetUrl);
       const selection = selectTopPersonas(result.personas, agentCount || 3);
 
       return c.json({
@@ -171,6 +173,26 @@ batchTestsRoutes.get("/", async (c) => {
 
   return c.json({ batchTests });
 });
+
+// DELETE /batch-tests - Archive/delete multiple batch tests
+batchTestsRoutes.delete(
+  "/",
+  zValidator("json", z.object({ ids: z.array(z.string()) })),
+  async (c) => {
+    const user = c.get("user");
+    const { ids } = c.req.valid("json");
+
+    if (ids.length === 0) {
+      return c.json({ message: "No tests selected" });
+    }
+
+    await db
+      .delete(schema.batchTestRuns)
+      .where(and(inArray(schema.batchTestRuns.id, ids), eq(schema.batchTestRuns.userId, user.id)));
+
+    return c.json({ message: "Batch tests archived successfully" });
+  }
+);
 
 // GET /batch-tests/:id - Get a specific batch test with all details
 batchTestsRoutes.get("/:id", async (c) => {
