@@ -221,7 +221,7 @@ export const uxagentRuns = pgTable("uxagent_runs", {
   status: text("status").notNull().default("running"),
   score: integer("score"),
   terminated: boolean("terminated").default(false),
-  stepsToken: integer("steps_taken"),
+  stepsTaken: integer("steps_taken"),
   errorMessage: text("error_message"),
 
   // Traces (JSON data)
@@ -251,9 +251,67 @@ export const uxagentScreenshots = pgTable("uxagent_screenshots", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Individual thought pieces from UXAgent runs - structured storage
+export const uxagentThoughts = pgTable("uxagent_thoughts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  uxagentRunId: uuid("uxagent_run_id")
+    .notNull()
+    .references(() => uxagentRuns.id, { onDelete: "cascade" }),
+
+  // Thought metadata
+  kind: text("kind").notNull(), // 'observation' | 'action' | 'plan' | 'thought' | 'reflection'
+  content: text("content").notNull(),
+  importance: integer("importance"), // 0-100 scale
+  stepNumber: integer("step_number"),
+
+  // For actions - store the raw action data
+  rawAction: jsonb("raw_action"),
+
+  // Timestamps
+  agentTimestamp: integer("agent_timestamp"), // Agent's internal timestamp
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// AI-generated insights from UXAgent thought analysis
+export const uxagentInsights = pgTable("uxagent_insights", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  uxagentRunId: uuid("uxagent_run_id")
+    .notNull()
+    .references(() => uxagentRuns.id, { onDelete: "cascade" }),
+
+  // Insight data
+  category: text("category").notNull(), // 'usability' | 'accessibility' | 'performance' | 'content' | 'navigation'
+  severity: text("severity").notNull(), // 'low' | 'medium' | 'high' | 'critical'
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  recommendation: text("recommendation").notNull(),
+
+  // Evidence - which thoughts support this insight
+  supportingThoughtIds: jsonb("supporting_thought_ids").$type<string[]>(),
+
+  // Metadata
+  aiModel: text("ai_model"), // Which model generated this
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Chat messages with the simulated persona
+export const uxagentChatMessages = pgTable("uxagent_chat_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  uxagentRunId: uuid("uxagent_run_id")
+    .notNull()
+    .references(() => uxagentRuns.id, { onDelete: "cascade" }),
+
+  // Message data
+  role: text("role").notNull(), // 'user' | 'assistant'
+  content: text("content").notNull(),
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // ============================================================================
 // TYPE EXPORTS
 // ============================================================================
+
 
 export type User = typeof user.$inferSelect;
 export type NewUser = typeof user.$inferInsert;
@@ -287,3 +345,12 @@ export type NewUxagentRun = typeof uxagentRuns.$inferInsert;
 
 export type UxagentScreenshot = typeof uxagentScreenshots.$inferSelect;
 export type NewUxagentScreenshot = typeof uxagentScreenshots.$inferInsert;
+
+export type UxagentThought = typeof uxagentThoughts.$inferSelect;
+export type NewUxagentThought = typeof uxagentThoughts.$inferInsert;
+
+export type UxagentInsight = typeof uxagentInsights.$inferSelect;
+export type NewUxagentInsight = typeof uxagentInsights.$inferInsert;
+
+export type UxagentChatMessage = typeof uxagentChatMessages.$inferSelect;
+export type NewUxagentChatMessage = typeof uxagentChatMessages.$inferInsert;

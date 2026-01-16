@@ -18,7 +18,7 @@ async function main() {
     console.log(`RunID: ${run.runId}`);
     console.log(`Status: ${run.status}`);
     console.log(`Score: ${run.score}`);
-    console.log(`Steps Taken: ${run.stepsToken}`);
+    console.log(`Steps Taken: ${run.stepsTaken}`);
     console.log(`Terminated: ${run.terminated}`);
     console.log(`Start URL: ${run.startUrl}`);
     console.log(`Intent: ${run.intent}`);

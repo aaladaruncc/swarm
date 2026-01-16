@@ -2,17 +2,44 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { type UXAgentRun } from "@/lib/batch-api";
-import { ChevronDown, ChevronUp, Brain, Eye, MousePointer, Image as ImageIcon, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { type UXAgentRun, type TestRunWithReport } from "@/lib/batch-api";
+import { ChevronDown, ChevronUp, Brain, Eye, MousePointer, Image as ImageIcon, AlertCircle, CheckCircle2, Clock, User, Loader2, ChevronLeft, ChevronRight, Lightbulb, MessageCircle } from "lucide-react";
+import { InsightsTab } from "./InsightsTab";
+import { ThoughtsTab } from "./ThoughtsTab";
+import { ChatTab } from "./ChatTab";
 
 interface UXAgentReportViewProps {
     uxagentRuns: UXAgentRun[];
     targetUrl: string;
+    testRuns?: TestRunWithReport[];
 }
 
-export function UXAgentReportView({ uxagentRuns, targetUrl }: UXAgentReportViewProps) {
-    const [expandedRun, setExpandedRun] = useState<string | null>(uxagentRuns[0]?.id || null);
-    const [activeTab, setActiveTab] = useState<"overview" | "actions" | "memory" | "screenshots">("overview");
+// Helper to extract persona name from personaData or basicInfo
+function getPersonaName(run: UXAgentRun, index: number): string {
+    const personaData = run.personaData as any;
+    if (personaData?.name) return personaData.name;
+    const basicInfo = run.basicInfo as any;
+    if (basicInfo?.persona) {
+        // Try to extract name from persona string
+        const match = basicInfo.persona.match(/(?:name[:\s]+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
+        if (match) return match[1];
+    }
+    return `Agent ${index + 1}`;
+}
+
+// Helper to get status icon
+function getStatusIcon(status: string) {
+    switch (status) {
+        case "completed": return <CheckCircle2 size={14} className="text-emerald-600" />;
+        case "failed": return <AlertCircle size={14} className="text-red-600" />;
+        case "running": return <Loader2 size={14} className="text-blue-600 animate-spin" />;
+        default: return <Clock size={14} className="text-neutral-400" />;
+    }
+}
+
+export function UXAgentReportView({ uxagentRuns, targetUrl, testRuns }: UXAgentReportViewProps) {
+    const [selectedIndex, setSelectedIndex] = useState(0);
+    const [activeTab, setActiveTab] = useState<"overview" | "thoughts" | "actions" | "memory" | "screenshots" | "insights" | "chat">("overview");
 
     if (uxagentRuns.length === 0) {
         return (
@@ -21,6 +48,8 @@ export function UXAgentReportView({ uxagentRuns, targetUrl }: UXAgentReportViewP
             </div>
         );
     }
+
+    const selectedRun = uxagentRuns[selectedIndex];
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -31,117 +60,204 @@ export function UXAgentReportView({ uxagentRuns, targetUrl }: UXAgentReportViewP
         }
     };
 
+    const handlePrev = () => setSelectedIndex(Math.max(0, selectedIndex - 1));
+    const handleNext = () => setSelectedIndex(Math.min(uxagentRuns.length - 1, selectedIndex + 1));
+
     return (
         <div className="space-y-6">
-            {/* Agent Run Selector */}
-            <div className="border border-neutral-200 p-4">
-                <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wide mb-3">Agent Runs</h3>
-                <div className="flex flex-wrap gap-2">
-                    {uxagentRuns.map((run, idx) => (
-                        <button
-                            key={run.id}
-                            onClick={() => setExpandedRun(run.id)}
-                            className={`px-4 py-2 border text-sm font-medium transition-colors ${expandedRun === run.id
-                                ? "border-neutral-900 bg-neutral-900 text-white"
-                                : "border-neutral-200 hover:border-neutral-400"
-                                }`}
-                        >
-                            Agent {idx + 1}
-                            {run.terminated && " (Terminated)"}
-                        </button>
-                    ))}
+            {/* Agent Selector - Horizontal Cards */}
+            <div className="bg-neutral-50 border border-neutral-200 p-4">
+                <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wide">
+                        Agent Runs ({uxagentRuns.length})
+                    </h3>
+                    {uxagentRuns.length > 3 && (
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={handlePrev}
+                                disabled={selectedIndex === 0}
+                                className="p-1 hover:bg-neutral-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <ChevronLeft size={16} />
+                            </button>
+                            <span className="text-xs text-neutral-500 font-mono">
+                                {selectedIndex + 1}/{uxagentRuns.length}
+                            </span>
+                            <button
+                                onClick={handleNext}
+                                disabled={selectedIndex === uxagentRuns.length - 1}
+                                className="p-1 hover:bg-neutral-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <ChevronRight size={16} />
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                    {uxagentRuns.map((run, idx) => {
+                        const isSelected = idx === selectedIndex;
+                        const personaName = getPersonaName(run, idx);
+                        const duration = run.startedAt && run.completedAt
+                            ? Math.round((new Date(run.completedAt).getTime() - new Date(run.startedAt).getTime()) / 1000)
+                            : null;
+
+                        return (
+                            <button
+                                key={run.id}
+                                onClick={() => setSelectedIndex(idx)}
+                                className={`group relative p-4 text-left transition-all duration-200 ${isSelected
+                                    ? "bg-neutral-900 text-white border-2 border-neutral-900 shadow-lg"
+                                    : "bg-white border border-neutral-200 hover:border-neutral-400 hover:shadow-sm"
+                                    }`}
+                            >
+                                {/* Selection indicator */}
+                                {isSelected && (
+                                    <div className="absolute top-0 left-0 w-0 h-0 border-t-[20px] border-r-[20px] border-t-white border-r-transparent opacity-30" />
+                                )}
+
+                                <div className="flex items-start justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isSelected ? "bg-white/20" : "bg-neutral-100"
+                                            }`}>
+                                            <User size={16} className={isSelected ? "text-white" : "text-neutral-600"} />
+                                        </div>
+                                        <div>
+                                            <h4 className={`font-medium text-sm ${isSelected ? "text-white" : "text-neutral-900"}`}>
+                                                {personaName}
+                                            </h4>
+                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                                {getStatusIcon(run.status)}
+                                                <span className={`text-xs capitalize ${isSelected ? "text-neutral-300" : "text-neutral-500"}`}>
+                                                    {run.status}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {run.score !== null && (
+                                        <div className={`text-right ${isSelected ? "text-white" : "text-neutral-900"}`}>
+                                            <span className="text-lg font-light">{run.score}</span>
+                                            <span className={`text-xs ${isSelected ? "text-neutral-300" : "text-neutral-400"}`}>/10</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className={`flex items-center gap-4 text-xs pt-2 border-t ${isSelected ? "border-white/20" : "border-neutral-100"
+                                    }`}>
+                                    <span className={isSelected ? "text-neutral-300" : "text-neutral-500"}>
+                                        {run.stepsTaken || 0} steps
+                                    </span>
+                                    <span className={isSelected ? "text-neutral-300" : "text-neutral-500"}>
+                                        {run.screenshots?.length || 0} screenshots
+                                    </span>
+                                    {duration && (
+                                        <span className={isSelected ? "text-neutral-300" : "text-neutral-500"}>
+                                            {duration}s
+                                        </span>
+                                    )}
+                                </div>
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
             {/* Current Run Details */}
-            {expandedRun && (() => {
-                const run = uxagentRuns.find(r => r.id === expandedRun);
-                if (!run) return null;
-
-                return (
-                    <div className="space-y-6">
-                        {/* Run Header */}
-                        <div className="border border-neutral-900 bg-neutral-900 text-white p-6">
-                            <div className="flex items-start justify-between mb-4">
-                                <div>
-                                    <h2 className="text-xl font-light mb-1">{run.intent}</h2>
-                                    <p className="text-neutral-400 text-sm">{run.startUrl}</p>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <span className={`px-3 py-1 text-xs font-medium border ${getStatusColor(run.status)}`}>
-                                        {run.status}
-                                    </span>
-                                    {run.score !== null && (
-                                        <div className="text-right">
-                                            <span className="text-3xl font-light">{run.score}</span>
-                                            <span className="text-neutral-400 text-sm">/10</span>
-                                        </div>
-                                    )}
-                                </div>
+            {selectedRun && (
+                <div className="space-y-6">
+                    {/* Run Header */}
+                    <div className="border border-neutral-900 bg-neutral-900 text-white p-6">
+                        <div className="flex items-start justify-between mb-4">
+                            <div>
+                                <h2 className="text-xl font-light mb-1">{selectedRun.intent}</h2>
+                                <p className="text-neutral-400 text-sm">{selectedRun.startUrl}</p>
                             </div>
-                            <div className="grid grid-cols-3 gap-6 text-sm">
-                                <div>
-                                    <p className="text-neutral-400 text-xs uppercase tracking-wide mb-1">Steps Taken</p>
-                                    <p className="font-light">{run.stepsToken || 0} steps</p>
-                                </div>
-                                <div>
-                                    <p className="text-neutral-400 text-xs uppercase tracking-wide mb-1">Screenshots</p>
-                                    <p className="font-light">{run.screenshots?.length || 0} captured</p>
-                                </div>
-                                <div>
-                                    <p className="text-neutral-400 text-xs uppercase tracking-wide mb-1">Duration</p>
-                                    <p className="font-light">
-                                        {run.startedAt && run.completedAt
-                                            ? `${Math.round((new Date(run.completedAt).getTime() - new Date(run.startedAt).getTime()) / 1000)}s`
-                                            : "N/A"
-                                        }
-                                    </p>
-                                </div>
+                            <div className="flex items-center gap-4">
+                                <span className={`px-3 py-1 text-xs font-medium border ${getStatusColor(selectedRun.status)}`}>
+                                    {selectedRun.status}
+                                </span>
+                                {selectedRun.score !== null && (
+                                    <div className="text-right">
+                                        <span className="text-3xl font-light">{selectedRun.score}</span>
+                                        <span className="text-neutral-400 text-sm">/10</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
-
-                        {/* Tabs */}
-                        <div className="border-b border-neutral-200">
-                            <div className="flex gap-1">
-                                {[
-                                    { key: "overview", label: "Overview", icon: Eye },
-                                    { key: "actions", label: "Actions", icon: MousePointer },
-                                    { key: "memory", label: "Memory", icon: Brain },
-                                    { key: "screenshots", label: "Screenshots", icon: ImageIcon },
-                                ].map(({ key, label, icon: Icon }) => (
-                                    <button
-                                        key={key}
-                                        onClick={() => setActiveTab(key as any)}
-                                        className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors ${activeTab === key
-                                            ? "border-b-2 border-neutral-900 text-neutral-900"
-                                            : "text-neutral-500 hover:text-neutral-900"
-                                            }`}
-                                    >
-                                        <Icon size={16} />
-                                        {label}
-                                    </button>
-                                ))}
+                        <div className="grid grid-cols-3 gap-6 text-sm">
+                            <div>
+                                <p className="text-neutral-400 text-xs uppercase tracking-wide mb-1">Steps Taken</p>
+                                <p className="font-light">{selectedRun.stepsTaken || 0} steps</p>
                             </div>
-                        </div>
-
-                        {/* Tab Content */}
-                        <div className="min-h-[400px]">
-                            {activeTab === "overview" && (
-                                <OverviewTab run={run} />
-                            )}
-                            {activeTab === "actions" && (
-                                <ActionsTab actions={run.actionTrace || []} />
-                            )}
-                            {activeTab === "memory" && (
-                                <MemoryTab memories={run.memoryTrace || []} />
-                            )}
-                            {activeTab === "screenshots" && (
-                                <ScreenshotsTab screenshots={run.screenshots || []} />
-                            )}
+                            <div>
+                                <p className="text-neutral-400 text-xs uppercase tracking-wide mb-1">Screenshots</p>
+                                <p className="font-light">{selectedRun.screenshots?.length || 0} captured</p>
+                            </div>
+                            <div>
+                                <p className="text-neutral-400 text-xs uppercase tracking-wide mb-1">Duration</p>
+                                <p className="font-light">
+                                    {selectedRun.startedAt && selectedRun.completedAt
+                                        ? `${Math.round((new Date(selectedRun.completedAt).getTime() - new Date(selectedRun.startedAt).getTime()) / 1000)}s`
+                                        : "N/A"
+                                    }
+                                </p>
+                            </div>
                         </div>
                     </div>
-                );
-            })()}
+
+                    {/* Tabs */}
+                    <div className="border-b border-neutral-200">
+                        <div className="flex gap-1 overflow-x-auto">
+                            {[
+                                { key: "overview", label: "Overview", icon: Eye },
+                                { key: "thoughts", label: "Thoughts", icon: Brain },
+                                { key: "actions", label: "Actions", icon: MousePointer },
+                                { key: "screenshots", label: "Screenshots", icon: ImageIcon },
+                                { key: "insights", label: "Insights", icon: Lightbulb },
+                                { key: "chat", label: "Chat", icon: MessageCircle },
+                            ].map(({ key, label, icon: Icon }) => (
+                                <button
+                                    key={key}
+                                    onClick={() => setActiveTab(key as any)}
+                                    className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === key
+                                        ? "border-b-2 border-neutral-900 text-neutral-900"
+                                        : "text-neutral-500 hover:text-neutral-900"
+                                        }`}
+                                >
+                                    <Icon size={16} />
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Tab Content */}
+                    <div className="min-h-[400px]">
+                        {activeTab === "overview" && (
+                            <OverviewTab run={selectedRun} />
+                        )}
+                        {activeTab === "thoughts" && (
+                            <ThoughtsTab run={selectedRun} />
+                        )}
+                        {activeTab === "actions" && (
+                            <ActionsTab actions={selectedRun.actionTrace || []} />
+                        )}
+                        {activeTab === "memory" && (
+                            <MemoryTab memories={selectedRun.memoryTrace || []} />
+                        )}
+                        {activeTab === "screenshots" && (
+                            <ScreenshotsTab screenshots={selectedRun.screenshots || []} />
+                        )}
+                        {activeTab === "insights" && (
+                            <InsightsTab run={selectedRun} />
+                        )}
+                        {activeTab === "chat" && (
+                            <ChatTab run={selectedRun} />
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

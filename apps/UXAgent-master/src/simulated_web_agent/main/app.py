@@ -1,5 +1,6 @@
 # app.py
 import os
+import logging
 import json
 import aiohttp
 import asyncio
@@ -12,6 +13,23 @@ from .run import run  # your run() from the module you showed
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
+
+# Centralized Logging Configuration
+logging.basicConfig(
+    level=logging.INFO,
+    format="[%(asctime)s] %(levelname)s in %(module)s: %(message)s"
+)
+logging.getLogger("LiteLLM").setLevel(logging.WARNING)
+logging.getLogger("LiteLLM Router").setLevel(logging.WARNING)
+
+# Disable litellm async logging to prevent event loop errors
+try:
+    import litellm
+    litellm.suppress_debug_info = True
+    litellm._async_success_callback = []
+    litellm._async_failure_callback = []
+except ImportError:
+    pass
 
 # API Key authentication
 INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY")
@@ -127,6 +145,17 @@ async def send_results_to_callback(callback_url: str, api_key: str, run_data: di
 
 async def send_agent_result(callback_url: str, api_key: str, agent_data: dict, test_run_id: str = None):
     """Send a single agent's result to the callback URL"""
+    memories = agent_data.get("memories", []) or []
+    memory_trace = []
+    for m in memories:
+        if hasattr(m, "__json__"):
+            try:
+                memory_trace.append(m.__json__())
+                continue
+            except Exception:
+                pass
+        memory_trace.append(m)
+
     payload = {
         "runId": agent_data.get("run_id"),
         "intent": agent_data.get("intent"),
@@ -142,10 +171,10 @@ async def send_agent_result(callback_url: str, api_key: str, agent_data: dict, t
             "timing_metrics": agent_data.get("timing_metrics", {}),
         },
         "actionTrace": agent_data.get("actions", []),
-        "memoryTrace": agent_data.get("memories", []),
+        "memoryTrace": memory_trace,
         "observationTrace": agent_data.get("observations", []),
         "logContent": agent_data.get("final_memory_text"),
-        "stepsToken": agent_data.get("steps_taken"),
+        "stepsTaken": agent_data.get("steps_taken"),
         "screenshots": [
             {
                 "stepNumber": s.get("step"),
@@ -188,6 +217,12 @@ def run_endpoint():
 
     # Optional flags with defaults
     headless = bool(payload.get("headless", True))
+    use_stagehand = payload.get("use_stagehand")
+    use_cua = payload.get("use_cua")
+    enable_human_behavior = payload.get("enable_human_behavior")
+    stagehand_skip_observe = payload.get("stagehand_skip_observe")
+    stagehand_use_extract = payload.get("stagehand_use_extract")
+    stagehand_observe_timeout = payload.get("stagehand_observe_timeout_seconds")
     
     # Generate a unique run ID for tracking
     import uuid
@@ -198,6 +233,19 @@ def run_endpoint():
         """Run the agent pipeline in background and send results via callback"""
         try:
             print(f"[RUN {run_id}] Starting background agent run...", flush=True)
+
+            if use_stagehand is not None:
+                os.environ["USE_STAGEHAND"] = "true" if use_stagehand else "false"
+            if use_cua is not None:
+                os.environ["USE_CUA"] = "true" if use_cua else "false"
+            if enable_human_behavior is not None:
+                os.environ["ENABLE_HUMAN_BEHAVIOR"] = "true" if enable_human_behavior else "false"
+            if stagehand_skip_observe is not None:
+                os.environ["STAGEHAND_SKIP_OBSERVE"] = "true" if stagehand_skip_observe else "false"
+            if stagehand_use_extract is not None:
+                os.environ["STAGEHAND_USE_EXTRACT"] = "true" if stagehand_use_extract else "false"
+            if stagehand_observe_timeout is not None:
+                os.environ["STAGEHAND_OBSERVE_TIMEOUT_SECONDS"] = str(stagehand_observe_timeout)
             
             # Call the pipeline
             result = run(

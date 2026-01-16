@@ -2,6 +2,7 @@ import asyncio
 import base64
 import json
 import logging
+import os
 import pathlib
 import shutil
 import time
@@ -18,8 +19,16 @@ from ..agent import context, gpt
 from ..executor.env import WebAgentEnv  # Playwright env
 from .model import AgentPolicy  # noqa
 
+# Try to import StagehandEnv (optional)
+try:
+    from ..executor.stagehand_env import StagehandEnv
+    STAGEHAND_AVAILABLE = True
+except ImportError:
+    STAGEHAND_AVAILABLE = False
+    StagehandEnv = None
+
 log = logging.getLogger("simulated_web_agent.main.experiment")
-logging.basicConfig(level=logging.INFO)
+
 
 
 async def _run_for_persona_and_intent(
@@ -98,11 +107,16 @@ async def _run_for_persona_and_intent(
     }
 
     async def before_action_hook():
-        nonlocal steps_taken
+        nonlocal steps_taken, use_stagehand
         if cfg.environment.recording.enabled:
             return
         
-        # Capture screenshots as base64
+        # Skip screenshot capture for Stagehand - the Session API doesn't support screenshots
+        # Screenshots for Stagehand sessions are available via Browserbase dashboard
+        if use_stagehand:
+            return
+        
+        # Capture screenshots as base64 (Playwright only)
         try:
             screenshot_bytes = await env.page.screenshot()
             full_page_bytes = await env.page.screenshot(full_page=True)
@@ -124,9 +138,21 @@ async def _run_for_persona_and_intent(
         except Exception as e:
             log.warning(f"Failed to capture screenshot at step {steps_taken}: {e}")
 
-    env = WebAgentEnv(
-        cfg.environment, before_action_hook=before_action_hook, wait_hook=env_wait_hook
-    )
+    # Select environment based on USE_STAGEHAND env var
+    use_stagehand = os.environ.get("USE_STAGEHAND", "").lower() in ("true", "1", "yes")
+    
+    if use_stagehand and STAGEHAND_AVAILABLE:
+        log.info(f"[{run_uid}] Using StagehandEnv (Stagehand mode)")
+        env = StagehandEnv(
+            cfg.environment, before_action_hook=before_action_hook, wait_hook=env_wait_hook
+        )
+    else:
+        if use_stagehand and not STAGEHAND_AVAILABLE:
+            log.warning("USE_STAGEHAND=true but stagehand not installed, falling back to WebAgentEnv")
+        log.info(f"[{run_uid}] Using WebAgentEnv (Playwright mode)")
+        env = WebAgentEnv(
+            cfg.environment, before_action_hook=before_action_hook, wait_hook=env_wait_hook
+        )
 
     log.info(f"[{run_uid}] env created")
     try:
@@ -142,8 +168,19 @@ async def _run_for_persona_and_intent(
         obs = await env.observation()
 
         log.info("Initial observation ready")
+        
+        # Session timeout: configurable to avoid Browserbase cutoff
+        SESSION_TIMEOUT_SECONDS = int(os.getenv("SESSION_TIMEOUT_SECONDS", "1200"))
 
         while steps_taken < max_steps:
+            # Check session timeout
+            elapsed = time.time() - session_start_time
+            if elapsed > SESSION_TIMEOUT_SECONDS:
+                log.warning(f"Session timeout after {elapsed:.1f}s, terminating gracefully")
+                collected_data["terminated"] = True
+                collected_data["error"] = f"Session timeout after {elapsed:.1f}s"
+                break
+            
             # Collect observation
             collected_data["observations"].append({
                 "step": steps_taken,
@@ -154,10 +191,21 @@ async def _run_for_persona_and_intent(
             # Save to disk (backwards compatibility)
             with open(trace_dir / "observation_trace.jsonl", "a") as f:
                 json.dump(obs, f)
-            with open(trace_dir / "simp_html" / f"simp_html_{steps_taken}.html", "w") as f:
-                f.write(obs["html"])
-            with open(trace_dir / "raw_html" / f"raw_html_{steps_taken}.html", "w") as f:
-                f.write(await env.page.content())
+            
+            # Save simplified HTML (from observation)
+            simp_html = obs.get("html", "")
+            if simp_html:
+                with open(trace_dir / "simp_html" / f"simp_html_{steps_taken}.html", "w") as f:
+                    f.write(simp_html)
+            
+            # Save raw HTML (Playwright only - Stagehand Session doesn't have content())
+            if not use_stagehand and hasattr(env, 'page') and hasattr(env.page, 'content'):
+                try:
+                    raw_html = await env.page.content()
+                    with open(trace_dir / "raw_html" / f"raw_html_{steps_taken}.html", "w") as f:
+                        f.write(raw_html)
+                except Exception as e:
+                    log.warning(f"Failed to get raw HTML at step {steps_taken}: {e}")
 
             # Get action from policy
             action = await policy.forward(env)
@@ -281,6 +329,12 @@ async def _run_for_persona_and_intent(
         except Exception:
             pass
     finally:
+        try:
+            # Cancel the slow loop task (reflect/wonder)
+            await policy.close()
+            log.info(f"[{run_uid}] policy.close() completed")
+        except Exception as e:
+            log.warning(f"[{run_uid}] policy.close() raised: {e!r}")
         try:
             log.info(f"[{run_uid}] closing env...")
             await asyncio.wait_for(asyncio.shield(env.close()), timeout=10)

@@ -9,7 +9,7 @@ from ..agent.gpt import async_chat
 from ..agent.gpt import load_prompt
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+
 
 
 async def run_survey(

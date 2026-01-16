@@ -81,7 +81,7 @@ interface UXAgentRun {
   status: string;
   score: number | null;
   terminated: boolean;
-  stepsToken: number | null;
+  stepsTaken: number | null;
   errorMessage: string | null;
   basicInfo: any;
   actionTrace: any[];
@@ -118,6 +118,41 @@ interface AggregatedReport {
   fullAnalysis: string | null;
   createdAt: string;
 }
+
+// New types for thoughts, insights, and chat
+interface UXAgentThought {
+  id: string;
+  uxagentRunId: string;
+  kind: 'observation' | 'action' | 'plan' | 'thought' | 'reflection';
+  content: string;
+  importance: number | null;
+  stepNumber: number | null;
+  rawAction: any | null;
+  agentTimestamp: number | null;
+  createdAt: string;
+}
+
+interface UXAgentInsight {
+  id: string;
+  uxagentRunId: string;
+  category: 'usability' | 'accessibility' | 'performance' | 'content' | 'navigation';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  title: string;
+  description: string;
+  recommendation: string;
+  supportingThoughtIds: string[] | null;
+  aiModel: string | null;
+  createdAt: string;
+}
+
+interface UXAgentChatMessage {
+  id: string;
+  uxagentRunId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: string;
+}
+
 
 async function fetchWithAuth(path: string, options: RequestInit = {}) {
   const response = await fetch(`${API_URL}${path}`, {
@@ -287,6 +322,41 @@ export async function terminateBatchTest(id: string): Promise<{ message: string;
   });
 }
 
+// UXAgent Thoughts API
+export async function getUXAgentThoughts(runId: string): Promise<{ thoughts: UXAgentThought[] }> {
+  return fetchWithAuth(`/api/uxagent/runs/${runId}/thoughts`);
+}
+
+// UXAgent Insights API
+export async function getUXAgentInsights(runId: string): Promise<{ insights: UXAgentInsight[] }> {
+  return fetchWithAuth(`/api/uxagent/runs/${runId}/insights`);
+}
+
+export async function generateUXAgentInsights(runId: string): Promise<{ insights: UXAgentInsight[]; generated?: boolean; cached?: boolean }> {
+  return fetchWithAuth(`/api/uxagent/runs/${runId}/insights`, {
+    method: "POST",
+  });
+}
+
+// UXAgent Chat API
+export async function getUXAgentChatHistory(runId: string): Promise<{ messages: UXAgentChatMessage[] }> {
+  return fetchWithAuth(`/api/uxagent/runs/${runId}/chat`);
+}
+
+export async function sendUXAgentChatMessage(runId: string, message: string): Promise<{
+  response: string;
+  persona: {
+    name: string;
+    age: string | number;
+    occupation: string;
+  };
+}> {
+  return fetchWithAuth(`/api/uxagent/runs/${runId}/chat`, {
+    method: "POST",
+    body: JSON.stringify({ message }),
+  });
+}
+
 export type {
   GeneratedPersona,
   BatchTestRun,
@@ -295,4 +365,7 @@ export type {
   Swarm,
   UXAgentRun,
   UXAgentScreenshot,
+  UXAgentThought,
+  UXAgentInsight,
+  UXAgentChatMessage,
 };

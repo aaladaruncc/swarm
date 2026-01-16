@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import json
 import logging
+import os
 import pathlib
 import pickle
 import re
@@ -119,6 +120,25 @@ class AgentPolicy(BasePolicy):
         logger.info("Initializing step profiler...")
         self.profiler = TokenProfiler()
         logger.info("Step profiler created.")
+        self.step_count = 0
+        self.last_plan_step = -1
+        self.last_reflect_step = -1
+        self.last_wonder_step = -1
+        self.last_memory_update_step = -1
+        self.reflect_every_steps = self._read_int_env("REFLECT_EVERY_STEPS", 3)
+        self.wonder_every_steps = self._read_int_env("WONDER_EVERY_STEPS", 4)
+        self.plan_every_steps = self._read_int_env("PLAN_EVERY_STEPS", 1)
+        self.memory_update_every_steps = self._read_int_env(
+            "MEMORY_UPDATE_EVERY_STEPS", 2
+        )
+        self.enable_reflect = self._read_bool_env("ENABLE_REFLECT", True)
+        self.enable_wonder = self._read_bool_env("ENABLE_WONDER", True)
+        self.enable_memory_update = self._read_bool_env(
+            "ENABLE_MEMORY_UPDATE", True
+        )
+        self.use_background_slow_loop = self._read_bool_env(
+            "ENABLE_BACKGROUND_SLOW_LOOP", False
+        )
         # self.agent.add_thought(f"I want to {intent}")
         # lets' have a run name with current time and random string to save agent checkpoints
         # 2024-02-02_05:05:05
@@ -135,12 +155,66 @@ class AgentPolicy(BasePolicy):
         # self.action_trace_file = (self.run_path / "action_trace.txt").open("w")
         # self.env_trace_file = (self.run_path / "env_trace.txt").open("w")
         self.slow_loop_task = None
+        self._slow_loop_step = 0
+
+    @staticmethod
+    def _read_bool_env(key: str, default: bool) -> bool:
+        raw = os.getenv(key, str(default)).strip().lower()
+        return raw in ("1", "true", "yes", "y", "on")
+
+    @staticmethod
+    def _read_int_env(key: str, default: int) -> int:
+        try:
+            return max(1, int(os.getenv(key, str(default))))
+        except ValueError:
+            return default
 
     async def slow_loop(self):
+        """
+        Background loop for reflect/wonder. Throttled to avoid excessive LLM calls.
+        Runs every 2 action steps to balance insights vs performance.
+        """
         while True:
-            await self.agent.reflect()
-            await self.agent.wonder()
-            await self.agent.memory.update()
+            # Wait for 2 action steps before running reflect/wonder
+            await asyncio.sleep(15)  # Wait 15 seconds between slow loop iterations
+            
+            try:
+                await self.agent.reflect()
+                await self.agent.wonder()
+                await self.agent.memory.update()
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.warning(f"Slow loop error: {e}")
+
+    async def _maybe_run_thinking(self):
+        tasks = []
+        if (
+            self.enable_reflect
+            and (self.step_count - self.last_reflect_step) >= self.reflect_every_steps
+        ):
+            tasks.append(self.agent.reflect())
+            self.last_reflect_step = self.step_count
+        if (
+            self.enable_wonder
+            and (self.step_count - self.last_wonder_step) >= self.wonder_every_steps
+        ):
+            tasks.append(self.agent.wonder())
+            self.last_wonder_step = self.step_count
+        if (
+            self.enable_memory_update
+            and (self.step_count - self.last_memory_update_step)
+            >= self.memory_update_every_steps
+        ):
+            tasks.append(self.agent.memory.update())
+            self.last_memory_update_step = self.step_count
+        if tasks:
+            await asyncio.gather(*tasks)
+
+    def _should_plan(self) -> bool:
+        if self.agent.current_plan is None:
+            return True
+        return (self.step_count - self.last_plan_step) >= self.plan_every_steps
 
     async def forward(self, playwright_env):
         observation = await playwright_env.observation()
@@ -158,14 +232,14 @@ class AgentPolicy(BasePolicy):
         #             f"length of {k} = {self.profiler.count_tokens(json.dumps(v))}"
         #         )
 
-        if self.agent.memory.timestamp != 0:  # make parallel
+        if self.agent.memory.timestamp != 0:
             await asyncio.gather(
                 self.agent.feedback(observation["html"]),
                 self.agent.perceive(observation["html"]),
             )
         else:
             await self.agent.perceive(observation["html"])
-        if self.slow_loop_task is None:
+        if self.use_background_slow_loop and self.slow_loop_task is None:
             self.slow_loop_task = asyncio.create_task(self.slow_loop())
         # if self.agent.memory.timestamp != 0:
         #     await self.agent.feedback(observation)
@@ -173,8 +247,11 @@ class AgentPolicy(BasePolicy):
         # await self.agent.reflect()  # parallel with wonder
         # await self.agent.wonder()
         # await asyncio.gather(self.agent.reflect(), self.agent.wonder())
-        await self.agent.plan()
-        action = await self.agent.act(observation)
+        await self._maybe_run_thinking()
+        if self._should_plan():
+            await self.agent.plan()
+            self.last_plan_step = self.step_count
+        action = await self.agent.act(observation, playwright_env=playwright_env)
         # pickle.dump(
         #     self.agent,
         #     open(self.run_path / f"agent_{self.agent.memory.timestamp}.pkl", "wb"),
@@ -190,6 +267,7 @@ class AgentPolicy(BasePolicy):
         #     errors="replace",
         # )
         self.agent.memory.timestamp += 1
+        self.step_count += 1
         # self.action_trace_file.write(json.dumps(action) + "\n")
         # self.action_trace_file.flush()
         # self.env_trace_file.flush()

@@ -22,161 +22,178 @@ from litellm.router import Router
 
 from . import context
 
-provider = "openai"  # "openai" or "aws" or "anthropic"
+provider = "gemini"  # "openai" or "aws" or "anthropic" or "gemini"
 
 prompt_dir = Path(__file__).parent.absolute() / "shop_prompts"
 
-chat_router = Router(
-    model_list=[
-        {
-            "model_name": "openai",
-            "litellm_params": {
-                "model": "openai/gpt-4o-mini",
-                "reasoning_effort": "minimal",
-            },
-        },
-        {
-            "model_name": "aws",
-            "litellm_params": {
-                "model": "bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0",
-                "thinking": {
-                    "type": "disabled",
-                },
-            },
-        },
-        {
-            "model_name": "anthropic",
-            "litellm_params": {
-                "model": "claude-sonnet-4-20250514",
-            },
-        },
-        {
-            "model_name": "gemini",
-            "litellm_params": {
-                "model": "gemini/gemini-2.0-flash",
-            },
-        },
-        {
-            "model_name": "openai_thinking",
-            "litellm_params": {
-                "model": "openai/gpt-4o-mini",
-                "reasoning_effort": "high",
-            },
-        },
-        {
-            "model_name": "aws_thinking",
-            "litellm_params": {
-                "model": "bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0",
-                "thinking": {
-                    "type": "enabled",
-                    "budget_tokens": 32000,
-                },
-            },
-        },
-        {
-            "model_name": "anthropic_thinking",
-            "litellm_params": {
-                "model": "claude-sonnet-4-20250514",
-                "thinking": {
-                    "type": "enabled",
-                    "budget_tokens": 32000,
-                },
-            },
-        },
-        {
-            "model_name": "gemini_thinking",
-            "litellm_params": {
-                "model": "gemini/gemini-2.0-flash-thinking-exp",
-            },
-        },
-    ]
-)
+import threading
 
-slow_chat_router = Router(
-    model_list=[
-        {
-            "model_name": "openai",
-            "litellm_params": {"model": "openai/gpt-4o", "reasoning_effort": "minimal"},
-        },
-        {
-            "model_name": "aws",
-            "litellm_params": {
-                "model": "bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0",
-                "thinking": {
-                    "type": "disabled",
-                },
-            },
-        },
-        {
-            "model_name": "anthropic",
-            "litellm_params": {
-                "model": "claude-sonnet-4-20250514",
-            },
-        },
-        {
-            "model_name": "gemini",
-            "litellm_params": {
-                "model": "gemini/gemini-2.0-flash",
-            },
-        },
-        {
-            "model_name": "openai_thinking",
-            "litellm_params": {"model": "openai/gpt-4o", "reasoning_effort": "high"},
-        },
-        {
-            "model_name": "aws_thinking",
-            "litellm_params": {
-                "model": "bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0",
-                "thinking": {
-                    "type": "enabled",
-                    "budget_tokens": 32000,
-                },
-            },
-        },
-        {
-            "model_name": "anthropic_thinking",
-            "litellm_params": {
-                "model": "claude-sonnet-4-20250514",
-                "thinking": {
-                    "type": "enabled",
-                    "budget_tokens": 32000,
-                },
-            },
-        },
-        {
-            "model_name": "gemini_thinking",
-            "litellm_params": {
-                "model": "gemini/gemini-2.0-flash-thinking-exp",
-            },
-        },
-    ]
-)
+# Thread-local storage for routers
+_local = threading.local()
 
-embed_router = Router(
-    model_list=[
-        {
-            "model_name": "openai",
-            "litellm_params": {"model": "openai/text-embedding-3-small"},
+CHAT_MODEL_LIST = [
+    {
+        "model_name": "openai",
+        "litellm_params": {
+            "model": "openai/gpt-4o-mini",
+            "reasoning_effort": "minimal",
         },
-        {
-            "model_name": "aws",
-            "litellm_params": {
-                "model": "bedrock/cohere.embed-english-v3",
-                "input_type": "search_document",
-                "truncate": "END",
+    },
+    {
+        "model_name": "aws",
+        "litellm_params": {
+            "model": "bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0",
+            "thinking": {
+                "type": "disabled",
             },
         },
-        {
-            # Anthropic doesn't have embeddings, so use Gemini as fallback
-            "model_name": "anthropic",
-            "litellm_params": {"model": "gemini/text-embedding-004"},
+    },
+    {
+        "model_name": "anthropic",
+        "litellm_params": {
+            "model": "claude-sonnet-4-20250514",
         },
-        {
-            "model_name": "gemini",
-            "litellm_params": {"model": "gemini/text-embedding-004"},
+    },
+    {
+        "model_name": "gemini",
+        "litellm_params": {
+            "model": "gemini/gemini-2.0-flash",
         },
-    ]
-)
+    },
+    {
+        "model_name": "openai_thinking",
+        "litellm_params": {
+            "model": "openai/gpt-4o-mini",
+            "reasoning_effort": "high",
+        },
+    },
+    {
+        "model_name": "aws_thinking",
+        "litellm_params": {
+            "model": "bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            "thinking": {
+                "type": "enabled",
+                "budget_tokens": 32000,
+            },
+        },
+    },
+    {
+        "model_name": "anthropic_thinking",
+        "litellm_params": {
+            "model": "claude-sonnet-4-20250514",
+            "thinking": {
+                "type": "enabled",
+                "budget_tokens": 32000,
+            },
+        },
+    },
+    {
+        "model_name": "gemini_thinking",
+        "litellm_params": {
+            "model": "gemini/gemini-2.0-flash-thinking-exp",
+        },
+    },
+]
+
+SLOW_CHAT_MODEL_LIST = [
+    {
+        "model_name": "openai",
+        "litellm_params": {"model": "openai/gpt-4o", "reasoning_effort": "minimal"},
+    },
+    {
+        "model_name": "aws",
+        "litellm_params": {
+            "model": "bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            "thinking": {
+                "type": "disabled",
+            },
+        },
+    },
+    {
+        "model_name": "anthropic",
+        "litellm_params": {
+            "model": "claude-sonnet-4-20250514",
+        },
+    },
+    {
+        "model_name": "gemini",
+        "litellm_params": {
+            "model": "gemini/gemini-2.0-flash",
+        },
+    },
+    {
+        "model_name": "openai_thinking",
+        "litellm_params": {"model": "openai/gpt-4o", "reasoning_effort": "high"},
+    },
+    {
+        "model_name": "aws_thinking",
+        "litellm_params": {
+            "model": "bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            "thinking": {
+                "type": "enabled",
+                "budget_tokens": 32000,
+            },
+        },
+    },
+    {
+        "model_name": "anthropic_thinking",
+        "litellm_params": {
+            "model": "claude-sonnet-4-20250514",
+            "thinking": {
+                "type": "enabled",
+                "budget_tokens": 32000,
+            },
+        },
+    },
+    {
+        "model_name": "gemini_thinking",
+        "litellm_params": {
+            "model": "gemini/gemini-2.0-flash-thinking-exp",
+        },
+    },
+]
+
+EMBED_MODEL_LIST = [
+    {
+        "model_name": "openai",
+        "litellm_params": {"model": "openai/text-embedding-3-small"},
+    },
+    {
+        "model_name": "aws",
+        "litellm_params": {
+            "model": "bedrock/cohere.embed-english-v3",
+            "input_type": "search_document",
+            "truncate": "END",
+        },
+    },
+    {
+        # Anthropic doesn't have embeddings, so use Gemini as fallback
+        "model_name": "anthropic",
+        "litellm_params": {"model": "gemini/text-embedding-004"},
+    },
+    {
+        "model_name": "gemini",
+        "litellm_params": {"model": "gemini/text-embedding-004"},
+    },
+]
+
+
+def get_chat_router():
+    if not hasattr(_local, "chat_router"):
+        _local.chat_router = Router(model_list=CHAT_MODEL_LIST)
+    return _local.chat_router
+
+
+def get_slow_chat_router():
+    if not hasattr(_local, "slow_chat_router"):
+        _local.slow_chat_router = Router(model_list=SLOW_CHAT_MODEL_LIST)
+    return _local.slow_chat_router
+
+
+def get_embed_router():
+    if not hasattr(_local, "embed_router"):
+        _local.embed_router = Router(model_list=EMBED_MODEL_LIST)
+    return _local.embed_router
 
 
 load_dotenv()  # load anthropic api key from .env
@@ -277,7 +294,7 @@ async def async_chat(
     if context.api_call_manager.get() and log:
         context.api_call_manager.get().request.append(messages)
 
-    router = chat_router if model == "small" else slow_chat_router
+    router = get_chat_router() if model == "small" else get_slow_chat_router()
     call_kwargs: Dict[str, Any] = dict(**kwargs)
     if enable_thinking:
         router_model = provider + "_thinking"
@@ -338,7 +355,7 @@ def chat(
         String output of the LLM model
     """
 
-    router = chat_router if model == "small" else slow_chat_router
+    router = get_chat_router() if model == "small" else get_slow_chat_router()
     call_kwargs: Dict[str, Any] = dict(**kwargs)
     if enable_thinking:
         call_kwargs["thinking"] = {
@@ -374,7 +391,7 @@ async def embed_text(texts: list[str]) -> list[list[float]]:
         List of list[float] representing each of the embedded texts
     """
     try:
-        response = await embed_router.aembedding(model=provider, input=texts)
+        response = await get_embed_router().aembedding(model=provider, input=texts)
         return [e["embedding"] for e in response.data]
     except Exception as e:
         print(texts)
@@ -441,6 +458,147 @@ def chat_anthropic_computer_use(
     )
 
     return response
+
+
+def chat_gemini_computer_use(
+    messages,
+    system_prompt: str,
+    model="gemini/gemini-2.0-flash",
+    screen_width: int = 1024,
+    screen_height: int = 768,
+):
+    """
+    Send messages (including images) to Gemini to simulate computer use.
+    Returns a dict compatible with what the Agent expects (CUA format).
+    """
+    import base64
+    from litellm import completion
+
+    # Define the tool definitions for Gemini
+    # Note: Gemini 2.0 Flash supports function calling
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "computer",
+                "description": "Control the computer mouse and keyboard",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "action": {
+                            "type": "string",
+                            "enum": [
+                                "mouse_move",
+                                "left_click",
+                                "left_click_drag",
+                                "right_click",
+                                "middle_click",
+                                "double_click",
+                                "screenshot",
+                                "type",
+                                "key",
+                                "cursor_position",
+                            ],
+                        },
+                        "coordinate": {
+                            "type": "array",
+                            "items": {"type": "integer"},
+                            "description": "(x, y) coordinates for mouse actions",
+                        },
+                        "text": {"type": "string", "description": "Text to type"},
+                        "key": {"type": "string", "description": "Key sequence to press (e.g. 'Enter', 'Ctrl+c')"},
+                    },
+                    "required": ["action"],
+                },
+            },
+        },
+         {
+            "type": "function",
+            "function": {
+                "name": "web_browser",
+                "description": "High-level browser controls",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "action": {
+                            "type": "string",
+                            "enum": [
+                                "switch_tab",
+                                "forward",
+                                "back",
+                                "new_tab",
+                                "goto_url",
+                                "close_tab",
+                                "terminate",
+                            ],
+                        },
+                        "tab_index": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Zero-based index for switch_tab and close_tab",
+                        },
+                        "url": {
+                            "type": "string",
+                            "description": "URL input, only required for goto_url and new_tab",
+                        },
+                    },
+                    "required": ["action"],
+                },
+            },
+        },
+    ]
+
+    # Prepend system prompt to messages if needed, or rely on 'system' role
+    formatted_messages = []
+    if system_prompt:
+        formatted_messages.append({"role": "system", "content": system_prompt})
+    
+    # Process messages to handle image blocks for LiteLLM/Gemini
+    for msg in messages:
+        new_content = []
+        if isinstance(msg.get("content"), list):
+             for block in msg["content"]:
+                if block.get("type") == "text":
+                    new_content.append({"type": "text", "text": block["text"]})
+                elif block.get("type") == "image":
+                    # LiteLLM/Gemini expects inline images or URLs
+                    # Assuming block["source"]["data"] is base64
+                    source = block.get("source", {})
+                    if source.get("type") == "base64":
+                         new_content.append({
+                            "type": "image_url", 
+                            "image_url": {"url": f"data:image/jpeg;base64,{source['data']}"}
+                        })
+        elif isinstance(msg.get("content"), str):
+             new_content.append({"type": "text", "text": msg["content"]})
+        
+        formatted_messages.append({"role": msg["role"], "content": new_content})
+
+    # Debug: Print structure of first user message
+    # try:
+    #     for m in formatted_messages:
+    #         if m["role"] == "user":
+    #             print(f"User message content types: {[c.get('type') for c in m['content']]}")
+    #             for c in m['content']:
+    #                 if c.get("type") == "image_url":
+    #                     url = c['image_url']['url']
+    #                     print(f"Image URL start: {url[:50]}...")
+    # except Exception:
+    #     pass
+
+    try:
+        response = completion(
+            model=model,
+            messages=formatted_messages,
+            tools=tools,
+            tool_choice="auto",
+        )
+        return response
+    except Exception as e:
+        print(f"Gemini CUA Error: {e}")
+        # Return a dummy response or raise
+        raise e
+
 
 
 def load_prompt(prompt_name):

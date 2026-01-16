@@ -12,6 +12,7 @@ from typing import Any, Awaitable, Callable, ClassVar, Optional, TYPE_CHECKING
 import numpy
 from omegaconf import DictConfig, OmegaConf
 from playwright.async_api import Playwright, async_playwright
+from playwright._impl._errors import TargetClosedError
 
 if TYPE_CHECKING:
     from .browserbase_connector import BrowserBaseConnector
@@ -302,6 +303,7 @@ class WebAgentEnv:
     before_action_hook: Callable[[], None] = None
     after_action_hook: Callable[[], None] = (None,)
     wait_hook: Callable[[], None] = None
+    supports_screenshot: ClassVar[bool] = True
 
     def __init__(
         self,
@@ -858,8 +860,27 @@ class WebAgentEnv:
             observation = await self.observation()
             observation["error"] = f"Missing required parameter in action: {e}"
             return observation
+        except TargetClosedError as e:
+            self.logger.warning(f"Browser/page closed during action: {e}")
+            # Return a terminated observation to gracefully end the session
+            return {
+                "terminated": True,
+                "error": "Browser session closed unexpectedly",
+                "html": "",
+                "clickable_elements": [],
+                "tabs": [],
+            }
         except Exception as e:
             self.logger.error(f"Error executing action: {action}, error: {e}")
+            # Check if it's a browser closed error (fallback check)
+            if "Target page, context or browser has been closed" in str(e):
+                return {
+                    "terminated": True,
+                    "error": "Browser session closed",
+                    "html": "",
+                    "clickable_elements": [],
+                    "tabs": [],
+                }
             observation = await self.observation()
             observation["error"] = f"Error executing action: {e}"
             return observation

@@ -11,7 +11,7 @@ from .persona import generate_personas
 from .survey import run_survey
 
 log = logging.getLogger("simulated_web_agent.main.run")
-logging.basicConfig(level=logging.INFO)
+
 
 
 def load_config(config_file: str) -> Dict[str, Any]:

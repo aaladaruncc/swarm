@@ -130,15 +130,46 @@ export default function NewTest() {
   const handleGeneratePersonas = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setStep("generating");
+    setStep(useUXAgent ? "starting" : "generating");
 
     try {
       const result = await generatePersonas(url, userDescription, agentCount);
       setPersonas(result.personas);
       setRecommendedIndices(result.recommendedIndices);
-      setSelectedIndices(result.recommendedIndices);
-      setStep("select");
+
+      // If UXAgent is enabled, immediately start the test with recommended personas
+      if (useUXAgent) {
+        const personasToUse = result.personas;
+        // Limit to agentCount if needed
+        // fallback to first N indices if recommendedIndices is missing/empty
+        let indicesToUse = (result.recommendedIndices || []).slice(0, agentCount);
+
+        if (indicesToUse.length < agentCount && result.personas.length > 0) {
+          // Fill with first available indices that aren't already included
+          const availableIndices = result.personas.map((_, i) => i);
+          const remaining = availableIndices.filter(i => !indicesToUse.includes(i));
+          indicesToUse = [...indicesToUse, ...remaining.slice(0, agentCount - indicesToUse.length)];
+        }
+
+        setSelectedIndices(indicesToUse);
+
+        await createBatchTest(
+          url,
+          userDescription,
+          result.personas,
+          indicesToUse,
+          agentCount,
+          useUXAgent,
+          20
+        ).then((res) => {
+          router.push(`/tests/${res.batchTestRun.id}`);
+        });
+      } else {
+        setSelectedIndices(result.recommendedIndices);
+        setStep("select");
+      }
     } catch (err) {
+      console.error("Error generating/starting:", err);
       setError(err instanceof Error ? err.message : "Failed to generate personas");
       setStep("describe");
     }
@@ -371,7 +402,12 @@ export default function NewTest() {
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Generating...</span>
+                    <span>{useUXAgent ? "Starting Simulation..." : "Generating..."}</span>
+                  </>
+                ) : useUXAgent ? (
+                  <>
+                    <Zap size={16} />
+                    <span>Start Simulation</span>
                   </>
                 ) : (
                   <span>Generate Personas</span>
@@ -507,6 +543,7 @@ export default function NewTest() {
             </div>
 
             {/* Actions */}
+            {/* Actions */}
             <div className="flex items-center justify-between gap-4 pt-4 border-t border-neutral-100">
               <button
                 onClick={() => setStep("describe")}
@@ -514,25 +551,45 @@ export default function NewTest() {
               >
                 ← Back
               </button>
-              <button
-                onClick={handleStartBatchTest}
-                disabled={loading || selectedIndices.length !== agentCount}
-                className="bg-neutral-900 text-white px-6 py-2 hover:bg-neutral-800 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Deploying...</span>
-                  </>
-                ) : selectedIndices.length !== agentCount ? (
-                  <span>Select {agentCount - selectedIndices.length} more</span>
-                ) : (
-                  <>
-                    <Zap size={16} />
-                    <span>Deploy {agentCount} Agent{agentCount !== 1 ? 's' : ''}</span>
-                  </>
-                )}
-              </button>
+
+              <div className="flex items-center gap-4">
+                {/* UXAgent Toggle (Compact) */}
+                <div className="flex items-center gap-3 bg-neutral-50 px-3 py-1.5 border border-neutral-200">
+                  <div className="flex items-center gap-2">
+                    <Bot size={14} className="text-neutral-500" />
+                    <span className="text-xs font-medium text-neutral-700">UXAgent</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setUseUXAgent(!useUXAgent)}
+                    className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${useUXAgent ? 'bg-neutral-900' : 'bg-neutral-300'}`}
+                  >
+                    <span
+                      className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform ${useUXAgent ? 'translate-x-3.5' : 'translate-x-0.5'}`}
+                    />
+                  </button>
+                </div>
+
+                <button
+                  onClick={handleStartBatchTest}
+                  disabled={loading || selectedIndices.length !== agentCount}
+                  className="bg-neutral-900 text-white px-6 py-2 hover:bg-neutral-800 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Deploying...</span>
+                    </>
+                  ) : selectedIndices.length !== agentCount ? (
+                    <span>Select {agentCount - selectedIndices.length} more</span>
+                  ) : (
+                    <>
+                      <Zap size={16} />
+                      <span>{useUXAgent ? "Start Simulation" : `Deploy ${agentCount} Agent${agentCount !== 1 ? 's' : ''}`}</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </>
@@ -732,9 +789,32 @@ export default function NewTest() {
                                 {url}
                               </span>
                             </div>
+                            <div className="flex items-center justify-between text-sm pt-2 border-t border-neutral-200">
+                              <div className="flex items-center gap-2">
+                                <Bot size={14} className="text-neutral-500" />
+                                <span className="text-neutral-600 font-light">UXAgent Engine</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setUseUXAgent(!useUXAgent)}
+                                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${useUXAgent ? 'bg-neutral-900' : 'bg-neutral-300'
+                                  }`}
+                              >
+                                <span
+                                  className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${useUXAgent ? 'translate-x-5' : 'translate-x-1'
+                                    }`}
+                                />
+                              </button>
+                            </div>
                           </div>
 
-                          <p className="text-xs text-neutral-500 font-light mb-6">
+                          {useUXAgent && (
+                            <div className="p-3 bg-blue-50 border border-blue-100 text-xs font-light text-blue-700 mb-6 text-left">
+                              <span className="font-medium">UXAgent enabled:</span> Advanced AI-driven exploration with detailed action traces.
+                            </div>
+                          )}
+
+                          <p className="text-xs text-neutral-500 font-light mb-6 text-left">
                             The simulation will start immediately. Queue system will manage rate limits automatically.
                           </p>
                         </div>

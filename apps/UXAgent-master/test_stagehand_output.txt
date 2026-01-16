@@ -1,0 +1,665 @@
+INFO:simulated_web_agent.main.experiment:LLM provider: gemini
+INFO:simulated_web_agent.main.experiment:
+=== persona (first 200 chars) ===
+A helpful assistant....
+=== intent ===
+Go to google.com and search for 'Stagehand CUA'.
+INFO:simulated_web_agent.main.experiment:[8b636d4e] Using StagehandEnv (Stagehand mode)
+INFO:simulated_web_agent.main.experiment:[8b636d4e] env created
+INFO:src.simulated_web_agent.main.model:Creating AgentPolicy with persona: A helpful assistant., intent: Go to google.com and search for 'Stagehand CUA'.
+INFO:src.simulated_web_agent.main.model:Initializing step profiler...
+INFO:src.simulated_web_agent.main.model:Step profiler created.
+INFO:simulated_web_agent.main.experiment:Setting up env with headless = False
+INFO:src.simulated_web_agent.executor.stagehand_env:Initializing Stagehand... (server=local, model=google/gemini-2.0-flash)
+(node:82485) Warning: Currently the require() provided to the main script embedded into single-executable applications only supports loading built-in modules.
+To load a module from disk after the single executable application is launched, use require("module").createRequire().
+Support for bundled module loading or virtual file systems are under discussions in https://github.com/nodejs/single-executable
+(Use `stagehand-darwin-arm64 --trace-warnings ...` to show where the warning was created)
+(node:82485) ExperimentalWarning: Single executable application is an experimental feature and might change at any time
+(node:82485) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+{"level":"info","time":1768448357892,"pid":82485,"hostname":"MacBook-Pro-43.local","msg":"Server listening at http://127.0.0.1:52560"}
+Routes registered: └── /
+    ├── metrics (GET)
+    ├── v1/sessions/
+    │   ├── start (POST)
+    │   └── :id
+    │       └── /
+    │           ├── a
+    │           │   ├── ct (POST)
+    │           │   └── gentExecute (POST)
+    │           ├── e
+    │           │   ├── nd (POST)
+    │           │   └── xtract (POST)
+    │           ├── navigate (POST)
+    │           └── observe (POST)
+    ├── healthz (GET, HEAD)
+    └── readyz (GET, HEAD)
+
+{"level":"info","time":1768448357892,"pid":82485,"hostname":"MacBook-Pro-43.local","msg":"Server listening at http://100.69.36.89:52560"}
+{"level":"info","time":1768448357957,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"83c68ce6-539e-430f-b7b5-8f7111573337","req":{"method":"POST","url":"/v1/sessions/start","host":"127.0.0.1"},"reqId":"83c68ce6-539e-430f-b7b5-8f7111573337","msg":"incoming request"}
+{"level":"info","time":1768448358643,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"83c68ce6-539e-430f-b7b5-8f7111573337","reqId":"83c68ce6-539e-430f-b7b5-8f7111573337","req":{"method":"POST","url":"/v1/sessions/start","host":"127.0.0.1"},"res":{"statusCode":200},"responseTime":686.7572498321533,"msg":"request completed"}
+INFO:src.simulated_web_agent.executor.stagehand_env:Navigating to: https://www.google.com
+{"level":"info","time":1768448358648,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"109db0db-d741-4e10-be5e-09e6c823d76a","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/navigate","host":"127.0.0.1"},"reqId":"109db0db-d741-4e10-be5e-09e6c823d76a","msg":"incoming request"}
+{"level":"info","time":1768448363862,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"109db0db-d741-4e10-be5e-09e6c823d76a","reqId":"109db0db-d741-4e10-be5e-09e6c823d76a","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/navigate","host":"127.0.0.1"},"res":{"statusCode":200},"responseTime":5213.750874996185,"msg":"request completed"}
+INFO:src.simulated_web_agent.executor.stagehand_env:✅ Stagehand environment ready
+{"level":"info","time":1768448364885,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"22cebea6-37e4-4557-b814-ff56775cc15c","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/observe","host":"127.0.0.1"},"reqId":"22cebea6-37e4-4557-b814-ff56775cc15c","msg":"incoming request"}
+{"level":"info","time":1768448370094,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"22cebea6-37e4-4557-b814-ff56775cc15c","reqId":"22cebea6-37e4-4557-b814-ff56775cc15c","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/observe","host":"127.0.0.1"},"res":{"statusCode":200},"responseTime":5209.260792255402,"msg":"request completed"}
+INFO:simulated_web_agent.main.experiment:Initial observation ready
+{"level":"info","time":1768448370101,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"42ccc53a-8e8d-4f1e-bf6a-d112570b9bb9","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/observe","host":"127.0.0.1"},"reqId":"42ccc53a-8e8d-4f1e-bf6a-d112570b9bb9","msg":"incoming request"}
+{"level":"info","time":1768448376863,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"42ccc53a-8e8d-4f1e-bf6a-d112570b9bb9","reqId":"42ccc53a-8e8d-4f1e-bf6a-d112570b9bb9","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/observe","host":"127.0.0.1"},"res":{"statusCode":200},"responseTime":6761.331165790558,"msg":"request completed"}
+INFO:src.simulated_web_agent.agent.agent:agent perceiving environment...
+INFO:src.simulated_web_agent.agent.agent:API call count: 1
+[92m22:39:36 - LiteLLM Router:INFO[0m: router.py:689 - Routing strategy: simple-shuffle
+INFO:LiteLLM Router:Routing strategy: simple-shuffle
+[92m22:39:36 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:39:42 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.agent:API Call time: 5.594990015029907
+INFO:src.simulated_web_agent.agent.agent:planning ...
+INFO:src.simulated_web_agent.agent.agent:API call count: 2
+[92m22:39:42 - LiteLLM Router:INFO[0m: router.py:689 - Routing strategy: simple-shuffle
+INFO:LiteLLM Router:Routing strategy: simple-shuffle
+[92m22:39:42 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:39:43 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.agent:API Call time: 1.2379131317138672
+INFO:src.simulated_web_agent.agent.agent:plan: 1. Navigate to google.com
+2. (next) Enter 'Stagehand CUA' in the search bar
+3. Initiate the search
+4. Evaluate the search results
+INFO:src.simulated_web_agent.agent.agent:rationale: I need to navigate to google.com and then perform a search. As a helpful assistant, I aim for efficiency and accuracy.
+INFO:src.simulated_web_agent.agent.agent:next_step: Enter 'Stagehand CUA' in the search bar
+INFO:src.simulated_web_agent.agent.agent:API call count: 3
+[92m22:39:43 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:39:44 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.agent:API Call time: 0.8698649406433105
+INFO:src.simulated_web_agent.agent.agent:actions: {'actions': [{'action': 'type', 'target': 'combobox:_search', 'text': 'Stagehand CUA', 'enter': False, 'description': 'Typing...'}]}
+INFO:simulated_web_agent.main.experiment:Taking action {"action": "type", "target": "combobox:_search", "text": "Stagehand CUA", "enter": false, "description": "Typing..."}
+INFO:simulated_web_agent.main.experiment:Action: 1 out of 5
+INFO:src.simulated_web_agent.executor.stagehand_env:[Step 1] Executing: type 'Stagehand CUA' into the combobox:_search field
+{"level":"info","time":1768448384579,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"4ed1655a-b803-4c0e-8790-759c55b4ed51","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/act","host":"127.0.0.1"},"reqId":"4ed1655a-b803-4c0e-8790-759c55b4ed51","msg":"incoming request"}
+{"level":"info","time":1768448387042,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"4ed1655a-b803-4c0e-8790-759c55b4ed51","reqId":"4ed1655a-b803-4c0e-8790-759c55b4ed51","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/act","host":"127.0.0.1"},"res":{"statusCode":200},"responseTime":2462.816083908081,"msg":"request completed"}
+INFO:src.simulated_web_agent.executor.stagehand_env:[Step 1] Action completed: SessionActResponse(data=Data(result=DataResult(action_description='combobox: Search', actions=[DataResultAction(description='combobox: Search', selector='xpath=/html[1]/body[1]/div[2]/div[4]/form[1]/div[1]/div[1]/div[1]/div[1]/div[3]/textarea[1]', arguments=['Stagehand CUA'], backend_node_id=None, method='type')], message='Action [type] performed successfully on selector: xpath=/html[1]/body[1]/div[2]/div[4]/form[1]/div[1]/div[1]/div[1]/div[1]/div[3]/textarea[1]', success=True, actionDescription='combobox: Search'), action_id=None), success=True)
+{"level":"info","time":1768448387548,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"f1fce821-7bef-4cf4-82e7-e4604c6a2460","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/observe","host":"127.0.0.1"},"reqId":"f1fce821-7bef-4cf4-82e7-e4604c6a2460","msg":"incoming request"}
+{"level":"info","time":1768448395336,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"f1fce821-7bef-4cf4-82e7-e4604c6a2460","reqId":"f1fce821-7bef-4cf4-82e7-e4604c6a2460","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/observe","host":"127.0.0.1"},"res":{"statusCode":200},"responseTime":7785.365499973297,"msg":"request completed"}
+{"level":"info","time":1768448395342,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"79f6ddf9-d326-47bc-a569-15f5acab8a73","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/observe","host":"127.0.0.1"},"reqId":"79f6ddf9-d326-47bc-a569-15f5acab8a73","msg":"incoming request"}
+{"level":"info","time":1768448402696,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"79f6ddf9-d326-47bc-a569-15f5acab8a73","reqId":"79f6ddf9-d326-47bc-a569-15f5acab8a73","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/observe","host":"127.0.0.1"},"res":{"statusCode":200},"responseTime":7353.88733291626,"msg":"request completed"}
+INFO:src.simulated_web_agent.agent.agent:API call count: 4
+INFO:src.simulated_web_agent.agent.agent:agent perceiving environment...
+[92m22:40:02 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:src.simulated_web_agent.agent.agent:API call count: 5
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:40:02 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:src.simulated_web_agent.agent.agent:reflecting on memories ...
+[92m22:40:02 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:40:03 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.agent:API Call time: 0.9244399070739746
+INFO:src.simulated_web_agent.agent.agent:feedback: {'thoughts': ["The action of typing 'Stagehand CUA' into the search bar was successful. The observation shows the text has been entered into the combobox element.", 'The next step is to initiate the search.']}
+[92m22:40:07 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.agent:reflections: []
+INFO:src.simulated_web_agent.agent.agent:wondering ...
+[92m22:40:07 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:40:08 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.agent:API Call time: 5.406983852386475
+INFO:src.simulated_web_agent.agent.agent:planning ...
+INFO:src.simulated_web_agent.agent.agent:API call count: 6
+[92m22:40:08 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:40:09 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.agent:wondering: {'thoughts': ["I hope these search results are relevant. I wonder if I should refine the search query if they're not?", "I'm a pretty good assistant, if I do say so myself. Maybe I should ask for a raise?", "What's for lunch today? I'm kind of craving a sandwich.", "I wonder what CUA stands for in 'Stagehand CUA'?"]}
+INFO:src.simulated_web_agent.agent.memory:Updating memory: computing embeddings & importance for new pieces
+[92m22:40:09 - LiteLLM Router:INFO[0m: router.py:689 - Routing strategy: simple-shuffle
+INFO:LiteLLM Router:Routing strategy: simple-shuffle
+[92m22:40:09 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:40:09 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:40:09 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:40:09 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:40:09 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:40:09 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:40:09 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:40:09 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:40:09 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:40:09 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:40:09 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:40:09 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.agent:API Call time: 1.3821792602539062
+INFO:src.simulated_web_agent.agent.agent:plan: 1. Navigate to google.com
+2. Enter 'Stagehand CUA' in the search bar
+3. (next) Initiate the search
+4. Evaluate the search results
+INFO:src.simulated_web_agent.agent.agent:rationale: I've successfully entered the search query 'Stagehand CUA' into the search bar. Now I need to initiate the search, presumably by pressing Enter or clicking a search icon. I will look for a search button or other obvious way to start the search.
+INFO:src.simulated_web_agent.agent.agent:next_step: Initiate the search
+INFO:src.simulated_web_agent.agent.agent:API call count: 7
+[92m22:40:09 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:40:09 - LiteLLM Router:INFO[0m: router.py:3016 - litellm.aembedding(model=gemini/text-embedding-004)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.aembedding(model=gemini/text-embedding-004)[32m 200 OK[0m
+[92m22:40:10 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:40:10 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:40:10 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:40:10 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:40:10 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:40:10 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:40:10 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:40:10 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:40:10 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.agent:API Call time: 0.8689649105072021
+INFO:src.simulated_web_agent.agent.agent:actions: {'actions': [{'action': 'type', 'target': 'combobox:_search', 'text': 'Stagehand CUA', 'enter': True, 'description': 'Typing...'}]}
+INFO:simulated_web_agent.main.experiment:Taking action {"action": "type", "target": "combobox:_search", "text": "Stagehand CUA", "enter": true, "description": "Typing..."}
+INFO:simulated_web_agent.main.experiment:Action: 2 out of 5
+INFO:src.simulated_web_agent.executor.stagehand_env:[Step 2] Executing: type 'Stagehand CUA' into the combobox:_search field
+{"level":"info","time":1768448410359,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"ae629972-b427-44d1-a70a-508a3e39c77c","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/act","host":"127.0.0.1"},"reqId":"ae629972-b427-44d1-a70a-508a3e39c77c","msg":"incoming request"}
+{"level":"info","time":1768448412919,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"ae629972-b427-44d1-a70a-508a3e39c77c","reqId":"ae629972-b427-44d1-a70a-508a3e39c77c","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/act","host":"127.0.0.1"},"res":{"statusCode":200},"responseTime":2559.5112500190735,"msg":"request completed"}
+INFO:src.simulated_web_agent.executor.stagehand_env:[Step 2] Action completed: SessionActResponse(data=Data(result=DataResult(action_description='combobox: Search', actions=[DataResultAction(description='combobox: Search', selector='xpath=/html[1]/body[1]/div[2]/div[4]/form[1]/div[1]/div[1]/div[1]/div[1]/div[3]/textarea[1]', arguments=['Stagehand CUA'], backend_node_id=None, method='type')], message='Action [type] performed successfully on selector: xpath=/html[1]/body[1]/div[2]/div[4]/form[1]/div[1]/div[1]/div[1]/div[1]/div[3]/textarea[1]', success=True, actionDescription='combobox: Search'), action_id=None), success=True)
+[92m22:40:12 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:40:12 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:40:12 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.memory:Updated memory: +11 new piece(s) this cycle (embeddings: +11, importance: +11). Totals — pieces=14, embedded=11, with_importance=11
+{"level":"info","time":1768448413422,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"557e6f9a-e16f-4a7c-a203-b5b2119b5166","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/observe","host":"127.0.0.1"},"reqId":"557e6f9a-e16f-4a7c-a203-b5b2119b5166","msg":"incoming request"}
+{"level":"info","time":1768448418989,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"557e6f9a-e16f-4a7c-a203-b5b2119b5166","reqId":"557e6f9a-e16f-4a7c-a203-b5b2119b5166","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/observe","host":"127.0.0.1"},"res":{"statusCode":200},"responseTime":5566.724165916443,"msg":"request completed"}
+{"level":"info","time":1768448418994,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"f73ef99d-b2f2-4574-9029-aa7f8382d69c","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/observe","host":"127.0.0.1"},"reqId":"f73ef99d-b2f2-4574-9029-aa7f8382d69c","msg":"incoming request"}
+{"level":"info","time":1768448424607,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"f73ef99d-b2f2-4574-9029-aa7f8382d69c","reqId":"f73ef99d-b2f2-4574-9029-aa7f8382d69c","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/observe","host":"127.0.0.1"},"res":{"statusCode":200},"responseTime":5612.926167011261,"msg":"request completed"}
+INFO:src.simulated_web_agent.agent.agent:API call count: 8
+INFO:src.simulated_web_agent.agent.agent:agent perceiving environment...
+[92m22:40:24 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:src.simulated_web_agent.agent.agent:API call count: 9
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:40:24 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:40:25 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.agent:API Call time: 0.9188570976257324
+INFO:src.simulated_web_agent.agent.agent:feedback: {'thoughts': ["The action of typing 'Stagehand CUA' into the search box and pressing enter appears to have been successful. The observation shows interactive elements including a 'Google Search' button, suggesting the text has been entered.", "Next I should click the 'Google Search' button to initiate the search."]}
+INFO:src.simulated_web_agent.agent.agent:reflecting on memories ...
+[92m22:40:27 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:40:29 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+==================================================
+Testing Stagehand CUA with URL: https://www.google.com
+==================================================
+{'observations': ["I see the title of the page is 'Page'. The main content area contains the text 'URL: unknown'.", "I see several links: 'About', 'Store', 'Gmail', 'Search for Images', 'AI Mode', 'Learn how Gmail is entering the Gemini era', 'Advertising', 'Business', 'How Search works', 'Applying AI towards science and the environment', 'Privacy', 'Terms'.", "I see several buttons: 'Google apps', 'Upload files or images', 'Google Search', 'I'm Feeling Lucky', 'Search by voice', 'Search by image', 'Settings'.", "I see a combobox labeled 'Search'.", "All the elements appear to be within a div with the ID 'interactive-elements'."], 'first_impression': {'score': 5, 'clarity': 'The page purpose is not immediately clear. It seems to be a collection of links and buttons, but the context is missing.', 'visual_appeal': "The design is very basic and lacks visual appeal. It's just plain text links and buttons.", 'overwhelming_or_simple': "The page feels simple due to the lack of styling but could be overwhelming if the user doesn't know what they're looking for."}, 'ux_observations': {'navigation': 'Navigation is present as a list of links, but there is no clear hierarchy or grouping to guide the user.', 'call_to_action': "It's not clear what the primary call to action is, as there are several buttons and links with no clear emphasis.", 'form_usability': "The combobox 'Search' is present, suggesting a search functionality, but its placement and visual design do not make it prominent.", 'visual_hierarchy': 'There is no clear visual hierarchy. All the elements are presented in a flat list.', 'readability': 'Text is readable, but the lack of visual separation makes it difficult to scan quickly.', 'loading_indicators': 'There are no loading indicators visible on this page.'}, 'accessibility_observations': {'keyboard_focusable': 'I cannot determine if the interactive elements are keyboard accessible without interacting with the page.', 'aria_labels': 'There are no visible ARIA labels to enhance accessibility for screen readers.', 'color_contrast': 'I cannot assess color contrast without color information.', 'alt_text_on_images': 'There are no images on the page, so no alt text is needed.'}, 'potential_issues': ["Lack of context or explanation for the page's purpose.", 'No clear visual hierarchy or grouping of elements.', 'Unclear primary call to action.', 'Very basic and unappealing design.', 'URL is unknown.'], 'positive_aspects': ['All interactive elements are clearly labeled.', 'The page is simple and uncluttered.']}
+{'observations': ["I see the title of the page is 'Page'.", "I see a paragraph that says 'URL: unknown'.", "I see a link labeled 'About'.", "I see a link labeled 'Store'.", "I see a link labeled 'Gmail'.", "I see a link labeled 'Search for Images'.", "I see a button labeled 'Google apps'.", "I see a link labeled 'Sign in'.", "I see a button labeled 'Upload files or images'.", "I see a combobox labeled 'Search'.", "I see a button labeled 'Clear'.", "I see a link labeled 'AI Mode'.", "I see a button labeled 'Google Search'.", "I see a button labeled 'I'm Feeling Lucky'.", "I see a button labeled 'Report inappropriate predictions'.", "I see another button labeled 'Google Search'.", "I see another button labeled 'I'm Feeling Lucky'.", "I see a link labeled 'Learn how Gmail is entering the Gemini era'.", "I see a link labeled 'Advertising'.", "I see a link labeled 'Business'.", "I see a link labeled 'How Search works'.", "I see a link labeled 'Applying AI towards science and the environm'.", "I see a link labeled 'Privacy'.", "I see a link labeled 'Terms'.", "I see a button labeled 'Settings'."], 'first_impression': {'score': 5, 'clarity': 'The purpose of the page is unclear without knowing the URL. It seems to be a collection of links and buttons related to Google services.', 'visual_appeal': 'The design appears very basic and unstyled.', 'overwhelming_or_simple': 'The page feels simple but the large number of links and buttons without clear organization makes it slightly overwhelming.'}, 'ux_observations': {'navigation': 'Navigation is present in the form of links, but there is no clear structure or hierarchy.', 'call_to_action': "The primary call to action is not obvious. There are multiple buttons for 'Google Search' and 'I'm Feeling Lucky', which could be confusing.", 'form_usability': "The 'Search' combobox is present, which suggests there might be a search functionality, but without styling, it's hard to assess its usability.", 'visual_hierarchy': 'There is no visual hierarchy. All elements appear to have equal importance.', 'readability': 'The text is readable, but the lack of styling makes it visually unappealing.', 'loading_indicators': 'There are no loading indicators visible.'}, 'accessibility_observations': {'keyboard_focusable': "It's impossible to determine if interactive elements are keyboard accessible without testing the actual page. However, I would guess that they are.", 'aria_labels': "There's no indication of ARIA labels being used.", 'color_contrast': 'Without actual styling, I cannot determine color contrast.', 'alt_text_on_images': 'There are no images present to assess alt text.'}, 'potential_issues': ['Lack of clear purpose and organization.', "Multiple 'Google Search' and 'I'm Feeling Lucky' buttons are redundant.", 'Absence of visual hierarchy and styling.', 'Unclear call to action.', "The long link text 'Applying AI towards science and the environm' is truncated and lacks clarity.", 'Lack of a heading for the page'], 'positive_aspects': ['All elements appear to be present on the page', 'Interactive elements are discoverable']}
+INFO:src.simulated_web_agent.agent.agent:API Call time: 4.588152170181274
+INFO:src.simulated_web_agent.agent.agent:planning ...
+INFO:src.simulated_web_agent.agent.agent:API call count: 10
+[92m22:40:29 - LiteLLM Router:INFO[0m: router.py:3016 - litellm.aembedding(model=gemini/text-embedding-004)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.aembedding(model=gemini/text-embedding-004)[32m 200 OK[0m
+/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/src/simulated_web_agent/agent/memory.py:206: RuntimeWarning: divide by zero encountered in dot
+  similarities = np.dot(self.embeddings, query_embedding)
+/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/src/simulated_web_agent/agent/memory.py:206: RuntimeWarning: overflow encountered in dot
+  similarities = np.dot(self.embeddings, query_embedding)
+/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/src/simulated_web_agent/agent/memory.py:206: RuntimeWarning: invalid value encountered in dot
+  similarities = np.dot(self.embeddings, query_embedding)
+[92m22:40:29 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:40:31 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.agent:API Call time: 1.83427095413208
+INFO:src.simulated_web_agent.agent.agent:plan: 1. Navigate to google.com
+2. Enter 'Stagehand CUA' in the search bar
+3. (next) Click the 'Google Search' button to initiate the search
+4. Evaluate the search results
+INFO:src.simulated_web_agent.agent.agent:rationale: I have entered the search query into the search bar. Now I need to trigger the search. Based on the observation, I will click the 'Google Search' button.
+INFO:src.simulated_web_agent.agent.agent:next_step: Click the 'Google Search' button to initiate the search
+INFO:src.simulated_web_agent.agent.agent:API call count: 11
+[92m22:40:31 - LiteLLM Router:INFO[0m: router.py:3016 - litellm.aembedding(model=gemini/text-embedding-004)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.aembedding(model=gemini/text-embedding-004)[32m 200 OK[0m
+[92m22:40:31 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:40:32 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.agent:API Call time: 1.0062642097473145
+INFO:src.simulated_web_agent.agent.agent:actions: {'actions': [{'action': 'click', 'target': 'button:_google_search', 'description': 'Clicking...'}]}
+INFO:simulated_web_agent.main.experiment:Taking action {"action": "click", "target": "button:_google_search", "description": "Clicking..."}
+INFO:simulated_web_agent.main.experiment:Action: 3 out of 5
+INFO:src.simulated_web_agent.executor.stagehand_env:[Step 3] Executing: click on the element button:_google_search
+{"level":"info","time":1768448432060,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"885e825d-58f4-48c9-9eb0-76d1040dd3e3","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/act","host":"127.0.0.1"},"reqId":"885e825d-58f4-48c9-9eb0-76d1040dd3e3","msg":"incoming request"}
+{"level":"info","time":1768448434886,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"885e825d-58f4-48c9-9eb0-76d1040dd3e3","reqId":"885e825d-58f4-48c9-9eb0-76d1040dd3e3","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/act","host":"127.0.0.1"},"res":{"statusCode":200},"responseTime":2826.2112922668457,"msg":"request completed"}
+INFO:src.simulated_web_agent.executor.stagehand_env:[Step 3] Action completed: SessionActResponse(data=Data(result=DataResult(action_description='button: Google Search', actions=[DataResultAction(description='button: Google Search', selector='xpath=/html[1]/body[1]/div[2]/div[4]/form[1]/div[1]/div[1]/div[3]/center[1]/input[1]', arguments=[], backend_node_id=None, method='click')], message='Action [click] performed successfully on selector: xpath=/html[1]/body[1]/div[2]/div[4]/form[1]/div[1]/div[1]/div[3]/center[1]/input[1]', success=True, actionDescription='button: Google Search'), action_id=None), success=True)
+[92m22:40:34 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.agent:reflections: []
+INFO:src.simulated_web_agent.agent.agent:wondering ...
+[92m22:40:34 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+{"level":"info","time":1768448435391,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"9fc40bbe-c5c8-4476-a197-4d47226a01b3","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/observe","host":"127.0.0.1"},"reqId":"9fc40bbe-c5c8-4476-a197-4d47226a01b3","msg":"incoming request"}
+{"level":"info","time":1768448461043,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"9fc40bbe-c5c8-4476-a197-4d47226a01b3","reqId":"9fc40bbe-c5c8-4476-a197-4d47226a01b3","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/observe","host":"127.0.0.1"},"res":{"statusCode":200},"responseTime":25651.566124916077,"msg":"request completed"}
+{"level":"info","time":1768448461053,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"417f0534-7464-4a89-ae5e-6260b47f0d7b","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/observe","host":"127.0.0.1"},"reqId":"417f0534-7464-4a89-ae5e-6260b47f0d7b","msg":"incoming request"}
+{"level":"info","time":1768448484194,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"417f0534-7464-4a89-ae5e-6260b47f0d7b","reqId":"417f0534-7464-4a89-ae5e-6260b47f0d7b","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/observe","host":"127.0.0.1"},"res":{"statusCode":200},"responseTime":23140.14491701126,"msg":"request completed"}
+INFO:src.simulated_web_agent.agent.agent:API call count: 12
+INFO:src.simulated_web_agent.agent.agent:agent perceiving environment...
+INFO:src.simulated_web_agent.agent.agent:API call count: 13
+[92m22:41:24 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:41:24 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:41:24 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.agent:wondering: {'thoughts': ['Okay, search is initiated. I hope the results are useful!', "I wonder if I'll need to filter through a lot of irrelevant results?", 'Did I remember to set a reminder to check my email later?']}
+INFO:src.simulated_web_agent.agent.memory:Updating memory: computing embeddings & importance for new pieces
+[92m22:41:24 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:41:24 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:41:24 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:41:24 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:41:24 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:41:24 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:41:24 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:41:24 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:41:24 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:41:24 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:41:24 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:41:24 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:41:24 - LiteLLM Router:INFO[0m: router.py:3016 - litellm.aembedding(model=gemini/text-embedding-004)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.aembedding(model=gemini/text-embedding-004)[32m 200 OK[0m
+[92m22:41:25 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.agent:API Call time: 0.8444616794586182
+INFO:src.simulated_web_agent.agent.agent:feedback: {'thoughts': ["The click action appears to have been successful. The new observation shows search results for 'Stagehand CUA'.", 'The next step is to evaluate the search results to find relevant information.']}
+[92m22:41:25 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:41:25 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:41:25 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:41:25 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:41:25 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:41:25 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:41:25 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:41:25 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:41:25 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:41:25 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:41:25 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:41:25 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.memory:Updated memory: +12 new piece(s) this cycle (embeddings: +12, importance: +12). Totals — pieces=25, embedded=23, with_importance=23
+[92m22:41:29 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.agent:API Call time: 5.102560043334961
+INFO:src.simulated_web_agent.agent.agent:planning ...
+INFO:src.simulated_web_agent.agent.agent:API call count: 14
+[92m22:41:29 - LiteLLM Router:INFO[0m: router.py:3016 - litellm.aembedding(model=gemini/text-embedding-004)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.aembedding(model=gemini/text-embedding-004)[32m 200 OK[0m
+[92m22:41:29 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:41:30 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.agent:API Call time: 1.5576722621917725
+INFO:src.simulated_web_agent.agent.agent:plan: 1. Navigate to google.com
+2. Enter 'Stagehand CUA' in the search bar
+3. Click the 'Google Search' button to initiate the search
+4. (next) Evaluate the search results
+INFO:src.simulated_web_agent.agent.agent:rationale: I've successfully entered the search term and clicked the search button. Now I need to examine the results and determine if they're relevant to the search.
+INFO:src.simulated_web_agent.agent.agent:next_step: Evaluate the search results
+INFO:src.simulated_web_agent.agent.agent:API call count: 15
+[92m22:41:31 - LiteLLM Router:INFO[0m: router.py:3016 - litellm.aembedding(model=gemini/text-embedding-004)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.aembedding(model=gemini/text-embedding-004)[32m 200 OK[0m
+[92m22:41:31 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:41:32 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.agent:API Call time: 1.4184718132019043
+INFO:src.simulated_web_agent.agent.agent:actions: {'actions': [{'action': 'scroll', 'direction': 'down', 'amount': 400, 'description': 'Scrolling to see more content...'}]}
+INFO:simulated_web_agent.main.experiment:Taking action {"action": "scroll", "direction": "down", "amount": 400, "description": "Scrolling to see more content..."}
+INFO:simulated_web_agent.main.experiment:Action: 4 out of 5
+INFO:src.simulated_web_agent.executor.stagehand_env:[Step 4] Executing: scroll down by 400 pixels
+{"level":"info","time":1768448492282,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"a93be8de-2c0b-4b83-a698-5e99d500e60b","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/act","host":"127.0.0.1"},"reqId":"a93be8de-2c0b-4b83-a698-5e99d500e60b","msg":"incoming request"}
+{"level":"info","time":1768448495309,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"a93be8de-2c0b-4b83-a698-5e99d500e60b","reqId":"a93be8de-2c0b-4b83-a698-5e99d500e60b","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/act","host":"127.0.0.1"},"res":{"statusCode":200},"responseTime":3027.8265829086304,"msg":"request completed"}
+INFO:src.simulated_web_agent.executor.stagehand_env:[Step 4] Action completed: SessionActResponse(data=Data(result=DataResult(action_description='scrollable, html', actions=[DataResultAction(description='scrollable, html', selector='xpath=/html[1]', arguments=['400px'], backend_node_id=None, method='scrollTo')], message='Action [scrollTo] performed successfully on selector: xpath=/html[1]', success=True, actionDescription='scrollable, html'), action_id=None), success=True)
+{"level":"info","time":1768448495814,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"ba66e9b8-ec90-49bd-92f0-b4975ac4c4b5","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/observe","host":"127.0.0.1"},"reqId":"ba66e9b8-ec90-49bd-92f0-b4975ac4c4b5","msg":"incoming request"}
+{"level":"info","time":1768448517704,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"ba66e9b8-ec90-49bd-92f0-b4975ac4c4b5","reqId":"ba66e9b8-ec90-49bd-92f0-b4975ac4c4b5","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/observe","host":"127.0.0.1"},"res":{"statusCode":200},"responseTime":21889.92391729355,"msg":"request completed"}
+{"level":"info","time":1768448517715,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"0b7bc5bf-a14a-48b4-a607-f13d2140ea56","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/observe","host":"127.0.0.1"},"reqId":"0b7bc5bf-a14a-48b4-a607-f13d2140ea56","msg":"incoming request"}
+{"level":"info","time":1768448542396,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"0b7bc5bf-a14a-48b4-a607-f13d2140ea56","reqId":"0b7bc5bf-a14a-48b4-a607-f13d2140ea56","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/observe","host":"127.0.0.1"},"res":{"statusCode":200},"responseTime":24680.617875099182,"msg":"request completed"}
+INFO:src.simulated_web_agent.agent.agent:API call count: 16
+INFO:src.simulated_web_agent.agent.agent:agent perceiving environment...
+[92m22:42:22 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:src.simulated_web_agent.agent.agent:API call count: 17
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:42:22 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:src.simulated_web_agent.agent.agent:reflecting on memories ...
+[92m22:42:22 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:42:23 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.agent:API Call time: 1.1127429008483887
+INFO:src.simulated_web_agent.agent.agent:feedback: {'thoughts': ["The scrolling action was performed, and the observation shows more content has been loaded, including multiple search result links related to 'Stagehand CUA'.", 'The scrolling was successful in revealing more search results. Now I need to evaluate the search results and determine the next action.']}
+[92m22:42:27 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.agent:reflections: []
+INFO:src.simulated_web_agent.agent.agent:wondering ...
+[92m22:42:27 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:42:28 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.agent:wondering: {'thoughts': ["Okay, I need to evaluate these search results... what's the best way to approach this?", 'Are these results what the user was looking for? Hmmm...', "Maybe I should try a different search query if these aren't helpful."]}
+INFO:src.simulated_web_agent.agent.memory:Updating memory: computing embeddings & importance for new pieces
+[92m22:42:28 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:42:28 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:42:28 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:42:28 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:42:28 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:42:28 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:42:28 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:42:28 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:42:28 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:42:28 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:42:28 - LiteLLM:INFO[0m: utils.py:3373 - 
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+INFO:LiteLLM:
+LiteLLM completion() model= gemini-2.0-flash; provider = gemini
+[92m22:42:28 - LiteLLM Router:INFO[0m: router.py:3016 - litellm.aembedding(model=gemini/text-embedding-004)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.aembedding(model=gemini/text-embedding-004)[32m 200 OK[0m
+[92m22:42:29 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:42:29 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:42:29 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:42:29 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:42:29 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:42:29 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:42:29 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:42:29 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:42:29 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:42:29 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+[92m22:42:29 - LiteLLM Router:INFO[0m: router.py:1325 - litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:LiteLLM Router:litellm.acompletion(model=gemini/gemini-2.0-flash)[32m 200 OK[0m
+INFO:src.simulated_web_agent.agent.memory:Updated memory: +11 new piece(s) this cycle (embeddings: +11, importance: +11). Totals — pieces=34, embedded=34, with_importance=34
+INFO:src.simulated_web_agent.agent.agent:API Call time: 10.713591814041138
+INFO:simulated_web_agent.main.experiment:[8b636d4e] policy.close() completed
+INFO:simulated_web_agent.main.experiment:[8b636d4e] closing env...
+INFO:src.simulated_web_agent.executor.stagehand_env:Closing Stagehand environment...
+{"level":"info","time":1768448553118,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"e7bccb93-5441-429e-81c7-672480575f6b","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/end","host":"127.0.0.1"},"reqId":"e7bccb93-5441-429e-81c7-672480575f6b","msg":"incoming request"}
+{"level":"info","time":1768448553778,"pid":82485,"hostname":"MacBook-Pro-43.local","reqId":"e7bccb93-5441-429e-81c7-672480575f6b","reqId":"e7bccb93-5441-429e-81c7-672480575f6b","req":{"method":"POST","url":"/v1/sessions/43895d37-786f-4fb2-ac63-936b1ef52524/end","host":"127.0.0.1"},"res":{"statusCode":200},"responseTime":659.48029088974,"msg":"request completed"}
+{"level":"info","time":1768448553779,"pid":82485,"hostname":"MacBook-Pro-43.local","msg":"gracefulShutdown"}
+[2026-01-15T03:42:33.780Z] ERROR: SIGTERM: initiating shutdown
+INFO:src.simulated_web_agent.executor.stagehand_env:✅ Stagehand environment closed
+INFO:simulated_web_agent.main.experiment:[8b636d4e] env.close() completed
+{'observations': ["I see a webpage with the title 'Page'.", "The visible content starts with the text 'URL: unknown'.", 'Below that, I see a series of interactive elements:', "A link labeled 'About', a link labeled 'Store', a link labeled 'Gmail', and a link labeled 'Search for Images'.", "Next, I see a button labeled 'Google apps' and a link labeled 'Sign in'.", "Then, there is a button labeled 'Upload files or images', a combobox labeled 'Search', and a button labeled 'Clear'.", "I also see a link labeled 'AI Mode'.", "There are buttons labeled 'Google Search' and 'I'm Feeling Lucky'.", "There is a link labeled 'Learn how Gmail is entering the Gemini era'.", "I can also see links labeled 'Advertising', 'Business', and 'How Search works'.", "Then, there is a link labeled 'Applying AI towards science and the environment'.", "Finally, I see links labeled 'Privacy' and 'Terms', and a button labeled 'Settings'."], 'first_impression': {'score': 5, 'clarity': 'The page purpose is unclear without context. It seems to be a collection of links and buttons.', 'visual_appeal': 'The design is very basic and lacks any visual appeal. It is essentially just a list of elements.', 'overwhelming_or_simple': 'The page feels simple but also somewhat disorganized.'}, 'ux_observations': {'navigation': "The page presents a collection of links but it's hard to say if it's a clear navigation structure without knowing where it leads.", 'call_to_action': "There isn't one main, obvious call to action. There are several links and buttons of seemingly equal importance.", 'form_usability': "There is one combobox 'Search'. I can't say anything about the usability without any context.", 'visual_hierarchy': 'There is no clear visual hierarchy. All elements appear to have the same level of importance.', 'readability': 'The text is readable, but the layout makes it feel cluttered.', 'loading_indicators': "I don't see any loading indicators."}, 'accessibility_observations': {'keyboard_focusable': 'I cannot determine if the interactive elements are keyboard accessible based on the provided HTML.', 'aria_labels': "I don't see any explicit aria labels in the visible content, but I can't rule out they might be added dynamically.", 'color_contrast': "I can't evaluate the color contrast without knowing the colors used.", 'alt_text_on_images': 'There are no images on the page, so alt text is not applicable.'}, 'potential_issues': ["The lack of visual hierarchy makes it difficult to quickly understand the page's purpose or prioritize actions.", "The URL being 'unknown' suggests this is a placeholder or error state.", 'The collection of seemingly unrelated links and buttons creates a confusing user experience.'], 'positive_aspects': ['The page is simple and loads quickly.', 'All elements are clearly labeled.']}
+{'observations': ["I see a webpage with the title 'Page'.", "The main content area contains a paragraph stating 'URL: unknown'.", "Below that, there's a section labeled 'interactive-elements'.", "Inside 'interactive-elements', I see a series of links and buttons.", "The links include: 'Skip to main content', 'Accessibility help', 'Accessibility feedback', 'Go to Google Home', 'Sign in', 'AI Mode', 'All', 'Images', 'Shopping', 'News', 'Videos', 'Short videos', and several results related to 'Stagehand' with URLs.", "I also see links for pagination such as 'Page 2', 'Page 3', up to 'Page 10', and 'Next'.", "The buttons include: 'Clear', 'Search by voice', 'Search by image', 'Search', 'Settings', 'Google apps', 'More filters', 'Tools', several buttons labeled 'stagehand cuas stagehand cuas' and 'stagehand cuastagehand cuas', 'About this result', 'Feedback', and a location button 'Yakima-Pasco-Richland-Kennewick WA, Oregon - From your IP address', 'Update location'.", "Finally, I see links for 'Help', 'Send feedback', 'Privacy', and 'Terms'."], 'first_impression': {'score': 5, 'clarity': 'The page appears to be a search results page, but the lack of a search bar makes it confusing.', 'visual_appeal': 'The design is very basic and lacks visual appeal. It feels like a plain list of links and buttons.', 'overwhelming_or_simple': 'The page feels cluttered due to the long list of results without clear separation.'}, 'ux_observations': {'navigation': 'Navigation is unclear, as there is no visible search input. The pagination is present, but difficult to find with so many other links present.', 'call_to_action': "There isn't a clear call to action unless the user is already aware of the context of the search. The 'Search' button exists but it's not prominent.", 'form_usability': 'There are no forms visible on the page, just buttons and links.', 'visual_hierarchy': "There's little to no visual hierarchy. The elements are presented as a flat list.", 'readability': 'The text is readable, but the lack of visual separation makes it difficult to scan.', 'loading_indicators': 'No loading indicators are visible as the entire content has loaded. I do not see what triggered this.'}, 'accessibility_observations': {'keyboard_focusable': "It's likely that interactive elements are keyboard focusable, but this needs to be tested.", 'aria_labels': "I can't tell from the rendered HTML if ARIA labels are used effectively. The 'parser-semantic-id' attributes hint at machine readability, but are not useful for users.", 'color_contrast': 'Color contrast cannot be determined from this HTML snippet.', 'alt_text_on_images': 'There are no images to evaluate alt text.'}, 'potential_issues': ["The 'URL: unknown' message is not helpful to the user.", 'The purpose of the page is unclear without a search bar or context.', 'The number of links and buttons is overwhelming and could be better organized.', "The repeated 'About this result' buttons are confusing.", 'Lack of visual hierarchy makes it difficult to scan the page.', "The buttons 'stagehand cuas stagehand cuas' and 'stagehand cuastagehand cuas' are not user-friendly and have unclear purpose."], 'positive_aspects': ['The page includes links to accessibility help and feedback, which indicates an awareness of accessibility concerns.', 'Pagination is provided for search results.']}
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py", line 664, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/test_stagehand.py", line 24, in main
+    results = await experiment_async(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/src/simulated_web_agent/main/experiment.py", line 401, in experiment_async
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/src/simulated_web_agent/main/experiment.py", line 383, in run_one
+    result = await _run_for_persona_and_intent(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/src/simulated_web_agent/main/experiment.py", line 211, in _run_for_persona_and_intent
+    action = await policy.forward(env)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/src/simulated_web_agent/main/model.py", line 175, in forward
+    await asyncio.gather(
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/src/simulated_web_agent/agent/agent.py", line 81, in perceive
+    result = await async_chat(request, json_mode=True, max_tokens=64000)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/src/simulated_web_agent/agent/gpt.py", line 213, in wrapper
+    return await f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/src/simulated_web_agent/agent/gpt.py", line 305, in async_chat
+    response = await router.acompletion(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/.venv/lib/python3.12/site-packages/litellm/router.py", line 1056, in acompletion
+    response = await self.async_function_with_fallbacks(**kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/.venv/lib/python3.12/site-packages/litellm/router.py", line 3902, in async_function_with_fallbacks
+    response = await self.async_function_with_retries(*args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/.venv/lib/python3.12/site-packages/litellm/router.py", line 3998, in async_function_with_retries
+    response = await self.make_call(original_function, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/.venv/lib/python3.12/site-packages/litellm/router.py", line 4118, in make_call
+    response = await response
+               ^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/.venv/lib/python3.12/site-packages/litellm/router.py", line 1310, in _acompletion
+    response = await _response
+               ^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/.venv/lib/python3.12/site-packages/litellm/utils.py", line 1462, in wrapper_async
+    result = await original_function(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/.venv/lib/python3.12/site-packages/litellm/main.py", line 578, in acompletion
+    response = await init_response
+               ^^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/.venv/lib/python3.12/site-packages/litellm/llms/vertex_ai/gemini/vertex_and_google_ai_studio_gemini.py", line 1938, in async_completion
+    response = await client.post(
+               ^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/.venv/lib/python3.12/site-packages/litellm/litellm_core_utils/logging_utils.py", line 190, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/.venv/lib/python3.12/site-packages/litellm/llms/custom_httpx/http_handler.py", line 283, in post
+    response = await self.client.send(req, stream=stream)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1629, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1657, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1694, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1730, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/.venv/lib/python3.12/site-packages/litellm/llms/custom_httpx/aiohttp_transport.py", line 219, in handle_async_request
+    response = await client_session.request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/.venv/lib/python3.12/site-packages/aiohttp/client.py", line 1482, in __aenter__
+    self._resp: _RetType = await self._coro
+                           ^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/.venv/lib/python3.12/site-packages/aiohttp/client.py", line 770, in _request
+    resp = await handler(req)
+           ^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/.venv/lib/python3.12/site-packages/aiohttp/client.py", line 748, in _connect_and_send_request
+    await resp.start(conn)
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/.venv/lib/python3.12/site-packages/aiohttp/client_reqrep.py", line 532, in start
+    message, payload = await protocol.read()  # type: ignore[union-attr]
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/.venv/lib/python3.12/site-packages/aiohttp/streams.py", line 672, in read
+    await self._waiter
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/aryan/Projects/agents/my-stagehand-app/apps/UXAgent-master/test_stagehand.py", line 69, in <module>
+    asyncio.run(main())
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 123, in run
+    raise KeyboardInterrupt()
+KeyboardInterrupt

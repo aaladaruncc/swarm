@@ -1,4 +1,16 @@
-import "dotenv/config";
+// CRITICAL: Load .env FIRST before any other imports
+// Other modules (like db/index.ts) read process.env at import time
+import { config } from "dotenv";
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const envPath = resolve(__dirname, "../.env");
+config({ path: envPath });
+console.log(`📁 Loaded .env from: ${envPath}`);
+console.log(`📁 DATABASE_URL: ${process.env.DATABASE_URL?.substring(0, 35)}...`);
+
+// Now import everything else AFTER env is loaded
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";

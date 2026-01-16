@@ -13,7 +13,7 @@ async function main() {
         console.log(`RunID: ${r.runId}`);
         console.log(`Status: ${r.status}`);
         console.log(`Score: ${r.score}`);
-        console.log(`Steps Taken: ${r.stepsToken}`);
+        console.log(`Steps Taken: ${r.stepsTaken}`);
         console.log(`Terminated: ${r.terminated}`);
         console.log(`Start URL: ${r.startUrl}`);
         console.log(`Intent: ${r.intent}`);

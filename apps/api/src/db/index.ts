@@ -1,3 +1,12 @@
+// CRITICAL: Load .env before reading DATABASE_URL
+// ES modules hoist imports, so we must load env in each module that needs it
+import { config } from "dotenv";
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+config({ path: resolve(__dirname, "../../.env") });
+
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "@ux-testing/db/schema";

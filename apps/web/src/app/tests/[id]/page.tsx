@@ -423,6 +423,7 @@ export default function TestDetails() {
                   <UXAgentReportView
                     uxagentRuns={uxagentRuns}
                     targetUrl={batchTestRun.targetUrl}
+                    testRuns={testRuns}
                   />
                 )}
 
