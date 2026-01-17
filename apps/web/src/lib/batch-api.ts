@@ -3,15 +3,25 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 interface GeneratedPersona {
   name: string;
   age: number;
+  gender?: string;
   country: string;
   occupation: string;
+  education?: string;
   incomeLevel: "low" | "medium" | "high";
+  income?: string;
   techSavviness: "beginner" | "intermediate" | "advanced";
   primaryGoal: string;
   painPoints: string[];
   context: string;
   relevanceScore: number;
+  // Detailed narrative sections (matching UXAgent format)
+  background?: string;
+  financialSituation?: string;
+  browsingHabits?: string;
+  professionalLife?: string;
+  personalStyle?: string;
 }
+
 
 interface BatchTestRun {
   id: string;

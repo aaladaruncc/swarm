@@ -28,6 +28,13 @@ export interface UXAgentRunRequest {
     concurrency?: number;
     headless?: boolean;
     example_persona?: string;
+    /** Pre-generated personas to use directly (skips UXAgent persona generation) */
+    personas?: Array<{
+        persona: string;
+        intent: string;
+        name?: string;
+        [key: string]: any;
+    }>;
 }
 
 export interface UXAgentRunResponse {

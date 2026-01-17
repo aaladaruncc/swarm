@@ -259,6 +259,7 @@ def run_endpoint():
                 questionnaire=payload["questionnaire"],
                 headless=headless,
                 on_progress=log_progress,
+                personas=payload.get("personas", None),  # Pre-generated personas
             )
             
             print(f"[RUN {run_id}] Agent run completed, sending results...", flush=True)

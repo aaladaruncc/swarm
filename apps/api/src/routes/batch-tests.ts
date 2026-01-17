@@ -594,18 +594,54 @@ async function runBatchTestWithUXAgent(
       percentage: Math.round(100 / selectedPersonas.length),
     }));
 
-    // Call UXAgent service
+    // Convert GeneratedPersona objects to UXAgent persona format
+    // This allows UXAgent to use our pre-generated personas directly
+    const uxAgentPersonas = selectedPersonas.map(p => ({
+      persona: `Persona: ${p.name}
+
+Background:
+${p.background || `${p.name} is a ${p.age}-year-old ${p.occupation} from ${p.country}.`}
+
+Demographics:
+Age: ${p.age}
+Gender: ${(p as any).gender || 'Not specified'}
+Education: ${(p as any).education || 'Not specified'}
+Profession: ${p.occupation}
+Income: ${(p as any).income || p.incomeLevel}
+
+Financial Situation:
+${(p as any).financialSituation || `${p.name} has a ${p.incomeLevel} income level and manages their spending accordingly.`}
+
+Browsing Habits:
+${(p as any).browsingHabits || `Tech savviness: ${p.techSavviness}. ${p.context || ''}`}
+
+Professional Life:
+${(p as any).professionalLife || `Works as a ${p.occupation}.`}
+
+Personal Style:
+${(p as any).personalStyle || 'Practical and goal-oriented.'}
+
+Primary Goal: ${p.primaryGoal}
+Pain Points: ${p.painPoints?.join('; ') || ''}`,
+      intent: p.primaryGoal || "Test the website user experience",
+      name: p.name,
+      // Include original data for reference
+      ...p,
+    }));
+
+    // Call UXAgent service with pre-generated personas
     const result = await startUXAgentRun(
       {
         total_personas: selectedPersonas.length,
         demographics,
-        general_intent: selectedPersonas[0]?.intent || "Test the website user experience",
+        general_intent: selectedPersonas[0]?.primaryGoal || "Test the website user experience",
         start_url: targetUrl,
         max_steps: maxSteps,
         questionnaire: questionnaire || {},
         concurrency: Math.min(selectedPersonas.length, 4),
         headless: true,
         example_persona: selectedPersonas[0]?.persona,
+        personas: uxAgentPersonas, // Pass pre-generated personas to skip generation
       },
       undefined, // Use default callback URL
       batchTestRunId, // Pass batch test ID so UXAgent can link results

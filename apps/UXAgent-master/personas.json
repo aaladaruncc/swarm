@@ -1,6 +1,21 @@
 [
   {
-    "persona": "Persona: Marcus\n\nBackground:\nMarcus is a self-employed carpenter with a passion for creating unique, handcrafted furniture. He operates a small workshop where he designs, builds, and finishes custom pieces for clients seeking artisanal quality and personalized service.\n\nDemographics:\n\nAge: 45\nGender: Male\nEducation: Vocational training in carpentry\nProfession: Self-Employed Carpenter\nIncome: $70,000\n\nFinancial Situation:\nMarcus's income varies based on the projects he secures, so he maintains a solid budget. He invests profits back into his workshop and saves for retirement.\n\nShopping Habits:\nMarcus often shops at specialized hardware stores, lumberyards, and artisan supply shops. He enjoys interacting with store personnel and discovering new tools or materials. He values quality and durability over price, looking for long-lasting and reliable products.\n\nProfessional Life:\nMarcus spends his days in his workshop, crafting furniture and managing client relationships. He often works on multiple projects at once and juggles administrative tasks with hands-on work. He values craftsmanship, precision, and the satisfaction of creating tangible, beautiful products.\n\nPersonal Style:\nMarcus prefers comfortable and durable workwear. He wears practical clothing suitable for physical labor, like sturdy boots, jeans, and work shirts. He likes earthy tones and natural materials, reflecting his connection to wood and craftsmanship. He prefers larger, loose-fitting clothing.",
-    "intent": "Test the website user experience"
+    "persona": "Name: David\nAge: 35\nCountry: United States\nOccupation: Mid-Market Investment Banker\nIncome Level: high\nTech Savviness: advanced\nPrimary Goal: Streamline complex financial modeling in Excel.\nPain Points: Complex formulas break easily, Time-consuming data consolidation, Difficulties in creating visually appealing presentations, Keeping track of changes among team members\nContext: David works in a fast-paced environment where efficiency is crucial. He often handles large datasets and needs to ensure data accuracy and presentation clarity. He frequently collaborates with international teams.",
+    "intent": "Streamline complex financial modeling in Excel.",
+    "name": "David",
+    "age": 35,
+    "context": "David works in a fast-paced environment where efficiency is crucial. He often handles large datasets and needs to ensure data accuracy and presentation clarity. He frequently collaborates with international teams.",
+    "country": "United States",
+    "occupation": "Mid-Market Investment Banker",
+    "painPoints": [
+      "Complex formulas break easily",
+      "Time-consuming data consolidation",
+      "Difficulties in creating visually appealing presentations",
+      "Keeping track of changes among team members"
+    ],
+    "incomeLevel": "high",
+    "primaryGoal": "Streamline complex financial modeling in Excel.",
+    "techSavviness": "advanced",
+    "relevanceScore": 10
   }
 ]
