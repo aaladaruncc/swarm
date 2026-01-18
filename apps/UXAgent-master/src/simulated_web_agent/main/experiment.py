@@ -16,6 +16,7 @@ from hydra import compose, initialize_config_dir
 from omegaconf import DictConfig
 
 from ..agent import context, gpt
+from ..agent.gpt import async_chat
 from ..executor.env import WebAgentEnv  # Playwright env
 from .model import AgentPolicy  # noqa
 
@@ -28,6 +29,102 @@ except ImportError:
     StagehandEnv = None
 
 log = logging.getLogger("simulated_web_agent.main.experiment")
+
+
+# Final UX Evaluation Prompt
+FINAL_EVALUATION_PROMPT = """You are a UX expert performing a final evaluation of a website testing session.
+
+Based on the agent's experience, provide scores for Nielsen's 10 Usability Heuristics and an overall UX score.
+
+## Session Information
+- Website: {start_url}
+- User Intent: {intent}
+- Persona: {persona_summary}
+- Total Steps: {steps_taken}
+- Session Duration: {duration_ms}ms
+- Task Completed: {terminated}
+
+## Agent's Observations and Thoughts
+{memories}
+
+## Your Task
+Score each heuristic from 1-10 and provide an overall score.
+
+Return ONLY valid JSON in this exact format:
+{{
+  "heuristic_scores": {{
+    "visibility_of_system_status": {{"score": <1-10>, "observation": "<brief note>"}},
+    "match_between_system_and_real_world": {{"score": <1-10>, "observation": "<brief note>"}},
+    "user_control_and_freedom": {{"score": <1-10>, "observation": "<brief note>"}},
+    "consistency_and_standards": {{"score": <1-10>, "observation": "<brief note>"}},
+    "error_prevention": {{"score": <1-10>, "observation": "<brief note>"}},
+    "recognition_over_recall": {{"score": <1-10>, "observation": "<brief note>"}},
+    "flexibility_and_efficiency": {{"score": <1-10>, "observation": "<brief note>"}},
+    "aesthetic_and_minimalist_design": {{"score": <1-10>, "observation": "<brief note>"}},
+    "help_users_recognize_and_recover_from_errors": {{"score": <1-10>, "observation": "<brief note>"}},
+    "help_and_documentation": {{"score": <1-10>, "observation": "<brief note>"}}
+  }},
+  "overall_score": <1-10>,
+  "summary": "<1-2 sentence summary of the UX quality>"
+}}
+
+Be honest and critical. Don't inflate scores.
+"""
+
+
+async def evaluate_ux_score(
+    start_url: str,
+    intent: str,
+    persona: str,
+    memories: list,
+    steps_taken: int,
+    duration_ms: int,
+    terminated: bool
+) -> dict:
+    """Run a final LLM evaluation to generate UX scores."""
+    try:
+        # Format memories for the prompt
+        memory_text = "\n".join([
+            f"- {m.get('content', str(m))}" if isinstance(m, dict) else f"- {m}"
+            for m in memories[-30:]  # Last 30 memories to fit context
+        ])
+        
+        # Extract persona summary (first 200 chars)
+        persona_summary = persona[:200] + "..." if len(persona) > 200 else persona
+        
+        prompt = FINAL_EVALUATION_PROMPT.format(
+            start_url=start_url,
+            intent=intent,
+            persona_summary=persona_summary,
+            steps_taken=steps_taken,
+            duration_ms=duration_ms,
+            terminated=terminated,
+            memories=memory_text or "No observations recorded"
+        )
+        
+        response = await async_chat(
+            [
+                {"role": "system", "content": "You are a UX evaluation expert. Return only valid JSON."},
+                {"role": "user", "content": prompt}
+            ],
+            json_mode=True,
+            model="small",  # Use faster model for evaluation
+        )
+        
+        result = json.loads(response)
+        
+        # Calculate overall score from heuristics if not provided
+        if "overall_score" not in result and "heuristic_scores" in result:
+            scores = [h.get("score", 5) for h in result["heuristic_scores"].values()]
+            result["overall_score"] = round(sum(scores) / len(scores), 1) if scores else 5.0
+        
+        log.info(f"UX Evaluation complete: overall_score={result.get('overall_score', 'N/A')}")
+        return result
+        
+    except Exception as e:
+        log.warning(f"Failed to evaluate UX score: {e}")
+        return {"overall_score": None, "error": str(e)}
+
 
 
 
@@ -307,7 +404,7 @@ async def _run_for_persona_and_intent(
         
         log.info(
             f"Finished persona run: terminated={collected_data['terminated']}, "
-            f"score={collected_data['score']}, steps={steps_taken}, "
+            f"steps={steps_taken}, "
             f"duration={total_duration_ms}ms, hesitations={len(hesitations)}, "
             f"backtracks={backtrack_count}"
         )
@@ -319,6 +416,33 @@ async def _run_for_persona_and_intent(
         collected_data["final_memory_text"] = final_memories_str
 
         log.info(f"Saved memory trace to {trace_file}")
+        
+        # === FINAL UX EVALUATION ===
+        # Run LLM-based evaluation to generate UX scores
+        log.info("Running final UX evaluation...")
+        try:
+            ux_evaluation = await evaluate_ux_score(
+                start_url=start_url,
+                intent=intent,
+                persona=persona,
+                memories=collected_data["memories"],
+                steps_taken=steps_taken,
+                duration_ms=total_duration_ms,
+                terminated=collected_data["terminated"]
+            )
+            
+            # Store the score and evaluation data
+            if ux_evaluation.get("overall_score") is not None:
+                collected_data["score"] = ux_evaluation["overall_score"]
+                collected_data["ux_evaluation"] = ux_evaluation
+                log.info(f"UX Score calculated: {collected_data['score']}/10")
+            else:
+                log.warning("UX evaluation returned no score")
+                collected_data["score"] = None
+        except Exception as eval_err:
+            log.warning(f"UX evaluation failed: {eval_err}")
+            collected_data["score"] = None
+
 
     except Exception as e:
         err = traceback.format_exc()

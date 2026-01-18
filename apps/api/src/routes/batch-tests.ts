@@ -638,7 +638,7 @@ Pain Points: ${p.painPoints?.join('; ') || ''}`,
         start_url: targetUrl,
         max_steps: maxSteps,
         questionnaire: questionnaire || {},
-        concurrency: Math.min(selectedPersonas.length, 4),
+        concurrency: Math.min(selectedPersonas.length, 5), // Support up to 5 concurrent agents
         headless: true,
         example_persona: selectedPersonas[0]?.persona,
         personas: uxAgentPersonas, // Pass pre-generated personas to skip generation

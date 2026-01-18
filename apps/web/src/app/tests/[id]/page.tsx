@@ -376,50 +376,8 @@ export default function TestDetails() {
             {/* Completed - Show Reports */}
             {(batchTestRun.status === "completed" || (batchTestRun.useUXAgent && uxagentRuns.length > 0)) && (
               <>
-                {/* View Tabs */}
-                <div className="border-b border-neutral-200 overflow-x-auto">
-                  <div className="flex gap-1 min-w-max">
-                    {/* UXAgent Tab - Show first if UXAgent was used */}
-                    {batchTestRun.useUXAgent && uxagentRuns.length > 0 && (
-                      <button
-                        onClick={() => setSelectedView("uxagent")}
-                        className={`px-6 py-3 text-sm font-medium transition-colors whitespace-nowrap ${selectedView === "uxagent"
-                          ? "border-b-2 border-neutral-900 text-neutral-900"
-                          : "text-neutral-500 hover:text-neutral-900"
-                          }`}
-                      >
-                        🤖 UXAgent Results
-                      </button>
-                    )}
-                    {/* Aggregated Report Tab - Only show if we have one */}
-                    {aggregatedReport && (
-                      <button
-                        onClick={() => setSelectedView("aggregated")}
-                        className={`px-6 py-3 text-sm font-medium transition-colors whitespace-nowrap ${selectedView === "aggregated"
-                          ? "border-b-2 border-neutral-900 text-neutral-900"
-                          : "text-neutral-500 hover:text-neutral-900"
-                          }`}
-                      >
-                        Aggregated Report
-                      </button>
-                    )}
-                    {testRuns.map((tr, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setSelectedView(index)}
-                        className={`px-6 py-3 text-sm font-medium transition-colors whitespace-nowrap ${selectedView === index
-                          ? "border-b-2 border-neutral-900 text-neutral-900"
-                          : "text-neutral-500 hover:text-neutral-900"
-                          }`}
-                      >
-                        {tr.testRun.personaName}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 {/* UXAgent Report View */}
-                {selectedView === "uxagent" && batchTestRun.useUXAgent && (
+                {batchTestRun.useUXAgent && uxagentRuns.length > 0 && (
                   <UXAgentReportView
                     uxagentRuns={uxagentRuns}
                     targetUrl={batchTestRun.targetUrl}

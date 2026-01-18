@@ -92,7 +92,7 @@ Make each persona feel authentic with specific details, not generic stereotypes.
 
   try {
     const result = await generateObject({
-      model: openai("gpt-4o"),
+      model: openai("gpt-4o-mini"), // Using mini for faster generation
       schema: PersonaGenerationResultSchema,
       prompt,
       temperature: 0.8, // Higher temperature for more creative/diverse personas

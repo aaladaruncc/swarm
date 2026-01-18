@@ -3,10 +3,11 @@
 import { useState } from "react";
 import Image from "next/image";
 import { type UXAgentRun, type TestRunWithReport } from "@/lib/batch-api";
-import { ChevronDown, ChevronUp, Brain, Eye, MousePointer, Image as ImageIcon, AlertCircle, CheckCircle2, Clock, User, Loader2, ChevronLeft, ChevronRight, Lightbulb, MessageCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, Brain, Eye, MousePointer, Image as ImageIcon, AlertCircle, CheckCircle2, Clock, User, Loader2, ChevronLeft, ChevronRight, Lightbulb, MessageCircle, LayoutDashboard } from "lucide-react";
 import { InsightsTab } from "./InsightsTab";
 import { ThoughtsTab } from "./ThoughtsTab";
 import { ChatTab } from "./ChatTab";
+import { AggregatedInsights } from "./AggregatedInsights";
 
 interface UXAgentReportViewProps {
     uxagentRuns: UXAgentRun[];
@@ -38,6 +39,7 @@ function getStatusIcon(status: string) {
 }
 
 export function UXAgentReportView({ uxagentRuns, targetUrl, testRuns }: UXAgentReportViewProps) {
+    const [viewMode, setViewMode] = useState<"aggregate" | "individual">(uxagentRuns.length > 1 ? "aggregate" : "individual");
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [activeTab, setActiveTab] = useState<"overview" | "thoughts" | "actions" | "memory" | "screenshots" | "insights" | "chat">("overview");
 
@@ -50,6 +52,7 @@ export function UXAgentReportView({ uxagentRuns, targetUrl, testRuns }: UXAgentR
     }
 
     const selectedRun = uxagentRuns[selectedIndex];
+
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -65,202 +68,239 @@ export function UXAgentReportView({ uxagentRuns, targetUrl, testRuns }: UXAgentR
 
     return (
         <div className="space-y-6">
-            {/* Agent Selector - Horizontal Cards */}
-            <div className="bg-neutral-50 border border-neutral-200 p-4">
-                <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wide">
-                        Agent Runs ({uxagentRuns.length})
-                    </h3>
-                    {uxagentRuns.length > 3 && (
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={handlePrev}
-                                disabled={selectedIndex === 0}
-                                className="p-1 hover:bg-neutral-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                            >
-                                <ChevronLeft size={16} />
-                            </button>
-                            <span className="text-xs text-neutral-500 font-mono">
-                                {selectedIndex + 1}/{uxagentRuns.length}
-                            </span>
-                            <button
-                                onClick={handleNext}
-                                disabled={selectedIndex === uxagentRuns.length - 1}
-                                className="p-1 hover:bg-neutral-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                            >
-                                <ChevronRight size={16} />
-                            </button>
+            {/* View Mode Toggle - Only show for multi-agent runs */}
+            {uxagentRuns.length > 1 && (
+                <div className="flex items-center gap-2 border-b border-neutral-200 pb-4">
+                    <button
+                        onClick={() => setViewMode("aggregate")}
+                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all ${viewMode === "aggregate"
+                            ? "bg-neutral-900 text-white"
+                            : "bg-white border border-neutral-200 text-neutral-600 hover:border-neutral-400"
+                            }`}
+                    >
+                        <LayoutDashboard size={16} />
+                        Aggregate View
+                    </button>
+                    <button
+                        onClick={() => setViewMode("individual")}
+                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all ${viewMode === "individual"
+                            ? "bg-neutral-900 text-white"
+                            : "bg-white border border-neutral-200 text-neutral-600 hover:border-neutral-400"
+                            }`}
+                    >
+                        <User size={16} />
+                        Individual Agents
+                    </button>
+                </div>
+            )}
+
+            {/* Aggregate View */}
+            {viewMode === "aggregate" && uxagentRuns.length > 1 && (
+                <AggregatedInsights uxagentRuns={uxagentRuns} />
+            )}
+
+            {/* Individual View - Agent Selector */}
+            {(viewMode === "individual" || uxagentRuns.length === 1) && (
+                <>
+                    <div className="bg-neutral-50 border border-neutral-200 p-4">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wide">
+                                Agent Runs ({uxagentRuns.length})
+                            </h3>
+                            {uxagentRuns.length > 3 && (
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={handlePrev}
+                                        disabled={selectedIndex === 0}
+                                        className="p-1 hover:bg-neutral-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        <ChevronLeft size={16} />
+                                    </button>
+                                    <span className="text-xs text-neutral-500 font-mono">
+                                        {selectedIndex + 1}/{uxagentRuns.length}
+                                    </span>
+                                    <button
+                                        onClick={handleNext}
+                                        disabled={selectedIndex === uxagentRuns.length - 1}
+                                        className="p-1 hover:bg-neutral-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        <ChevronRight size={16} />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                            {uxagentRuns.map((run, idx) => {
+                                const isSelected = idx === selectedIndex;
+                                const personaName = getPersonaName(run, idx);
+                                const duration = run.startedAt && run.completedAt
+                                    ? Math.round((new Date(run.completedAt).getTime() - new Date(run.startedAt).getTime()) / 1000)
+                                    : null;
+
+                                return (
+                                    <button
+                                        key={run.id}
+                                        onClick={() => setSelectedIndex(idx)}
+                                        className={`group relative p-4 text-left transition-all duration-200 ${isSelected
+                                            ? "bg-neutral-900 text-white border-2 border-neutral-900 shadow-lg"
+                                            : "bg-white border border-neutral-200 hover:border-neutral-400 hover:shadow-sm"
+                                            }`}
+                                    >
+                                        {/* Selection indicator */}
+                                        {isSelected && (
+                                            <div className="absolute top-0 left-0 w-0 h-0 border-t-[20px] border-r-[20px] border-t-white border-r-transparent opacity-30" />
+                                        )}
+
+                                        <div className="flex items-start justify-between mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isSelected ? "bg-white/20" : "bg-neutral-100"
+                                                    }`}>
+                                                    <User size={16} className={isSelected ? "text-white" : "text-neutral-600"} />
+                                                </div>
+                                                <div>
+                                                    <h4 className={`font-medium text-sm ${isSelected ? "text-white" : "text-neutral-900"}`}>
+                                                        {personaName}
+                                                    </h4>
+                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                        {getStatusIcon(run.status)}
+                                                        <span className={`text-xs capitalize ${isSelected ? "text-neutral-300" : "text-neutral-500"}`}>
+                                                            {run.status}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {run.score !== null && (
+                                                <div className={`text-right ${isSelected ? "text-white" : "text-neutral-900"}`}>
+                                                    <span className="text-lg font-light">{run.score}</span>
+                                                    <span className={`text-xs ${isSelected ? "text-neutral-300" : "text-neutral-400"}`}>/10</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className={`flex items-center gap-4 text-xs pt-2 border-t ${isSelected ? "border-white/20" : "border-neutral-100"
+                                            }`}>
+                                            <span className={isSelected ? "text-neutral-300" : "text-neutral-500"}>
+                                                {run.stepsTaken || 0} steps
+                                            </span>
+                                            <span className={isSelected ? "text-neutral-300" : "text-neutral-500"}>
+                                                {run.screenshots?.length || 0} screenshots
+                                            </span>
+                                            {duration && (
+                                                <span className={isSelected ? "text-neutral-300" : "text-neutral-500"}>
+                                                    {duration}s
+                                                </span>
+                                            )}
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Current Run Details */}
+                    {selectedRun && (
+                        <div className="space-y-6">
+                            {/* Run Header */}
+                            <div className="border border-neutral-900 bg-neutral-900 text-white p-6">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div>
+                                        <h2 className="text-xl font-light mb-1">{selectedRun.intent}</h2>
+                                        <p className="text-neutral-400 text-sm">{selectedRun.startUrl}</p>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <span className={`px-3 py-1 text-xs font-medium border ${getStatusColor(selectedRun.status)}`}>
+                                            {selectedRun.status}
+                                        </span>
+                                        {selectedRun.score !== null && (
+                                            <div className="text-right">
+                                                <span className="text-3xl font-light">{selectedRun.score}</span>
+                                                <span className="text-neutral-400 text-sm">/10</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-6 text-sm">
+                                    <div>
+                                        <p className="text-neutral-400 text-xs uppercase tracking-wide mb-1">Steps Taken</p>
+                                        <p className="font-light">{selectedRun.stepsTaken || 0} steps</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-neutral-400 text-xs uppercase tracking-wide mb-1">Screenshots</p>
+                                        <p className="font-light">{selectedRun.screenshots?.length || 0} captured</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-neutral-400 text-xs uppercase tracking-wide mb-1">Duration</p>
+                                        <p className="font-light">
+                                            {selectedRun.startedAt && selectedRun.completedAt
+                                                ? `${Math.round((new Date(selectedRun.completedAt).getTime() - new Date(selectedRun.startedAt).getTime()) / 1000)}s`
+                                                : "N/A"
+                                            }
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Tabs */}
+                            <div className="border-b border-neutral-200">
+                                <div className="flex gap-1 overflow-x-auto">
+                                    {[
+                                        { key: "overview", label: "Overview", icon: Eye },
+                                        { key: "thoughts", label: "Thoughts", icon: Brain },
+                                        { key: "actions", label: "Actions", icon: MousePointer },
+                                        { key: "screenshots", label: "Screenshots", icon: ImageIcon },
+                                        { key: "insights", label: "Insights", icon: Lightbulb },
+                                        { key: "chat", label: "Chat", icon: MessageCircle },
+                                    ].map(({ key, label, icon: Icon }) => (
+                                        <button
+                                            key={key}
+                                            onClick={() => setActiveTab(key as any)}
+                                            className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === key
+                                                ? "border-b-2 border-neutral-900 text-neutral-900"
+                                                : "text-neutral-500 hover:text-neutral-900"
+                                                }`}
+                                        >
+                                            <Icon size={16} />
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Tab Content */}
+                            <div className="min-h-[400px]">
+                                {activeTab === "overview" && (
+                                    <OverviewTab run={selectedRun} />
+                                )}
+                                {activeTab === "thoughts" && (
+                                    <ThoughtsTab run={selectedRun} />
+                                )}
+                                {activeTab === "actions" && (
+                                    <ActionsTab actions={selectedRun.actionTrace || []} />
+                                )}
+                                {activeTab === "memory" && (
+                                    <MemoryTab memories={selectedRun.memoryTrace || []} />
+                                )}
+                                {activeTab === "screenshots" && (
+                                    <ScreenshotsTab screenshots={selectedRun.screenshots || []} />
+                                )}
+                                {activeTab === "insights" && (
+                                    <InsightsTab run={selectedRun} />
+                                )}
+                                {activeTab === "chat" && (
+                                    <ChatTab run={selectedRun} />
+                                )}
+                            </div>
                         </div>
                     )}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                    {uxagentRuns.map((run, idx) => {
-                        const isSelected = idx === selectedIndex;
-                        const personaName = getPersonaName(run, idx);
-                        const duration = run.startedAt && run.completedAt
-                            ? Math.round((new Date(run.completedAt).getTime() - new Date(run.startedAt).getTime()) / 1000)
-                            : null;
-
-                        return (
-                            <button
-                                key={run.id}
-                                onClick={() => setSelectedIndex(idx)}
-                                className={`group relative p-4 text-left transition-all duration-200 ${isSelected
-                                    ? "bg-neutral-900 text-white border-2 border-neutral-900 shadow-lg"
-                                    : "bg-white border border-neutral-200 hover:border-neutral-400 hover:shadow-sm"
-                                    }`}
-                            >
-                                {/* Selection indicator */}
-                                {isSelected && (
-                                    <div className="absolute top-0 left-0 w-0 h-0 border-t-[20px] border-r-[20px] border-t-white border-r-transparent opacity-30" />
-                                )}
-
-                                <div className="flex items-start justify-between mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isSelected ? "bg-white/20" : "bg-neutral-100"
-                                            }`}>
-                                            <User size={16} className={isSelected ? "text-white" : "text-neutral-600"} />
-                                        </div>
-                                        <div>
-                                            <h4 className={`font-medium text-sm ${isSelected ? "text-white" : "text-neutral-900"}`}>
-                                                {personaName}
-                                            </h4>
-                                            <div className="flex items-center gap-1.5 mt-0.5">
-                                                {getStatusIcon(run.status)}
-                                                <span className={`text-xs capitalize ${isSelected ? "text-neutral-300" : "text-neutral-500"}`}>
-                                                    {run.status}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {run.score !== null && (
-                                        <div className={`text-right ${isSelected ? "text-white" : "text-neutral-900"}`}>
-                                            <span className="text-lg font-light">{run.score}</span>
-                                            <span className={`text-xs ${isSelected ? "text-neutral-300" : "text-neutral-400"}`}>/10</span>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className={`flex items-center gap-4 text-xs pt-2 border-t ${isSelected ? "border-white/20" : "border-neutral-100"
-                                    }`}>
-                                    <span className={isSelected ? "text-neutral-300" : "text-neutral-500"}>
-                                        {run.stepsTaken || 0} steps
-                                    </span>
-                                    <span className={isSelected ? "text-neutral-300" : "text-neutral-500"}>
-                                        {run.screenshots?.length || 0} screenshots
-                                    </span>
-                                    {duration && (
-                                        <span className={isSelected ? "text-neutral-300" : "text-neutral-500"}>
-                                            {duration}s
-                                        </span>
-                                    )}
-                                </div>
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-
-            {/* Current Run Details */}
-            {selectedRun && (
-                <div className="space-y-6">
-                    {/* Run Header */}
-                    <div className="border border-neutral-900 bg-neutral-900 text-white p-6">
-                        <div className="flex items-start justify-between mb-4">
-                            <div>
-                                <h2 className="text-xl font-light mb-1">{selectedRun.intent}</h2>
-                                <p className="text-neutral-400 text-sm">{selectedRun.startUrl}</p>
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <span className={`px-3 py-1 text-xs font-medium border ${getStatusColor(selectedRun.status)}`}>
-                                    {selectedRun.status}
-                                </span>
-                                {selectedRun.score !== null && (
-                                    <div className="text-right">
-                                        <span className="text-3xl font-light">{selectedRun.score}</span>
-                                        <span className="text-neutral-400 text-sm">/10</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-6 text-sm">
-                            <div>
-                                <p className="text-neutral-400 text-xs uppercase tracking-wide mb-1">Steps Taken</p>
-                                <p className="font-light">{selectedRun.stepsTaken || 0} steps</p>
-                            </div>
-                            <div>
-                                <p className="text-neutral-400 text-xs uppercase tracking-wide mb-1">Screenshots</p>
-                                <p className="font-light">{selectedRun.screenshots?.length || 0} captured</p>
-                            </div>
-                            <div>
-                                <p className="text-neutral-400 text-xs uppercase tracking-wide mb-1">Duration</p>
-                                <p className="font-light">
-                                    {selectedRun.startedAt && selectedRun.completedAt
-                                        ? `${Math.round((new Date(selectedRun.completedAt).getTime() - new Date(selectedRun.startedAt).getTime()) / 1000)}s`
-                                        : "N/A"
-                                    }
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Tabs */}
-                    <div className="border-b border-neutral-200">
-                        <div className="flex gap-1 overflow-x-auto">
-                            {[
-                                { key: "overview", label: "Overview", icon: Eye },
-                                { key: "thoughts", label: "Thoughts", icon: Brain },
-                                { key: "actions", label: "Actions", icon: MousePointer },
-                                { key: "screenshots", label: "Screenshots", icon: ImageIcon },
-                                { key: "insights", label: "Insights", icon: Lightbulb },
-                                { key: "chat", label: "Chat", icon: MessageCircle },
-                            ].map(({ key, label, icon: Icon }) => (
-                                <button
-                                    key={key}
-                                    onClick={() => setActiveTab(key as any)}
-                                    className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === key
-                                        ? "border-b-2 border-neutral-900 text-neutral-900"
-                                        : "text-neutral-500 hover:text-neutral-900"
-                                        }`}
-                                >
-                                    <Icon size={16} />
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Tab Content */}
-                    <div className="min-h-[400px]">
-                        {activeTab === "overview" && (
-                            <OverviewTab run={selectedRun} />
-                        )}
-                        {activeTab === "thoughts" && (
-                            <ThoughtsTab run={selectedRun} />
-                        )}
-                        {activeTab === "actions" && (
-                            <ActionsTab actions={selectedRun.actionTrace || []} />
-                        )}
-                        {activeTab === "memory" && (
-                            <MemoryTab memories={selectedRun.memoryTrace || []} />
-                        )}
-                        {activeTab === "screenshots" && (
-                            <ScreenshotsTab screenshots={selectedRun.screenshots || []} />
-                        )}
-                        {activeTab === "insights" && (
-                            <InsightsTab run={selectedRun} />
-                        )}
-                        {activeTab === "chat" && (
-                            <ChatTab run={selectedRun} />
-                        )}
-                    </div>
-                </div>
+                </>
             )}
         </div>
     );
 }
+
 
 // Overview Tab
 function OverviewTab({ run }: { run: UXAgentRun }) {

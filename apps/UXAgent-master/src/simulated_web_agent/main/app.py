@@ -169,6 +169,7 @@ async def send_agent_result(callback_url: str, api_key: str, agent_data: dict, t
             "persona": agent_data.get("persona"),
             "intent": agent_data.get("intent"),
             "timing_metrics": agent_data.get("timing_metrics", {}),
+            "ux_evaluation": agent_data.get("ux_evaluation", {}),
         },
         "actionTrace": agent_data.get("actions", []),
         "memoryTrace": memory_trace,
