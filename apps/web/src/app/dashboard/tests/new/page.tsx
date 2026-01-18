@@ -131,44 +131,23 @@ export default function NewTest() {
   const handleGeneratePersonas = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setStep(useUXAgent ? "starting" : "generating");
+    setStep("generating");
 
     try {
       const result = await generatePersonas(url, userDescription, agentCount);
       setPersonas(result.personas);
       setRecommendedIndices(result.recommendedIndices);
 
-      // If UXAgent is enabled, immediately start the test with recommended personas
-      if (useUXAgent) {
-        const personasToUse = result.personas;
-        // Limit to agentCount if needed
-        // fallback to first N indices if recommendedIndices is missing/empty
-        let indicesToUse = (result.recommendedIndices || []).slice(0, agentCount);
-
-        if (indicesToUse.length < agentCount && result.personas.length > 0) {
-          // Fill with first available indices that aren't already included
-          const availableIndices = result.personas.map((_, i) => i);
-          const remaining = availableIndices.filter(i => !indicesToUse.includes(i));
-          indicesToUse = [...indicesToUse, ...remaining.slice(0, agentCount - indicesToUse.length)];
-        }
-
-        setSelectedIndices(indicesToUse);
-
-        await createBatchTest(
-          url,
-          userDescription,
-          result.personas,
-          indicesToUse,
-          agentCount,
-          useUXAgent,
-          20
-        ).then((res) => {
-          router.push(`/tests/${res.batchTestRun.id}`);
-        });
-      } else {
-        setSelectedIndices(result.recommendedIndices);
-        setStep("select");
+      // Preselect recommended personas, then let the user review before starting.
+      let indicesToUse = (result.recommendedIndices || []).slice(0, agentCount);
+      if (indicesToUse.length < agentCount && result.personas.length > 0) {
+        const availableIndices = result.personas.map((_, i) => i);
+        const remaining = availableIndices.filter((i) => !indicesToUse.includes(i));
+        indicesToUse = [...indicesToUse, ...remaining.slice(0, agentCount - indicesToUse.length)];
       }
+
+      setSelectedIndices(indicesToUse);
+      setStep("select");
     } catch (err) {
       console.error("Error generating/starting:", err);
       setError(err instanceof Error ? err.message : "Failed to generate personas");
@@ -413,12 +392,7 @@ export default function NewTest() {
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>{useUXAgent ? "Starting Simulation..." : "Generating..."}</span>
-                  </>
-                ) : useUXAgent ? (
-                  <>
-                    <Zap size={16} />
-                    <span>Start Simulation</span>
+                    <span>Generating...</span>
                   </>
                 ) : (
                   <span>Generate Personas</span>

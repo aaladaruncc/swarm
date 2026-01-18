@@ -11,6 +11,7 @@ import type { Session } from "../lib/auth.js";
 import type { AgentResult } from "../lib/agent.js";
 import { uploadScreenshot, generateScreenshotKey, getPresignedUrl } from "../lib/s3.js";
 import { startUXAgentRun, checkUXAgentHealth } from "../lib/uxagent-client.js";
+import { SAMPLE_PERSONAS } from "../lib/personas.js";
 
 type Variables = {
   user: Session["user"];
@@ -40,6 +41,31 @@ const createBatchTestSchema = z.object({
 });
 
 // ============================================================================
+// FALLBACK PERSONAS
+// ============================================================================
+
+const fallbackPersonas = SAMPLE_PERSONAS.map((persona, index) => {
+  const incomeByLevel: Record<string, string> = {
+    low: "$25,000",
+    medium: "$60,000",
+    high: "$120,000",
+  };
+
+  return {
+    ...persona,
+    gender: "Not specified",
+    education: "Not specified",
+    income: incomeByLevel[persona.incomeLevel] || "Not specified",
+    background: `${persona.name} is a ${persona.age}-year-old ${persona.occupation} from ${persona.country}.`,
+    financialSituation: `${persona.name} has a ${persona.incomeLevel} income level and plans spending carefully.`,
+    browsingHabits: `Tech savviness: ${persona.techSavviness}. ${persona.context || ""}`.trim(),
+    professionalLife: `Works as a ${persona.occupation} and balances daily tasks with time constraints.`,
+    personalStyle: "Practical and goal-oriented.",
+    relevanceScore: Math.min(9, 6 + (index % 4)),
+  };
+});
+
+// ============================================================================
 // ROUTES
 // ============================================================================
 
@@ -52,7 +78,9 @@ batchTestsRoutes.post(
     const { targetUrl, userDescription, agentCount } = c.req.valid("json");
 
     try {
-      console.log(`[${user.id}] Generating personas for ${targetUrl} (will select ${agentCount})...`);
+      console.log(
+        `[${user.id}] Generating personas for ${targetUrl || "no-url"} (will select ${agentCount})...`
+      );
 
       const result = await generatePersonas(userDescription, targetUrl);
       const selection = selectTopPersonas(result.personas, agentCount || 3);
@@ -64,14 +92,27 @@ batchTestsRoutes.post(
         selectionReasoning: selection.reasoning,
       });
     } catch (error) {
-      console.error("Failed to generate personas:", error);
-      return c.json(
-        {
-          error: "Failed to generate personas",
-          details: error instanceof Error ? error.message : "Unknown error",
-        },
-        500
-      );
+      const message = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : undefined;
+      const rawText = (error as any)?.text;
+
+      console.error("[generate-personas] Failed to generate personas:", message);
+      if (stack) {
+        console.error("[generate-personas] Stack:", stack);
+      }
+      if (rawText) {
+        console.error("[generate-personas] Raw error text:", rawText);
+      }
+      const selection = selectTopPersonas(fallbackPersonas, agentCount || 3);
+
+      return c.json({
+        personas: fallbackPersonas,
+        reasoning: "Fallback personas used due to generation error.",
+        recommendedIndices: selection.selectedIndices,
+        selectionReasoning: selection.reasoning,
+        generationWarning: message,
+        fallbackUsed: true,
+      });
     }
   }
 );

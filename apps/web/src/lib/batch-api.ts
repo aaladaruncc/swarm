@@ -176,7 +176,11 @@ async function fetchWithAuth(path: string, options: RequestInit = {}) {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: "Request failed" }));
-    throw new Error(error.error || "Request failed");
+    const message =
+      error.details ||
+      error.error ||
+      (typeof error === "string" ? error : "Request failed");
+    throw new Error(message);
   }
 
   return response.json();
@@ -231,6 +235,8 @@ export async function generatePersonas(
   reasoning: string;
   recommendedIndices: number[];
   selectionReasoning: string;
+  generationWarning?: string;
+  fallbackUsed?: boolean;
 }> {
   return fetchWithAuth("/api/batch-tests/generate-personas", {
     method: "POST",

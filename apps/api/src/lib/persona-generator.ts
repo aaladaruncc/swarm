@@ -101,7 +101,15 @@ Make each persona feel authentic with specific details, not generic stereotypes.
     console.log(`✅ Generated ${result.object.personas.length} personas`);
     return result.object;
   } catch (error: any) {
-    console.error("Failed to generate personas:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
+    console.error("Failed to generate personas:", message);
+    if (stack) {
+      console.error("Persona generation stack:", stack);
+    }
+    if (error?.text) {
+      console.error("Persona generation raw text:", error.text);
+    }
 
     // If the error contains the response text, try to extract it manually
     if (error?.text) {
