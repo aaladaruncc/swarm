@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { generatePersonas, createBatchTest, getSwarms, type GeneratedPersona, type Swarm } from "@/lib/batch-api";
 import { GeneratingPersonasLoader } from "@/components/ui/generating-personas-loader";
-import { Globe, User, Loader2, Zap, Info, Check, Minus, Plus, Users, X, ArrowRight, Bot } from "lucide-react";
+import { Globe, User, Loader2, Zap, Info, Check, Minus, Plus, Users, X, ArrowRight, Bot, Settings, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function NewTest() {
@@ -36,7 +36,8 @@ export default function NewTest() {
   const [error, setError] = useState("");
 
   // UXAgent toggle
-  const [useUXAgent, setUseUXAgent] = useState(false);
+  const [useUXAgent, setUseUXAgent] = useState(true); // UXAgent is default
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
   const loadSwarms = useCallback(async () => {
     setIsLoadingSwarms(true);
@@ -339,36 +340,46 @@ export default function NewTest() {
               </p>
             </section>
 
-            {/* UXAgent Toggle */}
+            {/* Advanced Settings */}
             <section className="space-y-4 border-t border-neutral-100 pt-6">
-              <div className="flex items-center gap-3 text-neutral-900 border-b border-neutral-100 pb-2">
-                <Bot size={18} className="stroke-1" />
-                <h2 className="text-base font-medium">Agent Engine</h2>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                className="flex items-center gap-2 text-neutral-500 hover:text-neutral-900 transition-colors"
+              >
+                <Settings size={16} />
+                <span className="text-xs font-medium uppercase tracking-wide">Advanced Settings</span>
+                {showAdvancedSettings ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
 
-              <div className="flex items-center justify-between max-w-md">
-                <div>
-                  <label className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Use UXAgent Service</label>
-                  <p className="text-xs text-neutral-400 font-light mt-1">
-                    Advanced AI agent with persona-driven exploration
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setUseUXAgent(!useUXAgent)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${useUXAgent ? 'bg-neutral-900' : 'bg-neutral-200'
-                    }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${useUXAgent ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                  />
-                </button>
-              </div>
+              {showAdvancedSettings && (
+                <div className="space-y-4 pl-6 border-l-2 border-neutral-100">
+                  {/* Legacy Mode Toggle */}
+                  <div className="flex items-center justify-between max-w-md">
+                    <div>
+                      <label className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Use Legacy Engine</label>
+                      <p className="text-xs text-neutral-400 font-light mt-1">
+                        Original simpler agent (disable UXAgent)
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setUseUXAgent(!useUXAgent)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${!useUXAgent ? 'bg-neutral-900' : 'bg-neutral-200'
+                        }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${!useUXAgent ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                      />
+                    </button>
+                  </div>
 
-              {useUXAgent && (
-                <div className="p-3 bg-blue-50 border border-blue-100 text-xs font-light text-blue-700 rounded-none">
-                  <span className="font-medium">UXAgent enabled:</span> Each agent will explore your site with AI-driven decision making, capturing detailed action traces and observations.
+                  {!useUXAgent && (
+                    <div className="p-3 bg-amber-50 border border-amber-100 text-xs font-light text-amber-700">
+                      <span className="font-medium">Legacy mode:</span> Using simpler agent without advanced observation features. UXAgent is recommended for better insights.
+                    </div>
+                  )}
                 </div>
               )}
             </section>
@@ -553,21 +564,12 @@ export default function NewTest() {
               </button>
 
               <div className="flex items-center gap-4">
-                {/* UXAgent Toggle (Compact) */}
-                <div className="flex items-center gap-3 bg-neutral-50 px-3 py-1.5 border border-neutral-200">
-                  <div className="flex items-center gap-2">
-                    <Bot size={14} className="text-neutral-500" />
-                    <span className="text-xs font-medium text-neutral-700">UXAgent</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setUseUXAgent(!useUXAgent)}
-                    className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${useUXAgent ? 'bg-neutral-900' : 'bg-neutral-300'}`}
-                  >
-                    <span
-                      className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform ${useUXAgent ? 'translate-x-3.5' : 'translate-x-0.5'}`}
-                    />
-                  </button>
+                {/* Agent Mode Badge */}
+                <div className="flex items-center gap-2 bg-neutral-50 px-3 py-1.5 border border-neutral-200">
+                  <Bot size={14} className={useUXAgent ? "text-green-600" : "text-neutral-500"} />
+                  <span className="text-xs font-medium text-neutral-700">
+                    {useUXAgent ? "UXAgent" : "Legacy"}
+                  </span>
                 </div>
 
                 <button
@@ -585,7 +587,7 @@ export default function NewTest() {
                   ) : (
                     <>
                       <Zap size={16} />
-                      <span>{useUXAgent ? "Start Simulation" : `Deploy ${agentCount} Agent${agentCount !== 1 ? 's' : ''}`}</span>
+                      <span>Start Simulation</span>
                     </>
                   )}
                 </button>
@@ -791,26 +793,18 @@ export default function NewTest() {
                             </div>
                             <div className="flex items-center justify-between text-sm pt-2 border-t border-neutral-200">
                               <div className="flex items-center gap-2">
-                                <Bot size={14} className="text-neutral-500" />
-                                <span className="text-neutral-600 font-light">UXAgent Engine</span>
+                                <Bot size={14} className={useUXAgent ? "text-green-600" : "text-neutral-500"} />
+                                <span className="text-neutral-600 font-light">{useUXAgent ? "UXAgent Engine" : "Legacy Engine"}</span>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => setUseUXAgent(!useUXAgent)}
-                                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${useUXAgent ? 'bg-neutral-900' : 'bg-neutral-300'
-                                  }`}
-                              >
-                                <span
-                                  className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${useUXAgent ? 'translate-x-5' : 'translate-x-1'
-                                    }`}
-                                />
-                              </button>
+                              <span className={`text-xs px-2 py-0.5 ${useUXAgent ? "bg-green-50 text-green-700" : "bg-neutral-100 text-neutral-600"}`}>
+                                {useUXAgent ? "Active" : "Legacy"}
+                              </span>
                             </div>
                           </div>
 
-                          {useUXAgent && (
-                            <div className="p-3 bg-blue-50 border border-blue-100 text-xs font-light text-blue-700 mb-6 text-left">
-                              <span className="font-medium">UXAgent enabled:</span> Advanced AI-driven exploration with detailed action traces.
+                          {!useUXAgent && (
+                            <div className="p-3 bg-amber-50 border border-amber-100 text-xs font-light text-amber-700 mb-6 text-left">
+                              <span className="font-medium">Legacy mode:</span> Using simpler agent. Enable UXAgent in advanced settings for better insights.
                             </div>
                           )}
 
