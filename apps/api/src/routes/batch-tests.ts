@@ -61,6 +61,7 @@ const fallbackPersonas = SAMPLE_PERSONAS.map((persona, index) => {
     browsingHabits: `Tech savviness: ${persona.techSavviness}. ${persona.context || ""}`.trim(),
     professionalLife: `Works as a ${persona.occupation} and balances daily tasks with time constraints.`,
     personalStyle: "Practical and goal-oriented.",
+    context: persona.context || "",
     relevanceScore: Math.min(9, 6 + (index % 4)),
   };
 });
