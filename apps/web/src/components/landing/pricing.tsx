@@ -28,13 +28,13 @@ const PLANS = [
       "SLA & SSO",
     ],
   },
-  ];
+];
 
 export function Pricing() {
   return (
-    <section id="pricing" className="relative py-32 bg-white overflow-hidden">
+    <section id="pricing" className="relative py-32 bg-transparent overflow-hidden border-b border-white/5">
       <div className="container mx-auto px-6 max-w-7xl">
-        {/* Header - Matching Testing, evolved Style */}
+        {/* Header - Matching dark theme style */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -42,10 +42,10 @@ export function Pricing() {
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="text-center max-w-3xl mx-auto mb-20"
         >
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-serif font-medium tracking-tight text-neutral-900 mb-6 leading-[1.1]">
-          <span className="italic text-neutral-500">Simple</span> Pricing
-            </h2>
-          <p className="text-xl md:text-2xl text-neutral-600 font-sans font-light leading-relaxed">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-sans font-light tracking-tight text-white mb-6 leading-[1.1]">
+            <span className="text-white/50">Simple</span> Pricing
+          </h2>
+          <p className="text-xl md:text-2xl text-white/60 font-sans font-light leading-relaxed">
             Start small and scale as your user base grows.
           </p>
         </motion.div>
@@ -58,29 +58,31 @@ export function Pricing() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
               transition={{ duration: 0.6, delay: i * 0.1, ease: "easeOut" }}
-              className={`
-                bg-gradient-to-br ${i % 2 === 0 ? "from-neutral-50 to-white" : "from-white to-neutral-50"}
-                border border-neutral-200
+              className="
+                bg-white/5
+                backdrop-blur-sm
+                border border-white/10
                 p-8
                 flex flex-col
-                hover:border-neutral-300
+                hover:bg-white/[0.08]
+                hover:border-white/15
                 transition-all duration-300
                 group
-              `}
+              "
             >
               <div className="mb-6">
-                <h3 className="text-2xl font-serif font-normal text-neutral-900 mb-4 tracking-tight">
+                <h3 className="text-2xl font-sans font-light text-white mb-4 tracking-tight">
                   {plan.name}
                 </h3>
                 <div className="flex items-baseline gap-1 mb-4">
-                  <span className="text-4xl font-serif font-normal text-neutral-900">
+                  <span className="text-4xl font-sans font-light text-white">
                     {plan.price}
                   </span>
                   {plan.price !== "Custom" && (
-                    <span className="text-neutral-600 font-sans font-light">/month</span>
+                    <span className="text-white/50 font-sans font-light">/month</span>
                   )}
                 </div>
-                <p className="text-base text-neutral-600 font-sans font-light leading-relaxed">
+                <p className="text-base text-white/60 font-sans font-light leading-relaxed">
                   {plan.description}
                 </p>
               </div>
@@ -88,8 +90,8 @@ export function Pricing() {
               <ul className="space-y-4 mb-8 flex-1">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-center gap-3">
-                    <Check className="w-5 h-5 text-neutral-900 shrink-0" strokeWidth={1.5} />
-                    <span className="text-base text-neutral-600 font-sans font-light">
+                    <Check className="w-5 h-5 text-white/80 shrink-0" strokeWidth={1.5} />
+                    <span className="text-base text-white/70 font-sans font-light">
                       {feature}
                     </span>
                   </li>
@@ -98,7 +100,13 @@ export function Pricing() {
               
               <Link
                 href={plan.price === "Custom" ? "/login" : "/login"}
-                className="block w-full py-3 text-center text-sm font-sans font-light transition-all bg-neutral-900 text-white hover:bg-neutral-800"
+                className="block w-full py-3 text-center text-sm font-sans font-light transition-all text-white hover:opacity-90 rounded-lg"
+                style={{
+                  backgroundColor: plan.price === "Custom" 
+                    ? "rgba(255, 255, 255, 0.1)" 
+                    : "rgba(255, 255, 255, 0.15)",
+                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                }}
               >
                 {plan.price === "Custom" ? "Book Demo" : "Get Started"}
               </Link>

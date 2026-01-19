@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
-const playfair = Playfair_Display({ 
+const inter = Inter({ 
   subsets: ["latin"], 
-  variable: "--font-serif",
-  style: ["normal", "italic"]
+  variable: "--font-sans",
+  display: "swap",
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
-  title: "Swarm",
+  title: "Swarm - The User Simulator for Product Teams",
   description: "AI-powered user experience testing with realistic personas",
   icons: {
     icon: "/images/swarm_favicon.png",
@@ -24,7 +24,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" style={{ scrollBehavior: 'auto' }}>
-      <body className={`${inter.variable} ${playfair.variable} ${inter.className}`} suppressHydrationWarning>
+      <body className={`${inter.variable} ${inter.className}`} suppressHydrationWarning>
         {children}
       </body>
     </html>

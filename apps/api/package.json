@@ -10,6 +10,7 @@
     "test:agent": "tsx src/lib/agent.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.10",
     "@ai-sdk/openai": "^2.0.80",
     "@aws-sdk/client-s3": "^3.600.0",
     "@aws-sdk/s3-request-presigner": "^3.600.0",
@@ -18,7 +19,7 @@
     "@hono/node-server": "^1.13.7",
     "@hono/zod-validator": "^0.4.2",
     "@ux-testing/db": "workspace:*",
-    "ai": "^5.0.108",
+    "ai": "^6.0.39",
     "better-auth": "^1.1.10",
     "clsx": "^2.1.1",
     "dotenv": "^16.4.7",

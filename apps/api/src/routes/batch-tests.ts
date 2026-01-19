@@ -88,7 +88,6 @@ batchTestsRoutes.post(
 
       return c.json({
         personas: result.personas,
-        reasoning: result.reasoning,
         recommendedIndices: selection.selectedIndices,
         selectionReasoning: selection.reasoning,
       });

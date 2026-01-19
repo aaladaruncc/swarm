@@ -19,6 +19,24 @@ from dotenv import load_dotenv
 
 # from litellm import drop_params, token_counter
 from litellm.router import Router
+import litellm
+
+# Disable LiteLLM async logging worker to prevent event loop errors
+# This must be done before any Router instances are created
+# The async logging worker creates a queue bound to a specific event loop,
+# which causes errors when accessed from different event loops in concurrent tasks
+try:
+    litellm.suppress_debug_info = True
+    # Disable async callbacks that use the logging worker
+    litellm._async_success_callback = []
+    litellm._async_failure_callback = []
+    # Disable the logging worker entirely
+    litellm.set_verbose = False
+    # Set environment variable to disable async logging
+    import os
+    os.environ.setdefault("LITELLM_LOG", "ERROR")
+except Exception:
+    pass  # Continue even if litellm config fails
 
 from . import context
 

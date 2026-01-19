@@ -663,7 +663,18 @@ Output the next action to take to achieve the goal.
             )
         actions = json.loads(action)
         logger.info("actions: %s", actions)
-        planned_action = actions["actions"][0]
+        
+        # Handle case where LLM returns no actions
+        if not actions.get("actions") or len(actions["actions"]) == 0:
+            logger.warning("LLM returned empty actions list, creating a no-op action")
+            planned_action = {
+                "action": "wait",
+                "target": "",
+                "description": "No action available - waiting"
+            }
+        else:
+            planned_action = actions["actions"][0]
+        
         final_action = self._maybe_human_action(env, planned_action, last_action)
         await self.memory.add_memory_piece(
             Action(final_action.get("description", "Action"), self.memory, json.dumps(final_action))

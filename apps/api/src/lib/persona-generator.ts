@@ -1,39 +1,41 @@
-import { generateObject } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { generateText, Output } from "ai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { z } from "zod";
+
+// Create Google provider instance using existing environment variables
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || 
+          process.env.GEMINI_API_KEY || 
+          process.env.GOOGLE_API_KEY,
+});
 
 // ============================================================================
 // SCHEMAS
 // ============================================================================
 
 const PersonaSchema = z.object({
+  // Demographics (essential for testing)
   name: z.string(),
   age: z.number().min(18).max(100),
   gender: z.string().describe("Male, Female, or Non-binary"),
+  maritalStatus: z.enum(["single", "married", "divorced", "widowed", "partnered"]).describe("Marital status"),
   country: z.string(),
   occupation: z.string(),
   education: z.string().describe("Education level or degree"),
   incomeLevel: z.enum(["low", "medium", "high"]),
   income: z.string().describe("Approximate annual income with currency"),
   techSavviness: z.enum(["beginner", "intermediate", "advanced"]),
+  
+  // Goals (essential for testing behavior)
   primaryGoal: z.string(),
   painPoints: z.array(z.string()),
-
-  // Detailed narrative sections (matching UXAgent format)
-  background: z.string().describe("2-3 sentences about their life story, role, and what drives them"),
-  financialSituation: z.string().describe("Their financial habits, spending patterns, and budget considerations"),
-  browsingHabits: z.string().describe("How they typically browse/shop online, their preferences and frustrations"),
-  professionalLife: z.string().describe("Their work environment, responsibilities, and how they manage time"),
-  personalStyle: z.string().describe("Their personality traits, preferences, and behavioral patterns"),
-
-  // Original fields
-  context: z.string(),
+  
+  // Selection metric
   relevanceScore: z.number().min(0).max(10).describe("How relevant this persona is to the target audience (0-10)"),
 });
 
 const PersonaGenerationResultSchema = z.object({
   personas: z.array(PersonaSchema),
-  reasoning: z.string().describe("Brief explanation of why these personas were selected"),
 });
 
 export type GeneratedPersona = z.infer<typeof PersonaSchema>;
@@ -47,59 +49,41 @@ export async function generatePersonas(
   userDescription: string,
   targetUrl?: string
 ): Promise<PersonaGenerationResult> {
-  console.log(`Generating personas for: "${userDescription}" (URL: ${targetUrl || "none"})`);
+  const startTime = Date.now();
+  console.log(`[Persona Gen] Starting generation for: "${userDescription}" (URL: ${targetUrl || "none"})`);
 
-  const urlContext = targetUrl ? `Target Website: ${targetUrl}\n` : "";
+  const urlContext = targetUrl ? `Target: ${targetUrl}\n` : "";
 
-  const prompt = `You are a UX research expert creating detailed, realistic personas for user testing. Based on the target audience description, generate 10 diverse personas with rich narrative backstories.
+  // Optimized prompt - only essential fields for faster generation
+  const prompt = `Generate 6 diverse UX testing personas for: ${userDescription}
 
-${urlContext}User's Target Audience Description: ${userDescription}
+${urlContext}Requirements (demographics only - no narratives):
+- Demographics: name, age (18-100), gender, maritalStatus (single/married/divorced/widowed/partnered), country, occupation, education, incomeLevel (low/medium/high), income (with currency), techSavviness (beginner/intermediate/advanced)
+- Goals: primaryGoal (1 sentence), painPoints (3-4 items), relevanceScore (0-10)
+- Diversity: mix ages, all tech levels, different countries, varied marital statuses
 
-Create 10 distinct personas with DETAILED narrative profiles. Each persona should feel like a real person with a complete life story. Include:
-
-DEMOGRAPHICS:
-- name: A realistic full first name
-- age: Between 18-100  
-- gender: Male, Female, or Non-binary
-- country: Full country name
-- occupation: Specific job title or role
-- education: Their education level or degree
-- incomeLevel: "low", "medium", or "high"
-- income: Approximate annual income with currency (e.g., "$45,000", "£35,000")
-- techSavviness: "beginner", "intermediate", or "advanced"
-
-NARRATIVE SECTIONS (2-3 detailed sentences each):
-- background: Their life story - who they are, what drives them, their passions and goals
-- financialSituation: How they manage money, spending habits, budget consciousness, saving patterns
-- browsingHabits: How they shop/browse online, preferences for efficiency vs exploration, frustrations with websites
-- professionalLife: Work environment, daily responsibilities, time management, work-life balance
-- personalStyle: Personality traits, decision-making style, communication preferences, comfort with technology
-
-GOALS & PAIN POINTS:
-- primaryGoal: Their main objective when visiting this type of website (1 clear sentence)
-- painPoints: 3-4 specific frustrations or challenges (as an array)
-- context: Additional behavioral context relevant to testing (2-3 sentences)
-- relevanceScore: 0-10, how relevant is this persona to the described audience
-
-DIVERSITY REQUIREMENTS:
-- Mix of age groups (young adults, middle-aged, seniors)
-- All tech levels (beginners who struggle, intermediate users, power users)
-- Geographic diversity across different countries
-- Include accessibility considerations (vision, hearing, motor, cognitive)
-- Varied browsing styles (quick/efficient shoppers vs careful researchers)
-
-Make each persona feel authentic with specific details, not generic stereotypes.`;
+Keep it concise - demographics and goals only.`;
 
   try {
-    const result = await generateObject({
-      model: openai("gpt-4o-mini"), // Using mini for faster generation
-      schema: PersonaGenerationResultSchema,
+    const apiStartTime = Date.now();
+    const result = await generateText({
+      model: google("gemini-2.5-flash-lite") as any, // Fastest model: 4K RPM, 4M TPM, Unlimited RPD
+      output: Output.object({
+        schema: PersonaGenerationResultSchema,
+      }) as any,
       prompt,
-      temperature: 0.8, // Higher temperature for more creative/diverse personas
-    });
+      temperature: 0.7, // Slightly lower for faster, more consistent generation
+      maxOutputTokens: 3000, // Reduced since we removed narratives (6 personas × ~12 fields = ~72 fields)
+    } as any);
+    
+    const apiTime = Date.now() - apiStartTime;
+    console.log(`[Persona Gen] API call took ${apiTime}ms`);
 
-    console.log(`✅ Generated ${result.object.personas.length} personas`);
-    return result.object;
+    // In AI SDK v6, structured output is accessed via the output property
+    const output = (result as any).output as PersonaGenerationResult;
+    const totalTime = Date.now() - startTime;
+    console.log(`[Persona Gen] ✅ Generated ${output.personas.length} personas in ${totalTime}ms (API: ${apiTime}ms)`);
+    return output;
   } catch (error: any) {
     const message = error instanceof Error ? error.message : String(error);
     const stack = error instanceof Error ? error.stack : undefined;
