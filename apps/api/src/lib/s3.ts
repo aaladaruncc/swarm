@@ -65,3 +65,15 @@ export function generateScreenshotKey(
 ): string {
     return `screenshots/${runId}/step-${stepNumber}.${extension}`;
 }
+
+/**
+ * Generate S3 key for user-uploaded flow screenshots
+ * Stored in separate directory from agent-captured screenshots
+ */
+export function generateFlowScreenshotKey(
+    testRunId: string,
+    orderIndex: number,
+    extension: string = "png"
+): string {
+    return `user-uploaded-flows/${testRunId}/screen-${orderIndex}.${extension}`;
+}

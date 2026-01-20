@@ -309,8 +309,75 @@ export const uxagentChatMessages = pgTable("uxagent_chat_messages", {
 });
 
 // ============================================================================
+// SCREENSHOT FLOW TESTING
+// ============================================================================
+
+// Screenshot-based test runs (user uploads a sequence of screenshots)
+export const screenshotTestRuns = pgTable("screenshot_test_runs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+
+  // Test metadata
+  testName: text("test_name"),
+  userDescription: text("user_description"), // Context about what's being tested
+  expectedTask: text("expected_task"), // Optional: What user is trying to accomplish
+
+  // Persona
+  personaData: jsonb("persona_data"), // Single persona for MVP
+
+  // Status
+  status: text("status").notNull().default("pending"),
+  // pending | uploading | analyzing | completed | failed
+
+  // Results
+  overallScore: integer("overall_score"), // 0-100
+  summary: text("summary"),
+  fullReport: jsonb("full_report"),
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  errorMessage: text("error_message"),
+});
+
+// Individual screenshots within a test run
+export const screenshotFlowImages = pgTable("screenshot_flow_images", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  screenshotTestRunId: uuid("screenshot_test_run_id")
+    .notNull()
+    .references(() => screenshotTestRuns.id, { onDelete: "cascade" }),
+
+  // Ordering & storage
+  orderIndex: integer("order_index").notNull(), // 0-based order in the flow
+  s3Key: text("s3_key").notNull(),
+  s3Url: text("s3_url").notNull(),
+
+  // User-provided context
+  description: text("description"), // Optional: User's description of this screen
+  context: text("context"), // Optional: What action led here
+
+  // Analysis results (filled after processing)
+  observations: jsonb("observations").$type<string[]>(),
+  positiveAspects: jsonb("positive_aspects").$type<string[]>(),
+  issues: jsonb("issues").$type<Array<{
+    severity: "low" | "medium" | "high" | "critical";
+    description: string;
+    recommendation: string;
+  }>>(),
+  accessibilityNotes: jsonb("accessibility_notes").$type<string[]>(),
+  thoughts: text("thoughts"), // Agent's stream of consciousness
+  comparisonWithPrevious: text("comparison_with_previous"),
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// ============================================================================
 // TYPE EXPORTS
 // ============================================================================
+
 
 
 export type User = typeof user.$inferSelect;
@@ -354,3 +421,9 @@ export type NewUxagentInsight = typeof uxagentInsights.$inferInsert;
 
 export type UxagentChatMessage = typeof uxagentChatMessages.$inferSelect;
 export type NewUxagentChatMessage = typeof uxagentChatMessages.$inferInsert;
+
+export type ScreenshotTestRun = typeof screenshotTestRuns.$inferSelect;
+export type NewScreenshotTestRun = typeof screenshotTestRuns.$inferInsert;
+
+export type ScreenshotFlowImage = typeof screenshotFlowImages.$inferSelect;
+export type NewScreenshotFlowImage = typeof screenshotFlowImages.$inferInsert;

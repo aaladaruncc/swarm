@@ -22,6 +22,7 @@ import { batchTestsRoutes } from "./routes/batch-tests.js";
 import { swarmsRoutes } from "./routes/swarms.js";
 import { apiKeysRoutes } from "./routes/api-keys.js";
 import { uxagentRoutes } from "./routes/uxagent.js";
+import { screenshotTestsRoutes } from "./routes/screenshot-tests.js";
 import { authMiddleware } from "./middleware/auth.js";
 
 const app = new Hono();
@@ -68,6 +69,11 @@ app.route("/api/tests", testsRoutes);
 app.route("/api/batch-tests", batchTestsRoutes);
 app.route("/api/swarms", swarmsRoutes);
 app.route("/api/api-keys", apiKeysRoutes);
+
+// Screenshot-based testing routes (user auth required)
+app.use("/api/screenshot-tests", authMiddleware);
+app.use("/api/screenshot-tests/*", authMiddleware);
+app.route("/api/screenshot-tests", screenshotTestsRoutes);
 
 // UXAgent routes (API key auth handled internally)
 app.route("/api/uxagent", uxagentRoutes);
