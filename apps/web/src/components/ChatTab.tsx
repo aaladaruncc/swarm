@@ -25,7 +25,6 @@ import {
     MessageActions,
     MessageAction,
 } from "./prompt-kit/message";
-import { TextStream } from "./prompt-kit/text-stream";
 import { useTheme } from "@/contexts/theme-context";
 
 interface ChatTabProps {
@@ -39,8 +38,40 @@ export function ChatTab({ run }: ChatTabProps) {
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
-    const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
     const [persona, setPersona] = useState<{ name: string; age: string | number; occupation: string } | null>(null);
+
+    // Helper function to clean markdown and quote formatting from text
+    const cleanText = (text: string): string => {
+        if (!text) return text;
+        let cleaned = text;
+        // Remove markdown blockquotes (lines starting with >)
+        cleaned = cleaned.replace(/^>\s+/gm, '');
+        // Remove HTML blockquote tags
+        cleaned = cleaned.replace(/<blockquote[^>]*>/gi, '');
+        cleaned = cleaned.replace(/<\/blockquote>/gi, '');
+        // Remove markdown bold (**text** or __text__) - do this first before single markers
+        cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, '$1');
+        cleaned = cleaned.replace(/__([^_]+)__/g, '$1');
+        // Remove markdown italic (*text* or _text_) - after double markers are removed
+        cleaned = cleaned.replace(/\*([^*]+)\*/g, '$1');
+        cleaned = cleaned.replace(/_([^_]+)_/g, '$1');
+        // Remove markdown code (`text`)
+        cleaned = cleaned.replace(/`([^`]+)`/g, '$1');
+        // Remove markdown links [text](url)
+        cleaned = cleaned.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1');
+        // Remove markdown strikethrough (~~text~~)
+        cleaned = cleaned.replace(/~~([^~]+)~~/g, '$1');
+        // Remove leading/trailing quotes if the entire text is wrapped
+        cleaned = cleaned.trim();
+        if ((cleaned.startsWith('"') && cleaned.endsWith('"')) || 
+            (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
+            cleaned = cleaned.slice(1, -1);
+        }
+        // Remove any remaining quote markers at the start/end
+        cleaned = cleaned.replace(/^["']+/, '');
+        cleaned = cleaned.replace(/["']+$/, '');
+        return cleaned.trim();
+    };
 
     useEffect(() => {
         loadChatHistory();
@@ -103,7 +134,6 @@ export function ChatTab({ run }: ChatTabProps) {
                 createdAt: new Date().toISOString(),
             };
             setMessages(prev => [...prev, assistantMessage]);
-            setStreamingMessageId(assistantMessage.id);
         } catch (err) {
             console.error("Failed to send message:", err);
             // Remove optimistic message on error
@@ -210,8 +240,6 @@ export function ChatTab({ run }: ChatTabProps) {
                     ) : (
                         <>
                             {messages.map((message) => {
-                                const isStreaming = streamingMessageId === message.id && message.role === "assistant";
-                                
                                 return (
                                     <Message key={message.id} role={message.role}>
                                         {message.role === "assistant" ? (
@@ -224,36 +252,22 @@ export function ChatTab({ run }: ChatTabProps) {
                                                             : "bg-[#1E1E1E] border-white/10"
                                                     }`}>
                                                         <MessageContent markdown={false}>
-                                                            {isStreaming ? (
-                                                                <p className={`text-sm font-light whitespace-pre-wrap ${
-                                                                    isLight ? "text-neutral-700" : "text-neutral-300"
-                                                                }`}>
-                                                                    <TextStream
-                                                                        text={message.content}
-                                                                        speed={30}
-                                                                        onComplete={() => setStreamingMessageId(null)}
-                                                                    />
-                                                                </p>
-                                                            ) : (
-                                                                <p className={`text-sm font-light whitespace-pre-wrap ${
-                                                                    isLight ? "text-neutral-700" : "text-neutral-300"
-                                                                }`}>
-                                                                    {message.content}
-                                                                </p>
-                                                            )}
+                                                            <p className={`text-sm font-light whitespace-pre-wrap ${
+                                                                isLight ? "text-neutral-700" : "text-neutral-300"
+                                                            }`}>
+                                                                {cleanText(message.content)}
+                                                            </p>
                                                         </MessageContent>
-                                                        {!isStreaming && (
-                                                            <MessageActions>
-                                                                <MessageAction
-                                                                    tooltip="Copy message"
-                                                                    onClick={async () => {
-                                                                        await navigator.clipboard.writeText(message.content);
-                                                                    }}
-                                                                >
-                                                                    <Copy size={14} />
-                                                                </MessageAction>
-                                                            </MessageActions>
-                                                        )}
+                                                        <MessageActions>
+                                                            <MessageAction
+                                                                tooltip="Copy message"
+                                                                onClick={async () => {
+                                                                    await navigator.clipboard.writeText(message.content);
+                                                                }}
+                                                            >
+                                                                <Copy size={14} />
+                                                            </MessageAction>
+                                                        </MessageActions>
                                                     </div>
                                                 </div>
                                             </>
@@ -292,7 +306,7 @@ export function ChatTab({ run }: ChatTabProps) {
                                     </Message>
                                 );
                             })}
-                            {sending && !streamingMessageId && (
+                            {sending && (
                                 <Message role="assistant">
                                     <MessageAvatar role="assistant" fallback={personaName} />
                                     <div className={`border p-3 rounded-lg ${
