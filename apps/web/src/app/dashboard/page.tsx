@@ -4,14 +4,16 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
-import { getBatchTests, getBatchTest, type BatchTestRun } from "@/lib/batch-api";
+import { getBatchTests, getBatchTest, deleteBatchTests, type BatchTestRun } from "@/lib/batch-api";
 import { Plus, Loader2, Trash2, CheckSquare, FileText, Download, Check, ChevronUp, ChevronDown } from "lucide-react";
 import { pdf } from '@react-pdf/renderer';
 import { AggregatedReportPDF } from '@/components/pdf/AggregatedReportPDF';
+import { useTheme } from "@/contexts/theme-context";
 
 export default function Dashboard() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
+  const { theme } = useTheme();
   const [batchTests, setBatchTests] = useState<BatchTestRun[]>([]);
   const [selectedTests, setSelectedTests] = useState<string[]>([]);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -19,8 +21,11 @@ export default function Dashboard() {
   const [isArchiving, setIsArchiving] = useState(false);
   const [exportingPDF, setExportingPDF] = useState(false);
   const [error, setError] = useState("");
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [sortField, setSortField] = useState<"date" | "agents" | "status" | "targetUrl" | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  
+  const isLight = theme === "light";
 
   useEffect(() => {
     if (!isPending && !session?.user) {
@@ -117,15 +122,18 @@ export default function Dashboard() {
     }
   };
 
+  const handleArchiveClick = () => {
+    if (selectedTests.length === 0) return;
+    setShowArchiveConfirm(true);
+  };
+
   const handleArchive = async () => {
     if (selectedTests.length === 0) return;
-    
-    if (!confirm(`Are you sure you want to archive ${selectedTests.length} test(s)?`)) return;
 
     setIsArchiving(true);
+    setShowArchiveConfirm(false);
     try {
-      // TODO: Implement batch test deletion API
-      // await deleteBatchTests(selectedTests);
+      await deleteBatchTests(selectedTests);
       // Remove locally
       setBatchTests(prev => prev.filter(t => !selectedTests.includes(t.id)));
       setSelectedTests([]);
@@ -144,10 +152,14 @@ export default function Dashboard() {
         onChange();
       }}
       className={`
-        w-5 h-5 border flex items-center justify-center cursor-pointer transition-all duration-200
+        w-5 h-5 border flex items-center justify-center cursor-pointer transition-all duration-200 rounded-md
         ${checked 
-          ? 'bg-neutral-900 border-neutral-900 text-white' 
-          : 'bg-white border-neutral-300 hover:border-neutral-500'
+          ? isLight
+            ? 'bg-neutral-900 border-neutral-900 text-white'
+            : 'bg-white border-white text-neutral-900'
+          : isLight
+            ? 'bg-transparent border-neutral-300 hover:border-neutral-500'
+          : 'bg-transparent border-neutral-600 hover:border-neutral-400'
         }
       `}
     >
@@ -157,20 +169,42 @@ export default function Dashboard() {
 
   if (isPending || !session?.user) {
     return (
-      <div className="h-full flex items-center justify-center bg-white text-neutral-900">
-        <Loader2 className="animate-spin w-8 h-8 text-neutral-400" />
+      <div className={`h-full flex items-center justify-center ${
+        isLight ? "bg-neutral-50" : "bg-neutral-950"
+      } ${isLight ? "text-neutral-900" : "text-white"}`}>
+        <Loader2 className={`animate-spin w-8 h-8 ${
+          isLight ? "text-neutral-500" : "text-neutral-400"
+        }`} />
       </div>
     );
   }
 
   const getStatusBadge = (status: string) => {
-    const styles: Record<string, string> = {
-      pending: "bg-neutral-100 text-neutral-600 border-neutral-200",
-      running_tests: "bg-blue-50 text-blue-700 border-blue-200",
-      aggregating: "bg-purple-50 text-purple-700 border-purple-200",
-      completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
-      failed: "bg-red-50 text-red-700 border-red-200",
-      terminated: "bg-orange-50 text-orange-700 border-orange-200",
+    const styles: Record<string, { light: string; dark: string }> = {
+      pending: {
+        light: "bg-neutral-100 text-neutral-600 border-neutral-300",
+        dark: "bg-neutral-500/10 text-neutral-400 border-neutral-500/20",
+      },
+      running_tests: {
+        light: "bg-blue-50 text-blue-700 border-blue-200",
+        dark: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+      },
+      aggregating: {
+        light: "bg-purple-50 text-purple-700 border-purple-200",
+        dark: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+      },
+      completed: {
+        light: "bg-emerald-50 text-emerald-700 border-emerald-200",
+        dark: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+      },
+      failed: {
+        light: "bg-red-50 text-red-700 border-red-200",
+        dark: "bg-red-500/10 text-red-400 border-red-500/20",
+      },
+      terminated: {
+        light: "bg-orange-50 text-orange-700 border-orange-200",
+        dark: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+      },
     };
     
     const labels: Record<string, string> = {
@@ -182,8 +216,11 @@ export default function Dashboard() {
       terminated: "Terminated",
     };
 
+    const statusStyle = styles[status] || styles.pending;
+    const style = isLight ? statusStyle.light : statusStyle.dark;
+
     return (
-      <span className={`px-2.5 py-0.5 text-xs font-medium border ${styles[status] || styles.pending}`}>
+      <span className={`px-2.5 py-0.5 text-xs font-medium border rounded-full ${style}`}>
         {labels[status] || status}
       </span>
     );
@@ -235,7 +272,11 @@ export default function Dashboard() {
     const isActive = sortField === field;
     return (
       <th 
-        className={`px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs bg-neutral-50 cursor-pointer hover:text-neutral-900 transition-colors select-none ${className}`}
+        className={`px-6 py-4 font-medium uppercase tracking-wider text-xs cursor-pointer transition-colors select-none ${
+          isLight
+            ? "bg-neutral-100 text-neutral-600 hover:text-neutral-900"
+            : "bg-[#252525] text-neutral-400 hover:text-white"
+        } ${className}`}
         onClick={() => handleSort(field)}
       >
         <div className="flex items-center gap-2">
@@ -245,7 +286,9 @@ export default function Dashboard() {
               size={12} 
               className={`transition-opacity ${
                 isActive && sortDirection === "asc" 
-                  ? "opacity-100 text-neutral-900" 
+                  ? isLight
+                    ? "opacity-100 text-neutral-900"
+                    : "opacity-100 text-white"
                   : "opacity-30"
               }`}
             />
@@ -253,7 +296,9 @@ export default function Dashboard() {
               size={12} 
               className={`-mt-1 transition-opacity ${
                 isActive && sortDirection === "desc" 
-                  ? "opacity-100 text-neutral-900" 
+                  ? isLight
+                    ? "opacity-100 text-neutral-900"
+                    : "opacity-100 text-white"
                   : "opacity-30"
               }`}
             />
@@ -267,13 +312,21 @@ export default function Dashboard() {
     <div className="p-8 max-w-7xl mx-auto w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
         <div>
-          <h1 className="text-3xl font-light tracking-tight text-neutral-900 mb-2">Playground</h1>
-          <p className="text-neutral-500 font-light">Create and manage your simulations.</p>
+          <h1 className={`text-3xl font-light tracking-tight mb-2 ${
+            isLight ? "text-neutral-900" : "text-white"
+          }`}>Playground</h1>
+          <p className={`font-light ${
+            isLight ? "text-neutral-500" : "text-neutral-400"
+          }`}>Create and manage your simulations.</p>
         </div>
         <div className="flex items-center gap-3">
           <Link
             href="/dashboard/tests/new"
-            className="group flex items-center justify-center gap-2 bg-neutral-900 text-white px-5 py-2.5 hover:bg-neutral-800 transition-all text-sm font-medium shadow-lg hover:shadow-xl hover:-translate-y-0.5 duration-300"
+            className={`group flex items-center justify-center gap-2 border px-5 py-2.5 transition-all text-sm font-medium shadow-lg hover:shadow-xl hover:-translate-y-0.5 duration-300 rounded-lg ${
+              isLight
+                ? "bg-neutral-900 text-white border-neutral-900 hover:bg-neutral-800"
+                : "bg-[#252525] text-white border-white/10 hover:bg-[#333]"
+            }`}
           >
             <Plus size={16} />
             <span>New Simulation</span>
@@ -282,15 +335,29 @@ export default function Dashboard() {
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-600 px-4 py-3 text-sm border border-red-100 mb-8 font-light">
+        <div className={`px-4 py-3 text-sm border mb-8 font-light rounded-lg ${
+          isLight
+            ? "bg-red-50 text-red-700 border-red-200"
+            : "bg-red-500/10 text-red-400 border-red-500/20"
+        }`}>
           {error}
         </div>
       )}
 
-      <div className="border border-neutral-200 flex flex-col relative overflow-hidden bg-white shadow-sm">
+      <div className={`border flex flex-col relative overflow-hidden shadow-sm rounded-xl ${
+        isLight
+          ? "border-neutral-200 bg-white"
+          : "border-white/10 bg-[#1E1E1E]"
+      }`}>
         {/* Table Header / Toolbar */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 bg-white/50 backdrop-blur-sm z-20">
-          <div className="text-sm font-medium text-neutral-500">
+        <div className={`flex items-center justify-between px-6 py-4 border-b backdrop-blur-sm z-20 ${
+          isLight
+            ? "border-neutral-200 bg-white"
+            : "border-white/5 bg-[#1E1E1E]"
+        }`}>
+          <div className={`text-sm font-medium ${
+            isLight ? "text-neutral-600" : "text-neutral-400"
+          }`}>
              {loading ? "Loading..." : `${batchTests.length} Simulations`}
           </div>
           
@@ -299,7 +366,11 @@ export default function Dashboard() {
               <>
                 <button
                   onClick={toggleSelectionMode}
-                  className="text-xs text-neutral-500 hover:text-neutral-900 transition-colors font-medium px-2 uppercase tracking-wide"
+                  className={`text-xs transition-colors font-medium px-2 uppercase tracking-wide ${
+                    isLight
+                      ? "text-neutral-600 hover:text-neutral-900"
+                      : "text-neutral-400 hover:text-white"
+                  }`}
                 >
                   Cancel
                 </button>
@@ -308,15 +379,23 @@ export default function Dashboard() {
                     <button
                       onClick={handleExportPDF}
                       disabled={exportingPDF}
-                      className="flex items-center justify-center gap-2 text-neutral-600 hover:text-neutral-900 transition-all text-xs font-medium uppercase tracking-wide disabled:opacity-50"
+                      className={`flex items-center justify-center gap-2 transition-all text-xs font-medium uppercase tracking-wide disabled:opacity-50 ${
+                        isLight
+                          ? "text-neutral-600 hover:text-neutral-900"
+                          : "text-neutral-400 hover:text-white"
+                      }`}
                     >
                       {exportingPDF ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
                       <span>Export PDF ({selectedTests.length})</span>
                     </button>
                     <button
-                      onClick={handleArchive}
+                      onClick={handleArchiveClick}
                       disabled={isArchiving}
-                      className="flex items-center justify-center gap-2 text-red-600 hover:text-red-700 transition-all text-xs font-medium uppercase tracking-wide"
+                      className={`flex items-center justify-center gap-2 transition-all text-xs font-medium uppercase tracking-wide ${
+                        isLight
+                          ? "text-red-600 hover:text-red-700"
+                          : "text-red-400 hover:text-red-300"
+                      }`}
                     >
                       {isArchiving ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
                       <span>Archive ({selectedTests.length})</span>
@@ -328,7 +407,11 @@ export default function Dashboard() {
               <button
                 onClick={toggleSelectionMode}
                 disabled={batchTests.length === 0}
-                className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-900 transition-colors font-medium uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`flex items-center gap-1.5 text-xs transition-colors font-medium uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isLight
+                    ? "text-neutral-600 hover:text-neutral-900"
+                    : "text-neutral-400 hover:text-white"
+                }`}
               >
                 <CheckSquare size={14} />
                 <span>Select</span>
@@ -338,12 +421,22 @@ export default function Dashboard() {
         </div>
 
         <div className="relative h-[600px]">
-          <div className="h-full w-full overflow-y-auto">
+          <div className={`h-full w-full overflow-y-auto ${
+            isLight ? "playground-scrollbar-light" : "playground-scrollbar-dark"
+          }`}>
             <table className="w-full text-left text-sm">
-              <thead className="sticky top-0 bg-white z-10 shadow-sm">
-                <tr className="bg-neutral-50 border-b border-neutral-200">
+              <thead className={`sticky top-0 z-10 shadow-sm ${
+                isLight ? "bg-white" : "bg-[#1E1E1E]"
+              }`}>
+                <tr className={`border-b ${
+                  isLight
+                    ? "bg-neutral-100 border-neutral-200"
+                    : "bg-[#252525] border-white/5"
+                }`}>
                   {isSelectionMode && (
-                    <th className="px-6 py-4 w-12 bg-neutral-50">
+                    <th className={`px-6 py-4 w-12 ${
+                      isLight ? "bg-neutral-100" : "bg-[#252525]"
+                    }`}>
                       <CustomCheckbox 
                         checked={batchTests.length > 0 && selectedTests.length === batchTests.length}
                         onChange={toggleSelectAll}
@@ -354,16 +447,28 @@ export default function Dashboard() {
                   <SortableHeader field="agents">Agents</SortableHeader>
                   <SortableHeader field="status">Status</SortableHeader>
                   <SortableHeader field="date">Date</SortableHeader>
-                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs text-right bg-neutral-50">Action</th>
+                  <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs text-right ${
+                    isLight
+                      ? "bg-neutral-100 text-neutral-600"
+                      : "bg-[#252525] text-neutral-400"
+                  }`}>Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-200 bg-white">
+              <tbody className={`divide-y ${
+                isLight
+                  ? "divide-neutral-200 bg-white"
+                  : "divide-white/5 bg-[#1E1E1E]"
+              }`}>
                 {loading ? (
                   <tr>
                     <td colSpan={isSelectionMode ? 6 : 5} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center justify-center gap-3">
-                        <Loader2 className="animate-spin w-6 h-6 text-neutral-400" />
-                        <span className="text-sm text-neutral-500 font-light">Loading simulations...</span>
+                        <Loader2 className={`animate-spin w-6 h-6 ${
+                          isLight ? "text-neutral-500" : "text-neutral-400"
+                        }`} />
+                        <span className={`text-sm font-light ${
+                          isLight ? "text-neutral-600" : "text-neutral-500"
+                        }`}>Loading simulations...</span>
                       </div>
                     </td>
                   </tr>
@@ -371,13 +476,21 @@ export default function Dashboard() {
                   <tr>
                     <td colSpan={isSelectionMode ? 6 : 5} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center justify-center gap-3">
-                        <h3 className="text-base font-medium text-neutral-900">No batch tests yet</h3>
-                        <p className="text-neutral-500 font-light text-sm max-w-sm">
+                        <h3 className={`text-base font-medium ${
+                          isLight ? "text-neutral-900" : "text-white"
+                        }`}>No batch tests yet</h3>
+                        <p className={`font-light text-sm max-w-sm ${
+                          isLight ? "text-neutral-500" : "text-neutral-400"
+                        }`}>
                           Launch your first multi-agent batch simulation to start testing.
                         </p>
                         <Link
                           href="/dashboard/tests/new"
-                          className="inline-flex items-center justify-center gap-2 border border-neutral-200 bg-white text-neutral-900 px-5 py-2.5 hover:border-neutral-900 transition-all text-sm font-medium mt-2"
+                          className={`inline-flex items-center justify-center gap-2 border px-5 py-2.5 transition-all text-sm font-medium mt-2 rounded-lg ${
+                            isLight
+                              ? "bg-neutral-900 text-white border-neutral-900 hover:bg-neutral-800"
+                              : "border-white/10 bg-[#252525] text-white hover:bg-[#333]"
+                          }`}
                         >
                           Start Simulation
                         </Link>
@@ -386,7 +499,15 @@ export default function Dashboard() {
                   </tr>
                 ) : (
                   sortedTests.map((test) => (
-                    <tr key={test.id} className={`group transition-colors ${selectedTests.includes(test.id) ? "bg-neutral-50" : "hover:bg-neutral-50/30"}`}>
+                    <tr key={test.id} className={`group transition-colors ${
+                      selectedTests.includes(test.id)
+                        ? isLight
+                          ? "bg-neutral-50"
+                          : "bg-white/5"
+                        : isLight
+                          ? "hover:bg-neutral-50"
+                          : "hover:bg-white/5"
+                    }`}>
                       {isSelectionMode && (
                         <td className="px-6 py-5">
                           <CustomCheckbox 
@@ -395,27 +516,45 @@ export default function Dashboard() {
                           />
                         </td>
                       )}
-                      <td className="px-6 py-5 font-light text-neutral-900">
+                      <td className={`px-6 py-5 font-light ${
+                        isLight ? "text-neutral-900" : "text-white"
+                      }`}>
                         <div className="flex items-center gap-3">
-                          <div className="w-1.5 h-1.5 rounded-full bg-neutral-400 group-hover:bg-neutral-900 transition-colors"></div>
-                          <a href={test.targetUrl} target="_blank" rel="noopener noreferrer" className="hover:underline decoration-neutral-300 underline-offset-4 truncate max-w-[300px] block">
+                          <div className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                            isLight
+                              ? "bg-neutral-400 group-hover:bg-neutral-600"
+                              : "bg-neutral-400 group-hover:bg-white"
+                          }`}></div>
+                          <a href={test.targetUrl} target="_blank" rel="noopener noreferrer" className={`hover:underline underline-offset-4 truncate max-w-[300px] block ${
+                            isLight
+                              ? "decoration-neutral-400"
+                              : "decoration-neutral-500"
+                          }`}>
                             {test.targetUrl.replace(/^https?:\/\//, '')}
                           </a>
                         </div>
                       </td>
-                      <td className="px-6 py-5 text-neutral-600 font-light">
+                      <td className={`px-6 py-5 font-light ${
+                        isLight ? "text-neutral-600" : "text-neutral-300"
+                      }`}>
                         {test.selectedPersonaIndices?.length || 0} personas
                       </td>
                       <td className="px-6 py-5">
                         {getStatusBadge(test.status)}
                       </td>
-                      <td className="px-6 py-5 text-neutral-500 font-light tabular-nums text-xs">
+                      <td className={`px-6 py-5 font-light tabular-nums text-xs ${
+                        isLight ? "text-neutral-500" : "text-neutral-400"
+                      }`}>
                         {new Date(test.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
                       <td className="px-6 py-5 text-right">
                         <Link
-                          href={`/tests/${test.id}`}
-                          className="inline-flex items-center justify-center bg-neutral-900 text-white px-4 py-1.5 text-xs font-medium hover:bg-neutral-800 transition-colors shadow-sm"
+                          href={`/dashboard/tests/${test.id}`}
+                          className={`inline-flex items-center justify-center border px-4 py-1.5 text-xs font-medium transition-colors shadow-sm rounded-lg ${
+                            isLight
+                              ? "bg-neutral-900 text-white border-neutral-900 hover:bg-neutral-800"
+                              : "bg-[#252525] text-white border-white/10 hover:bg-[#333]"
+                          }`}
                         >
                           View Results
                         </Link>
@@ -428,6 +567,52 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Archive Confirmation Modal */}
+      {showArchiveConfirm && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowArchiveConfirm(false)}>
+          <div className={`border p-6 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in-95 duration-200 rounded-xl ${
+            isLight
+              ? "bg-white border-neutral-200"
+              : "bg-[#1E1E1E] border-white/10"
+          }`} onClick={(e) => e.stopPropagation()}>
+            <h3 className={`text-lg font-medium mb-2 ${
+              isLight ? "text-neutral-900" : "text-white"
+            }`}>Archive Tests</h3>
+            <p className={`font-light text-sm mb-6 ${
+              isLight ? "text-neutral-600" : "text-neutral-400"
+            }`}>
+              Are you sure you want to archive {selectedTests.length} test{selectedTests.length !== 1 ? 's' : ''}? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowArchiveConfirm(false)}
+                className={`px-4 py-2 text-sm font-medium transition-colors rounded-lg ${
+                  isLight
+                    ? "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100"
+                    : "text-neutral-400 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleArchive}
+                disabled={isArchiving}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-colors rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isArchiving ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 size={14} className="animate-spin" />
+                    Archiving...
+                  </span>
+                ) : (
+                  "Archive"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

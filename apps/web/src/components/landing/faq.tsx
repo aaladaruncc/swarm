@@ -35,26 +35,30 @@ export function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section id="faq" className="py-24 bg-neutral-50 border-t border-neutral-200">
+    <section id="faq" className="py-24 md:py-32 border-b border-white/5 bg-transparent">
       <div className="container mx-auto px-6 max-w-3xl">
         <div className="text-center mb-16">
-        <h2 className="text-4xl md:text-5xl lg:text-6xl font-serif font-medium tracking-tight text-neutral-900 mb-6 leading-[1.1]">
-              FAQ
-            </h2>
-          <p className="text-lg text-neutral-600 font-sans font-light">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-light text-white mb-6">
+            FAQ
+          </h2>
+          <p className="text-lg text-white/50 leading-relaxed">
             Everything you need to know about the platform.
           </p>
         </div>
 
         <div className="space-y-4">
           {FAQS.map((faq, i) => (
-            <div
+            <motion.div
               key={i}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: i * 0.1 }}
               className={`
-                border rounded-none transition-all duration-300
+                border rounded-lg transition-all duration-300
                 ${openIndex === i 
-                  ? "bg-white border-neutral-200 shadow-sm" 
-                  : "bg-white/50 border-neutral-200 hover:bg-white hover:border-neutral-300"
+                  ? "bg-white/5 border-white/20" 
+                  : "bg-white/5 border-white/10 hover:bg-white/[0.07] hover:border-white/15"
                 }
               `}
             >
@@ -62,12 +66,14 @@ export function FAQ() {
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}
                 className="w-full flex items-center justify-between p-6 text-left"
               >
-                <span className={`text-lg font-medium pr-8 transition-colors ${openIndex === i ? "text-neutral-900" : "text-neutral-700"}`}>
+                <span className={`text-base md:text-lg font-medium pr-8 transition-colors ${
+                  openIndex === i ? "text-white" : "text-white/70"
+                }`}>
                   {faq.question}
                 </span>
                 <ChevronDown
-                  className={`w-5 h-5 text-neutral-500 transition-transform duration-300 ${
-                    openIndex === i ? "rotate-180" : ""
+                  className={`w-5 h-5 text-white/50 transition-all duration-300 flex-shrink-0 ${
+                    openIndex === i ? "rotate-180 text-white/70" : ""
                   }`}
                 />
               </button>
@@ -80,13 +86,13 @@ export function FAQ() {
                     transition={{ duration: 0.3, ease: "easeInOut" }}
                     className="overflow-hidden"
                   >
-                    <div className="px-6 pb-6 text-neutral-600 font-sans font-light leading-relaxed">
+                    <div className="px-6 pb-6 text-white/50 font-light leading-relaxed">
                       {faq.answer}
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>

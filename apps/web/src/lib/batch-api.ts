@@ -1,25 +1,29 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 interface GeneratedPersona {
+  // Demographics
   name: string;
   age: number;
   gender?: string;
+  maritalStatus?: "single" | "married" | "divorced" | "widowed" | "partnered";
   country: string;
   occupation: string;
   education?: string;
   incomeLevel: "low" | "medium" | "high";
   income?: string;
   techSavviness: "beginner" | "intermediate" | "advanced";
+  // Goals
   primaryGoal: string;
   painPoints: string[];
-  context: string;
+  // Selection metric
   relevanceScore: number;
-  // Detailed narrative sections (matching UXAgent format)
+  // Optional narrative sections (generated on-demand if needed)
   background?: string;
   financialSituation?: string;
   browsingHabits?: string;
   professionalLife?: string;
   personalStyle?: string;
+  context?: string;
 }
 
 
@@ -232,7 +236,6 @@ export async function generatePersonas(
   agentCount: number = 3
 ): Promise<{
   personas: GeneratedPersona[];
-  reasoning: string;
   recommendedIndices: number[];
   selectionReasoning: string;
   generationWarning?: string;
@@ -335,6 +338,13 @@ export async function deleteSwarm(id: string): Promise<{ message: string; id: st
 export async function terminateBatchTest(id: string): Promise<{ message: string; batchTestRun: BatchTestRun }> {
   return fetchWithAuth(`/api/batch-tests/${id}/terminate`, {
     method: "POST",
+  });
+}
+
+export async function deleteBatchTests(ids: string[]): Promise<{ message: string }> {
+  return fetchWithAuth("/api/tests", {
+    method: "DELETE",
+    body: JSON.stringify({ ids }),
   });
 }
 

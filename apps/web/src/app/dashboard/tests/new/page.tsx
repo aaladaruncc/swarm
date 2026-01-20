@@ -6,12 +6,15 @@ import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { generatePersonas, createBatchTest, getSwarms, type GeneratedPersona, type Swarm } from "@/lib/batch-api";
 import { GeneratingPersonasLoader } from "@/components/ui/generating-personas-loader";
-import { Globe, User, Loader2, Zap, Info, Check, Minus, Plus, Users, X, ArrowRight, Bot, Settings, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, Info, Check, Minus, Plus, Users, X, ArrowRight, Bot, Settings, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "@/contexts/theme-context";
 
 export default function NewTest() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
+  const { theme } = useTheme();
+  const isLight = theme === "light";
 
   // Step 1: URL and Description
   const [url, setUrl] = useState("");
@@ -73,8 +76,12 @@ export default function NewTest() {
   // Early returns after all hooks
   if (isPending) {
     return (
-      <div className="h-full flex items-center justify-center bg-white text-neutral-900">
-        <Loader2 className="animate-spin w-8 h-8 text-neutral-400" />
+      <div className={`h-full flex items-center justify-center ${
+        isLight ? "bg-neutral-50" : "bg-neutral-950"
+      } ${isLight ? "text-neutral-900" : "text-white"}`}>
+        <Loader2 className={`animate-spin w-8 h-8 ${
+          isLight ? "text-neutral-500" : "text-neutral-400"
+        }`} />
       </div>
     );
   }
@@ -119,7 +126,7 @@ export default function NewTest() {
         useUXAgent,
         20
       );
-      router.push(`/tests/${result.batchTestRun.id}`);
+      router.push(`/dashboard/tests/${result.batchTestRun.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start batch test");
       setStep("describe");
@@ -135,13 +142,35 @@ export default function NewTest() {
 
     try {
       const result = await generatePersonas(url, userDescription, agentCount);
-      setPersonas(result.personas);
-      setRecommendedIndices(result.recommendedIndices);
+      const originalRecommendedIndices = result.recommendedIndices || [];
+      
+      // Sort personas so recommended ones come first
+      const personasWithOriginalIndex = result.personas.map((p, idx) => ({
+        persona: p,
+        originalIndex: idx,
+        isRecommended: originalRecommendedIndices.includes(idx),
+      }));
+      
+      // Sort: recommended first, then by relevance score (descending)
+      personasWithOriginalIndex.sort((a, b) => {
+        if (a.isRecommended && !b.isRecommended) return -1;
+        if (!a.isRecommended && b.isRecommended) return 1;
+        return (b.persona.relevanceScore || 0) - (a.persona.relevanceScore || 0);
+      });
+      
+      // Extract sorted personas and create new recommended indices
+      const sortedPersonas = personasWithOriginalIndex.map(item => item.persona);
+      const newRecommendedIndices = personasWithOriginalIndex
+        .map((item, newIdx) => item.isRecommended ? newIdx : -1)
+        .filter(idx => idx !== -1);
+      
+      setPersonas(sortedPersonas);
+      setRecommendedIndices(newRecommendedIndices);
 
       // Preselect recommended personas, then let the user review before starting.
-      let indicesToUse = (result.recommendedIndices || []).slice(0, agentCount);
-      if (indicesToUse.length < agentCount && result.personas.length > 0) {
-        const availableIndices = result.personas.map((_, i) => i);
+      let indicesToUse = newRecommendedIndices.slice(0, agentCount);
+      if (indicesToUse.length < agentCount && sortedPersonas.length > 0) {
+        const availableIndices = sortedPersonas.map((_, i) => i);
         const remaining = availableIndices.filter((i) => !indicesToUse.includes(i));
         indicesToUse = [...indicesToUse, ...remaining.slice(0, agentCount - indicesToUse.length)];
       }
@@ -170,7 +199,7 @@ export default function NewTest() {
 
     try {
       const result = await createBatchTest(url, userDescription, personas, selectedIndices, agentCount, useUXAgent, 20);
-      router.push(`/tests/${result.batchTestRun.id}`);
+      router.push(`/dashboard/tests/${result.batchTestRun.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start batch test");
       setStep("select");
@@ -180,224 +209,316 @@ export default function NewTest() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto w-full h-full overflow-hidden">
-      {/* Breadcrumb */}
-      <div className="mb-6">
-        <nav className="flex items-center gap-2 text-sm">
-          <Link
-            href="/dashboard"
-            className="text-neutral-500 hover:text-neutral-900 transition-colors font-light"
-          >
-            Playground
-          </Link>
-          <span className="text-neutral-400">/</span>
-          <span className="text-neutral-900 font-medium">New Simulation</span>
-        </nav>
-      </div>
-
+    <div className="h-full flex flex-col p-8 max-w-7xl mx-auto w-full overflow-hidden">
       {/* Step 1: Describe */}
       {step === "describe" && (
         <>
-          <div className="mb-6">
-            <h1 className="text-3xl font-light tracking-tight mb-2">Initialize Batch Simulation</h1>
-            <p className="text-neutral-500 font-light text-sm">
-              Define your target environment and audience. AI will generate richer, behavior-driven personas to test your experience.
-            </p>
-          </div>
-
-          <form onSubmit={handleGeneratePersonas} className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Target URL */}
-              <section className="space-y-4">
-                <div className="flex items-center gap-3 text-neutral-900 border-b border-neutral-100 pb-2">
-                  <Globe size={18} className="stroke-1" />
-                  <h2 className="text-base font-medium">Target Environment</h2>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Website URL</label>
-                  <input
-                    type="url"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    placeholder="https://example.com"
-                    className="w-full bg-white border border-neutral-200 text-neutral-900 px-3 py-2.5 focus:border-neutral-900 focus:ring-0 outline-none transition-all placeholder:text-neutral-300 font-light text-sm rounded-none"
-                    required
-                  />
-                  <p className="text-xs text-neutral-400 font-light">
-                    The agents will begin their sessions at this URL.
-                  </p>
-                </div>
-              </section>
-
-              {/* Audience Description */}
-              <section className="space-y-4">
-                <div className="flex items-center gap-3 text-neutral-900 border-b border-neutral-100 pb-2">
-                  <User size={18} className="stroke-1" />
-                  <h2 className="text-base font-medium">Target Audience</h2>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Audience Description</label>
-                  <textarea
-                    value={userDescription}
-                    onChange={(e) => setUserDescription(e.target.value)}
-                    placeholder="Example: Busy professionals aged 25-45 who need quick meal planning..."
-                    className="w-full bg-white border border-neutral-200 text-neutral-900 px-3 py-2.5 focus:border-neutral-900 focus:ring-0 outline-none transition-all placeholder:text-neutral-300 font-light min-h-[100px] resize-none text-sm rounded-none"
-                    required
-                    minLength={10}
-                    maxLength={2000}
-                  />
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-neutral-400 font-light">
-                      Be specific: demographics, goals, tech comfort, pain points.
-                    </p>
-
-                    {/* Use Saved Swarms Box */}
-                    {url && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSwarmModalStep("select");
-                          setShowSwarmSelector(true);
-                        }}
-                        className="px-3 py-1.5 border border-neutral-200 hover:border-neutral-900 bg-white hover:bg-neutral-50 transition-all text-xs font-medium text-neutral-900 flex items-center gap-2 group rounded-none"
-                      >
-                        <Users size={14} className="text-neutral-500 group-hover:text-neutral-900 transition-colors" />
-                        <span>Use Swarms</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </section>
-            </div>
-
-            {/* Agent Count */}
-            <section className="space-y-4 border-t border-neutral-100 pt-6">
-              <div className="flex items-center gap-3 text-neutral-900 border-b border-neutral-100 pb-2">
-                <Zap size={18} className="stroke-1" />
-                <h2 className="text-base font-medium">Concurrency</h2>
-              </div>
-
-              <div className="flex items-center justify-between max-w-md">
-                <label className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Concurrent Agents</label>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setAgentCount(Math.max(1, agentCount - 1))}
-                    className="w-8 h-8 border border-neutral-200 hover:border-neutral-900 transition-colors flex items-center justify-center"
-                  >
-                    <Minus size={14} />
-                  </button>
-                  <span className="text-xl font-light w-8 text-center">{agentCount}</span>
-                  <button
-                    type="button"
-                    onClick={() => setAgentCount(Math.min(5, agentCount + 1))}
-                    className="w-8 h-8 border border-neutral-200 hover:border-neutral-900 transition-colors flex items-center justify-center"
-                  >
-                    <Plus size={14} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex gap-1 h-1 max-w-md">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div
-                    key={i}
-                    className={`flex-1 transition-colors ${i <= agentCount ? 'bg-neutral-900' : 'bg-neutral-200'
-                      }`}
-                  />
-                ))}
-              </div>
-
-              <p className="text-xs text-neutral-400 font-light">
-                {agentCount === 1 && "Single agent — Slowest but zero rate limit risk"}
-                {agentCount === 2 && "2 agents — Safe with minimal rate limit risk"}
-                {agentCount === 3 && "3 agents — Balanced speed and safety (recommended)"}
-                {agentCount === 4 && "4 agents — Faster but slight rate limit risk"}
-                {agentCount === 5 && "5 agents — Fastest but higher rate limit risk"}
-              </p>
-            </section>
-
-            {/* Advanced Settings */}
-            <section className="space-y-4 border-t border-neutral-100 pt-6">
-              <button
-                type="button"
-                onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-                className="flex items-center gap-2 text-neutral-500 hover:text-neutral-900 transition-colors"
-              >
-                <Settings size={16} />
-                <span className="text-xs font-medium uppercase tracking-wide">Advanced Settings</span>
-                {showAdvancedSettings ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              </button>
-
-              {showAdvancedSettings && (
-                <div className="space-y-4 pl-6 border-l-2 border-neutral-100">
-                  {/* Legacy Mode Toggle */}
-                  <div className="flex items-center justify-between max-w-md">
-                    <div>
-                      <label className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Use Legacy Engine</label>
-                      <p className="text-xs text-neutral-400 font-light mt-1">
-                        Original simpler agent (disable UXAgent)
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setUseUXAgent(!useUXAgent)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${!useUXAgent ? 'bg-neutral-900' : 'bg-neutral-200'
-                        }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${!useUXAgent ? 'translate-x-6' : 'translate-x-1'
-                          }`}
-                      />
-                    </button>
-                  </div>
-
-                  {!useUXAgent && (
-                    <div className="p-3 bg-amber-50 border border-amber-100 text-xs font-light text-amber-700">
-                      <span className="font-medium">Legacy mode:</span> Using simpler agent without advanced observation features. UXAgent is recommended for better insights.
-                    </div>
-                  )}
-                </div>
-              )}
-            </section>
-
-            {error && (
-              <div className="p-3 bg-red-50 text-red-600 border border-red-100 text-xs font-light rounded-none">
-                <span className="font-medium">Error:</span> {error}
-              </div>
-            )}
-
-            <div className="flex items-start gap-3 p-3 bg-neutral-50 border border-neutral-100 text-xs font-light text-neutral-600">
-              <Info size={14} className="mt-0.5 shrink-0" />
-              <p>
-                AI will generate 10 diverse personas and automatically select the {agentCount} most relevant ones. Agents run with resilience checks and evidence capture.
-              </p>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center justify-end gap-4 pt-4 border-t border-neutral-100">
+          {/* Breadcrumb Header */}
+          <div className="mb-8 flex-shrink-0">
+            <nav className="flex items-center gap-2 text-sm mb-6">
               <Link
                 href="/dashboard"
-                className="px-5 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-900 transition-colors"
+                className={`transition-colors font-light ${
+                  isLight
+                    ? "text-neutral-600 hover:text-neutral-900"
+                    : "text-neutral-400 hover:text-white"
+                }`}
               >
-                Cancel
+                Playground
               </Link>
-              <button
-                type="submit"
-                disabled={loading || !url || !userDescription}
-                className="bg-neutral-900 text-white px-6 py-2 hover:bg-neutral-800 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Generating...</span>
-                  </>
-                ) : (
-                  <span>Generate Personas</span>
+              <span className={isLight ? "text-neutral-400" : "text-neutral-600"}>/</span>
+              <span className={isLight ? "text-neutral-900 font-medium" : "text-white font-medium"}>New Simulation</span>
+            </nav>
+          </div>
+
+          <form onSubmit={handleGeneratePersonas} className="flex-1 flex flex-col min-h-0">
+            {/* Top Row: Target Environment & Concurrency side by side */}
+            <div className="grid grid-cols-3 gap-6 mb-6 items-stretch min-h-0" style={{ height: '55vh' }}>
+              {/* Left Module - Wider (2 columns) - Target Environment & Audience */}
+              <div className="col-span-2 flex flex-col">
+                <div className={`border rounded-xl p-6 flex flex-col h-full ${
+                  isLight
+                    ? "bg-white border-neutral-200"
+                    : "bg-[#1E1E1E] border-white/10"
+                }`}>
+                  <div className="space-y-6 flex-1 flex flex-col">
+                    {/* Target URL */}
+                    <section className="flex-shrink-0">
+                      <div className="flex items-center gap-2 mb-3">
+                        <label className={`text-sm font-medium ${
+                          isLight ? "text-neutral-900" : "text-white"
+                        }`}>Target Environment</label>
+                      </div>
+                      <input
+                        type="url"
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        placeholder="https://example.com"
+                        className={`w-full border px-4 py-3 focus:ring-1 outline-none transition-all placeholder:font-light text-sm rounded-lg ${
+                          isLight
+                            ? "bg-neutral-50 border-neutral-300 text-neutral-900 focus:border-neutral-500 focus:ring-neutral-500/20 placeholder:text-neutral-400"
+                            : "bg-[#252525] border-white/10 text-white focus:border-white/30 focus:ring-white/10 placeholder:text-neutral-600"
+                        }`}
+                        required
+                      />
+                      <p className={`text-xs font-light mt-2 ${
+                        isLight ? "text-neutral-500" : "text-neutral-500"
+                      }`}>
+                        The agents will begin their sessions at this URL.
+                      </p>
+                    </section>
+
+                    {/* Audience Description */}
+                    <section className="flex-1 flex flex-col min-h-0">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <label className={`text-sm font-medium ${
+                            isLight ? "text-neutral-900" : "text-white"
+                          }`}>Target Audience</label>
+                        </div>
+                        {/* Use Saved Swarms Box */}
+                        {url && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSwarmModalStep("select");
+                              setShowSwarmSelector(true);
+                            }}
+                            className={`px-3 py-1.5 border transition-all text-xs font-medium flex items-center gap-2 rounded-lg ${
+                              isLight
+                                ? "border-neutral-300 hover:border-neutral-500 bg-white hover:bg-neutral-100 text-neutral-900"
+                                : "border-white/10 hover:border-white/30 bg-[#252525] hover:bg-white/5 text-white"
+                            }`}
+                          >
+                            <Users size={14} />
+                            <span>Use Swarms</span>
+                          </button>
+                        )}
+                      </div>
+                      <textarea
+                        value={userDescription}
+                        onChange={(e) => setUserDescription(e.target.value)}
+                        placeholder="Example: Busy professionals aged 25-45 who need quick meal planning..."
+                        className={`w-full border px-4 py-3 focus:ring-1 outline-none transition-all placeholder:font-light flex-1 resize-none text-sm rounded-lg ${
+                          isLight
+                            ? "bg-neutral-50 border-neutral-300 text-neutral-900 focus:border-neutral-500 focus:ring-neutral-500/20 placeholder:text-neutral-400"
+                            : "bg-[#252525] border-white/10 text-white focus:border-white/30 focus:ring-white/10 placeholder:text-neutral-600"
+                        }`}
+                        required
+                        minLength={10}
+                        maxLength={2000}
+                      />
+                      <p className={`text-xs font-light mt-2 ${
+                        isLight ? "text-neutral-500" : "text-neutral-500"
+                      }`}>
+                        Be specific: demographics, goals, tech comfort, pain points.
+                      </p>
+                    </section>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Module - Narrower (1 column) - Concurrency */}
+              <div className="col-span-1 flex flex-col">
+                <div className={`border rounded-xl p-6 flex flex-col h-full justify-center ${
+                  isLight
+                    ? "bg-white border-neutral-200"
+                    : "bg-[#1E1E1E] border-white/10"
+                }`}>
+                  <div className="flex flex-col items-center justify-center space-y-6">
+                    {/* Header */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <h2 className={`text-base font-medium ${
+                        isLight ? "text-neutral-900" : "text-white"
+                      }`}>Concurrency</h2>
+                    </div>
+
+                    {/* Large Number Display */}
+                    <div className="flex flex-col items-center">
+                      <div className={`text-6xl font-light mb-2 ${
+                        isLight ? "text-neutral-900" : "text-white"
+                      }`}>{agentCount}</div>
+                      <div className={`text-xs font-light uppercase tracking-wider mb-6 ${
+                        isLight ? "text-neutral-500" : "text-neutral-500"
+                      }`}>
+                        {agentCount === 1 ? 'Agent' : 'Agents'}
+                      </div>
+                    </div>
+
+                    {/* Visual Indicator - Larger */}
+                    <div className="w-full space-y-2">
+                      <div className={`flex gap-2 h-2 max-w-full rounded-full overflow-hidden ${
+                        isLight ? "bg-neutral-200" : "bg-[#252525]"
+                      }`}>
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <div
+                            key={i}
+                            className={`flex-1 transition-colors rounded-full ${
+                              i <= agentCount
+                                ? isLight ? 'bg-neutral-900' : 'bg-white'
+                                : 'bg-transparent'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Control Buttons */}
+                    <div className="flex items-center gap-4 w-full justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setAgentCount(Math.max(1, agentCount - 1))}
+                        className={`w-12 h-12 border transition-colors flex items-center justify-center rounded-lg ${
+                          isLight
+                            ? "border-neutral-300 hover:border-neutral-500 hover:bg-neutral-100 text-neutral-900"
+                            : "border-white/10 hover:border-white/30 hover:bg-white/5 text-white"
+                        }`}
+                      >
+                        <Minus size={18} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAgentCount(Math.min(5, agentCount + 1))}
+                        className={`w-12 h-12 border transition-colors flex items-center justify-center rounded-lg ${
+                          isLight
+                            ? "border-neutral-300 hover:border-neutral-500 hover:bg-neutral-100 text-neutral-900"
+                            : "border-white/10 hover:border-white/30 hover:bg-white/5 text-white"
+                        }`}
+                      >
+                        <Plus size={18} />
+                      </button>
+                    </div>
+
+                    {/* Description */}
+                    <div className="text-center pt-2">
+                      <p className={`text-xs font-light leading-relaxed ${
+                        isLight ? "text-neutral-500" : "text-neutral-500"
+                      }`}>
+                        {agentCount === 1 && "Single agent — Slowest but zero rate limit risk"}
+                        {agentCount === 2 && "2 agents — Safe with minimal rate limit risk"}
+                        {agentCount === 3 && "3 agents — Balanced speed and safety (recommended)"}
+                        {agentCount === 4 && "4 agents — Faster but slight rate limit risk"}
+                        {agentCount === 5 && "5 agents — Fastest but higher rate limit risk"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Row: Advanced Settings - Full width */}
+            <div className="flex-shrink-0">
+              <div className={`border rounded-xl p-6 ${
+                isLight
+                  ? "bg-white border-neutral-200"
+                  : "bg-[#1E1E1E] border-white/10"
+              }`}>
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                  className={`flex items-center gap-2 transition-colors w-full ${
+                    isLight
+                      ? "text-neutral-600 hover:text-neutral-900"
+                      : "text-neutral-400 hover:text-white"
+                  }`}
+                >
+                  <Settings size={16} />
+                  <span className="text-sm font-medium">Advanced Settings</span>
+                  {showAdvancedSettings ? <ChevronUp size={16} className="ml-auto" /> : <ChevronDown size={16} className="ml-auto" />}
+                </button>
+
+                {showAdvancedSettings && (
+                  <div className={`space-y-4 pt-4 mt-4 border-t ${
+                    isLight ? "border-neutral-200" : "border-white/10"
+                  }`}>
+                    {/* Legacy Mode Toggle */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className={`text-sm font-medium ${
+                          isLight ? "text-neutral-900" : "text-white"
+                        }`}>Use Legacy Engine</label>
+                        <p className={`text-xs font-light mt-1 ${
+                          isLight ? "text-neutral-500" : "text-neutral-500"
+                        }`}>
+                          Original simpler agent (disable UXAgent)
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setUseUXAgent(!useUXAgent)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          !useUXAgent
+                            ? isLight ? 'bg-neutral-900' : 'bg-white'
+                            : isLight ? 'bg-neutral-200 border border-neutral-300' : 'bg-[#252525] border border-white/10'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full transition-transform ${
+                            !useUXAgent
+                              ? isLight ? 'translate-x-6 bg-white' : 'translate-x-6 bg-neutral-900'
+                              : isLight ? 'translate-x-1 bg-white' : 'translate-x-1 bg-white'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {!useUXAgent && (
+                      <div className={`p-3 border text-xs font-light rounded-lg ${
+                        isLight
+                          ? "bg-amber-50 border-amber-200 text-amber-700"
+                          : "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                      }`}>
+                        <span className="font-medium">Legacy mode:</span> Using simpler agent without advanced observation features. UXAgent is recommended for better insights.
+                      </div>
+                    )}
+                  </div>
                 )}
-              </button>
+              </div>
+            </div>
+
+            {/* Actions - Fixed at bottom */}
+            <div className="mt-6 flex-shrink-0 space-y-4">
+              {error && (
+                <div className={`p-4 border text-sm font-light rounded-lg ${
+                  isLight
+                    ? "bg-red-50 text-red-700 border-red-200"
+                    : "bg-red-500/10 text-red-400 border-red-500/20"
+                }`}>
+                  <span className="font-medium">Error:</span> {error}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-4">
+                <Link
+                  href="/dashboard"
+                  className={`px-5 py-2.5 text-sm font-medium transition-colors ${
+                    isLight
+                      ? "text-neutral-600 hover:text-neutral-900"
+                      : "text-neutral-400 hover:text-white"
+                  }`}
+                >
+                  Cancel
+                </Link>
+                <button
+                  type="submit"
+                  disabled={loading || !url || !userDescription}
+                  className={`px-6 py-2.5 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg ${
+                    isLight
+                      ? "bg-neutral-900 text-white hover:bg-neutral-800"
+                      : "bg-white text-neutral-900 hover:bg-neutral-200"
+                  }`}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Generating...</span>
+                    </>
+                  ) : (
+                    <span>Generate Personas</span>
+                  )}
+                </button>
+              </div>
             </div>
           </form>
         </>
@@ -411,32 +532,73 @@ export default function NewTest() {
       {/* Step 2: Select Personas */}
       {step === "select" && (
         <>
-          <div className="mb-6">
-            <h2 className="text-3xl font-light tracking-tight mb-2">Select Personas</h2>
-            <p className="text-neutral-500 font-light text-sm">
-              We've pre-selected {agentCount} personas. Adjust your selection if needed.
-            </p>
+          {/* Breadcrumb Header */}
+          <div className="mb-8 flex-shrink-0">
+            <nav className="flex items-center gap-2 text-sm mb-6">
+              <Link
+                href="/dashboard"
+                className={`transition-colors font-light ${
+                  isLight
+                    ? "text-neutral-600 hover:text-neutral-900"
+                    : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                Playground
+              </Link>
+              <span className={isLight ? "text-neutral-400" : "text-neutral-600"}>/</span>
+              <button
+                onClick={() => setStep("describe")}
+                className={`transition-colors font-light ${
+                  isLight
+                    ? "text-neutral-600 hover:text-neutral-900"
+                    : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                New Simulation
+              </button>
+              <span className={isLight ? "text-neutral-400" : "text-neutral-600"}>/</span>
+              <span className={isLight ? "text-neutral-900 font-medium" : "text-white font-medium"}>Select Personas</span>
+            </nav>
+            <h1 className={`text-3xl font-light tracking-tight mb-2 ${
+              isLight ? "text-neutral-900" : "text-white"
+            }`}>Select Personas</h1>
+            <p className={`font-light ${
+              isLight ? "text-neutral-500" : "text-neutral-400"
+            }`}>We've pre-selected {agentCount} personas. Adjust your selection if needed.</p>
           </div>
 
           <div className="space-y-6">
             {/* Selection Status */}
-            <div className="flex items-center gap-3 p-3 border border-neutral-200 bg-white rounded-none">
+            <div className={`flex items-center gap-3 p-3 border rounded-lg ${
+              isLight
+                ? "border-neutral-200 bg-white"
+                : "border-white/10 bg-[#1E1E1E]"
+            }`}>
               <div className="flex-1">
                 <div className="flex items-center gap-4">
-                  <span className={`text-xs font-medium ${selectedIndices.length === agentCount ? 'text-green-600' : 'text-neutral-600'}`}>
+                  <span className={`text-xs font-medium ${
+                    selectedIndices.length === agentCount
+                      ? isLight ? 'text-blue-600' : 'text-blue-400'
+                      : isLight ? 'text-neutral-600' : 'text-neutral-400'
+                  }`}>
                     {selectedIndices.length}/{agentCount} personas selected
                   </span>
                   <div className="flex gap-1 flex-1 max-w-xs">
                     {[...Array(agentCount)].map((_, i) => (
                       <div
                         key={i}
-                        className={`h-1 flex-1 transition-colors rounded-full ${i < selectedIndices.length ? 'bg-neutral-900' : 'bg-neutral-200'
-                          }`}
+                        className={`h-1 flex-1 transition-colors rounded-full ${
+                          i < selectedIndices.length
+                            ? isLight ? 'bg-neutral-900' : 'bg-white'
+                            : isLight ? 'bg-neutral-200' : 'bg-[#252525]'
+                        }`}
                       />
                     ))}
                   </div>
                 </div>
-                <p className="text-xs text-neutral-400 font-light mt-1">
+                <p className={`text-xs font-light mt-1 ${
+                  isLight ? "text-neutral-500" : "text-neutral-500"
+                }`}>
                   {selectedIndices.length < agentCount
                     ? `Select ${agentCount - selectedIndices.length} more persona${agentCount - selectedIndices.length !== 1 ? 's' : ''}`
                     : 'Ready to deploy agents'}
@@ -455,25 +617,42 @@ export default function NewTest() {
                   <div
                     key={index}
                     onClick={() => canSelect && togglePersonaSelection(index)}
-                    className={`group cursor-pointer p-4 border transition-all duration-200 relative bg-white rounded-none ${isSelected
-                      ? "border-neutral-900 ring-1 ring-neutral-900 bg-neutral-50"
-                      : canSelect
-                        ? "border-neutral-200 hover:border-neutral-400 hover:shadow-sm"
-                        : "border-neutral-100 bg-neutral-50 opacity-50 cursor-not-allowed"
-                      }`}
+                    className={`group cursor-pointer p-4 border transition-all duration-200 relative rounded-xl ${
+                      isSelected
+                        ? isLight
+                          ? "border-neutral-900 ring-1 ring-neutral-900 bg-white"
+                          : "border-white ring-1 ring-white bg-[#252525]"
+                        : canSelect
+                          ? isLight
+                            ? "border-neutral-200 hover:border-neutral-400 hover:bg-neutral-50 bg-white"
+                            : "border-white/5 hover:border-white/20 hover:bg-white/5 bg-[#252525]"
+                          : isLight
+                            ? "border-neutral-200 bg-neutral-50 opacity-50 cursor-not-allowed"
+                            : "border-white/5 bg-[#1E1E1E] opacity-50 cursor-not-allowed"
+                    }`}
                   >
                     {isRecommended && (
-                      <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-neutral-900 text-white text-[9px] font-medium uppercase tracking-wide rounded-none">
+                      <div className={`absolute top-2 right-2 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide rounded-md ${
+                        isLight
+                          ? "bg-neutral-900 text-white"
+                          : "bg-white text-neutral-900"
+                      }`}>
                         Recommended
                       </div>
                     )}
 
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        <h3 className="font-medium text-base mb-1">{persona.name}</h3>
-                        <div className="text-xs text-neutral-500 font-light flex items-center gap-2">
+                        <h3 className={`font-medium text-base mb-1 ${
+                          isLight ? "text-neutral-900" : "text-white"
+                        }`}>{persona.name}</h3>
+                        <div className={`text-xs font-light flex items-center gap-2 ${
+                          isLight ? "text-neutral-600" : "text-neutral-400"
+                        }`}>
                           <span>{persona.age} yrs</span>
-                          <span className="w-1 h-1 bg-neutral-300 rounded-full"></span>
+                          <span className={`w-1 h-1 rounded-full ${
+                            isLight ? "bg-neutral-400" : "bg-neutral-600"
+                          }`}></span>
                           <span>{persona.country}</span>
                         </div>
                       </div>
@@ -482,31 +661,44 @@ export default function NewTest() {
                         {[...Array(3)].map((_, i) => (
                           <div
                             key={i}
-                            className={`w-1.5 h-1.5 rounded-full ${i < (persona.techSavviness === 'beginner' ? 1 : persona.techSavviness === 'intermediate' ? 2 : 3)
-                              ? "bg-neutral-900"
-                              : "bg-neutral-200"
-                              }`}
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              i < (persona.techSavviness === 'beginner' ? 1 : persona.techSavviness === 'intermediate' ? 2 : 3)
+                                ? isLight ? "bg-neutral-900" : "bg-white"
+                                : isLight ? "bg-neutral-300" : "bg-[#404040]"
+                            }`}
                           />
                         ))}
                       </div>
                     </div>
 
-                    <p className="text-xs text-neutral-400 font-mono uppercase tracking-wider mb-2">
+                    <p className={`text-xs font-mono uppercase tracking-wider mb-2 ${
+                      isLight ? "text-neutral-500" : "text-neutral-500"
+                    }`}>
                       {persona.occupation}
                     </p>
 
-                    <p className="text-xs text-neutral-600 font-light leading-relaxed mb-3 line-clamp-2">
+                    <p className={`text-xs font-light leading-relaxed mb-3 line-clamp-2 ${
+                      isLight ? "text-neutral-600" : "text-neutral-400"
+                    }`}>
                       {persona.primaryGoal}
                     </p>
 
-                    <div className="text-xs text-neutral-400">
+                    <div className={`text-xs ${
+                      isLight ? "text-neutral-500" : "text-neutral-500"
+                    }`}>
                       Relevance: {persona.relevanceScore}/10
                     </div>
 
                     {/* Selection Indicator */}
                     {isSelected && (
-                      <div className="absolute top-0 left-0 w-0 h-0 border-t-[24px] border-r-[24px] border-t-neutral-900 border-r-transparent">
-                        <Check size={12} className="absolute -top-[20px] left-[1px] text-white" />
+                      <div className={`absolute top-0 left-0 w-0 h-0 border-t-[24px] border-r-[24px] border-r-transparent rounded-tl-xl ${
+                        isLight
+                          ? "border-t-neutral-900"
+                          : "border-t-white"
+                      }`}>
+                        <Check size={12} className={`absolute -top-[22px] left-[2px] ${
+                          isLight ? "text-white" : "text-neutral-900"
+                        }`} />
                       </div>
                     )}
                   </div>
@@ -515,12 +707,20 @@ export default function NewTest() {
             </div>
 
             {error && (
-              <div className="p-3 bg-red-50 text-red-600 border border-red-100 text-xs font-light rounded-none">
+              <div className={`p-3 border text-xs font-light rounded-lg ${
+                isLight
+                  ? "bg-red-50 text-red-700 border-red-200"
+                  : "bg-red-500/10 text-red-400 border-red-500/20"
+              }`}>
                 <span className="font-medium">Error:</span> {error}
               </div>
             )}
 
-            <div className="flex items-start gap-3 p-3 bg-neutral-50 border border-neutral-100 text-xs font-light text-neutral-600">
+            <div className={`flex items-start gap-3 p-3 border text-xs font-light rounded-lg ${
+              isLight
+                ? "bg-blue-50 border-blue-200 text-blue-700"
+                : "bg-blue-500/10 border-blue-500/20 text-blue-400"
+            }`}>
               <Info size={14} className="mt-0.5 shrink-0" />
               <p>
                 Each agent will run concurrently with a ~6 minute cap and resilience. Queue system prevents rate limits.
@@ -528,44 +728,40 @@ export default function NewTest() {
             </div>
 
             {/* Actions */}
-            {/* Actions */}
-            <div className="flex items-center justify-between gap-4 pt-4 border-t border-neutral-100">
+            <div className={`flex items-center justify-between gap-4 pt-4 border-t ${
+              isLight ? "border-neutral-200" : "border-white/10"
+            }`}>
               <button
                 onClick={() => setStep("describe")}
-                className="px-5 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-900 transition-colors"
+                className={`px-5 py-2 text-sm font-medium transition-colors ${
+                  isLight
+                    ? "text-neutral-600 hover:text-neutral-900"
+                    : "text-neutral-400 hover:text-white"
+                }`}
               >
                 ← Back
               </button>
 
-              <div className="flex items-center gap-4">
-                {/* Agent Mode Badge */}
-                <div className="flex items-center gap-2 bg-neutral-50 px-3 py-1.5 border border-neutral-200">
-                  <Bot size={14} className={useUXAgent ? "text-green-600" : "text-neutral-500"} />
-                  <span className="text-xs font-medium text-neutral-700">
-                    {useUXAgent ? "UXAgent" : "Legacy"}
-                  </span>
-                </div>
-
-                <button
-                  onClick={handleStartBatchTest}
-                  disabled={loading || selectedIndices.length !== agentCount}
-                  className="bg-neutral-900 text-white px-6 py-2 hover:bg-neutral-800 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Deploying...</span>
-                    </>
-                  ) : selectedIndices.length !== agentCount ? (
-                    <span>Select {agentCount - selectedIndices.length} more</span>
-                  ) : (
-                    <>
-                      <Zap size={16} />
-                      <span>Start Simulation</span>
-                    </>
-                  )}
-                </button>
-              </div>
+              <button
+                onClick={handleStartBatchTest}
+                disabled={loading || selectedIndices.length !== agentCount}
+                className={`px-6 py-2 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg ${
+                  isLight
+                    ? "bg-neutral-900 text-white hover:bg-neutral-800"
+                    : "bg-white text-neutral-900 hover:bg-neutral-200"
+                }`}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Deploying...</span>
+                  </>
+                ) : selectedIndices.length !== agentCount ? (
+                  <span>Select {agentCount - selectedIndices.length} more</span>
+                ) : (
+                  <span>Start Simulation</span>
+                )}
+              </button>
             </div>
           </div>
         </>
@@ -573,28 +769,68 @@ export default function NewTest() {
 
       {/* Step 3: Starting */}
       {step === "starting" && (
-        <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
-          <Loader2 className="w-16 h-16 animate-spin text-neutral-300 mb-6" />
-          <h2 className="text-2xl font-light tracking-tight mb-2">Deploying Agents...</h2>
-          <p className="text-neutral-500 font-light text-sm">
-            Launching {agentCount} concurrent agent{agentCount !== 1 ? 's' : ''} to test your environment
-          </p>
-          {selectedSwarm && (
-            <p className="text-sm text-neutral-600 font-light mt-2">
-              Using swarm: <span className="font-medium">{selectedSwarm.name}</span>
+        <>
+          {/* Breadcrumb Header */}
+          <div className="mb-8 flex-shrink-0">
+            <nav className="flex items-center gap-2 text-sm mb-6">
+              <Link
+                href="/dashboard"
+                className={`transition-colors font-light ${
+                  isLight
+                    ? "text-neutral-600 hover:text-neutral-900"
+                    : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                Playground
+              </Link>
+              <span className={isLight ? "text-neutral-400" : "text-neutral-600"}>/</span>
+              <Link
+                href="/dashboard/tests/new"
+                className={`transition-colors font-light ${
+                  isLight
+                    ? "text-neutral-600 hover:text-neutral-900"
+                    : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                New Simulation
+              </Link>
+              <span className={isLight ? "text-neutral-400" : "text-neutral-600"}>/</span>
+              <span className={isLight ? "text-neutral-900 font-medium" : "text-white font-medium"}>Deploying Agents</span>
+            </nav>
+            <h1 className={`text-3xl font-light tracking-tight mb-2 ${
+              isLight ? "text-neutral-900" : "text-white"
+            }`}>Deploying Agents</h1>
+            <p className={`font-light ${
+              isLight ? "text-neutral-500" : "text-neutral-400"
+            }`}>Launching {agentCount} concurrent agent{agentCount !== 1 ? 's' : ''} to test your environment.</p>
+          </div>
+          <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
+            <Loader2 className={`w-16 h-16 animate-spin mb-6 ${
+              isLight ? "text-neutral-500" : "text-neutral-500"
+            }`} />
+            {selectedSwarm && (
+              <p className={`text-sm font-light mt-2 ${
+                isLight ? "text-neutral-600" : "text-neutral-500"
+              }`}>
+                Using swarm: <span className={`font-medium ${
+                  isLight ? "text-neutral-900" : "text-white"
+                }`}>{selectedSwarm.name}</span>
+              </p>
+            )}
+            <p className={`text-xs font-light mt-2 ${
+              isLight ? "text-neutral-500" : "text-neutral-600"
+            }`}>
+              Queue system active • Rate limits prevented
             </p>
-          )}
-          <p className="text-xs text-neutral-400 font-light mt-2">
-            Queue system active • Rate limits prevented
-          </p>
-        </div>
+          </div>
+        </>
       )}
 
       {/* Swarm Selector Modal */}
       <AnimatePresence>
         {showSwarmSelector && (
           <div
-            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
             onClick={() => {
               if (swarmModalStep === "select") {
                 setShowSwarmSelector(false);
@@ -611,7 +847,11 @@ export default function NewTest() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="bg-white w-full max-w-3xl max-h-[85vh] overflow-hidden shadow-2xl rounded-none flex flex-col relative"
+              className={`w-full max-w-3xl max-h-[85vh] overflow-hidden shadow-2xl rounded-xl flex flex-col relative border ${
+                isLight
+                  ? "bg-white border-neutral-200"
+                  : "bg-[#1E1E1E] border-white/10"
+              }`}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Swipe Container */}
@@ -627,10 +867,18 @@ export default function NewTest() {
                       className="w-full flex flex-col shrink-0"
                     >
                       {/* Header */}
-                      <div className="p-6 border-b border-neutral-100 flex items-start justify-between bg-white shrink-0">
+                      <div className={`p-6 border-b flex items-start justify-between shrink-0 ${
+                        isLight
+                          ? "border-neutral-200 bg-white"
+                          : "border-white/10 bg-[#1E1E1E]"
+                      }`}>
                         <div className="flex-1">
-                          <h2 className="text-2xl font-light text-neutral-900 mb-1">Select a Swarm</h2>
-                          <p className="text-neutral-500 font-light text-sm">
+                          <h2 className={`text-2xl font-light mb-1 ${
+                            isLight ? "text-neutral-900" : "text-white"
+                          }`}>Select a Swarm</h2>
+                          <p className={`font-light text-sm ${
+                            isLight ? "text-neutral-600" : "text-neutral-400"
+                          }`}>
                             Choose a saved swarm to use for this test.
                           </p>
                         </div>
@@ -640,9 +888,13 @@ export default function NewTest() {
                             setSwarmModalStep("select");
                             setSelectedSwarm(null);
                           }}
-                          className="ml-4 p-2 hover:bg-neutral-100 transition-colors"
+                          className={`ml-4 p-2 transition-colors rounded-lg ${
+                            isLight
+                              ? "hover:bg-neutral-100"
+                              : "hover:bg-white/10"
+                          }`}
                         >
-                          <X size={20} className="text-neutral-500" />
+                          <X size={20} className={isLight ? "text-neutral-600" : "text-neutral-400"} />
                         </button>
                       </div>
 
@@ -650,15 +902,23 @@ export default function NewTest() {
                       <div className="flex-1 overflow-y-auto p-6">
                         {isLoadingSwarms ? (
                           <div className="flex items-center justify-center py-12">
-                            <Loader2 className="w-6 h-6 animate-spin text-neutral-300" />
+                            <Loader2 className="w-6 h-6 animate-spin text-neutral-500" />
                           </div>
                         ) : swarms.length === 0 ? (
                           <div className="text-center py-12">
-                            <Users size={48} className="mx-auto text-neutral-300 mb-4" />
-                            <p className="text-neutral-500 font-light">No swarms available</p>
+                            <Users size={48} className={`mx-auto mb-4 ${
+                              isLight ? "text-neutral-400" : "text-neutral-600"
+                            }`} />
+                            <p className={`font-light ${
+                              isLight ? "text-neutral-600" : "text-neutral-500"
+                            }`}>No swarms available</p>
                             <Link
                               href="/dashboard/swarms/new"
-                              className="text-sm text-neutral-900 underline hover:text-neutral-600 mt-2 inline-block"
+                              className={`text-sm underline mt-2 inline-block ${
+                                isLight
+                                  ? "text-neutral-900 hover:text-neutral-700"
+                                  : "text-white hover:text-neutral-300"
+                              }`}
                             >
                               Create your first swarm
                             </Link>
@@ -669,35 +929,55 @@ export default function NewTest() {
                               <button
                                 key={swarm.id}
                                 onClick={() => handleSelectSwarm(swarm)}
-                                className="p-6 border border-neutral-200 hover:border-neutral-900 transition-all text-left group rounded-none"
+                                className={`p-6 border transition-all text-left group rounded-xl ${
+                                  isLight
+                                    ? "border-neutral-200 hover:border-neutral-400 hover:bg-neutral-50 bg-white"
+                                    : "border-white/10 hover:border-white/30 hover:bg-white/5 bg-[#252525]"
+                                }`}
                               >
                                 <div className="flex items-start justify-between mb-3">
                                   <div className="flex-1">
-                                    <h3 className="font-medium text-lg mb-1 group-hover:text-neutral-900 transition-colors">
+                                    <h3 className={`font-medium text-lg mb-1 transition-colors ${
+                                      isLight
+                                        ? "text-neutral-900 group-hover:text-neutral-900"
+                                        : "text-white group-hover:text-white"
+                                    }`}>
                                       {swarm.name}
                                     </h3>
                                     {swarm.description && (
-                                      <p className="text-xs text-neutral-500 font-light line-clamp-2">
+                                      <p className={`text-xs font-light line-clamp-2 ${
+                                        isLight ? "text-neutral-600" : "text-neutral-400"
+                                      }`}>
                                         {swarm.description}
                                       </p>
                                     )}
                                   </div>
                                   <div className="ml-4 flex items-center gap-1.5">
-                                    <Users size={16} className="text-neutral-400" />
-                                    <span className="text-xs text-neutral-500 font-mono">
+                                    <Users size={16} className={isLight ? "text-neutral-500" : "text-neutral-500"} />
+                                    <span className={`text-xs font-mono ${
+                                      isLight ? "text-neutral-500" : "text-neutral-500"
+                                    }`}>
                                       {swarm.personas.length}
                                     </span>
                                   </div>
                                 </div>
 
-                                <div className="flex items-center gap-4 text-xs text-neutral-400 font-mono uppercase tracking-wider">
+                                <div className={`flex items-center gap-4 text-xs font-mono uppercase tracking-wider ${
+                                  isLight ? "text-neutral-500" : "text-neutral-500"
+                                }`}>
                                   <span>{swarm.personas.length} Persona{swarm.personas.length !== 1 ? 's' : ''}</span>
                                   <span>•</span>
                                   <span>{new Date(swarm.createdAt).toLocaleDateString()}</span>
                                 </div>
 
-                                <div className="mt-4 pt-4 border-t border-neutral-100">
-                                  <div className="flex items-center gap-2 text-xs text-neutral-600">
+                                <div className={`mt-4 pt-4 border-t ${
+                                  isLight ? "border-neutral-200" : "border-white/10"
+                                }`}>
+                                  <div className={`flex items-center gap-2 text-xs transition-colors ${
+                                    isLight
+                                      ? "text-neutral-600 group-hover:text-neutral-900"
+                                      : "text-neutral-400 group-hover:text-white"
+                                  }`}>
                                     <ArrowRight size={12} />
                                     <span>Select to continue</span>
                                   </div>
@@ -721,11 +1001,21 @@ export default function NewTest() {
                       className="w-full flex flex-col shrink-0"
                     >
                       {/* Header */}
-                      <div className="p-6 border-b border-neutral-100 flex items-start justify-between bg-white shrink-0">
+                      <div className={`p-6 border-b flex items-start justify-between shrink-0 ${
+                        isLight
+                          ? "border-neutral-200 bg-white"
+                          : "border-white/10 bg-[#1E1E1E]"
+                      }`}>
                         <div className="flex-1">
-                          <h2 className="text-2xl font-light text-neutral-900 mb-1">Start Simulation?</h2>
-                          <p className="text-neutral-500 font-light text-sm">
-                            Ready to deploy {selectedSwarm.agentCount} agent{selectedSwarm.agentCount !== 1 ? 's' : ''} using <span className="font-medium">{selectedSwarm.name}</span>
+                          <h2 className={`text-2xl font-light mb-1 ${
+                            isLight ? "text-neutral-900" : "text-white"
+                          }`}>Start Simulation?</h2>
+                          <p className={`font-light text-sm ${
+                            isLight ? "text-neutral-600" : "text-neutral-400"
+                          }`}>
+                            Ready to deploy {selectedSwarm.agentCount} agent{selectedSwarm.agentCount !== 1 ? 's' : ''} using <span className={`font-medium ${
+                              isLight ? "text-neutral-900" : "text-white"
+                            }`}>{selectedSwarm.name}</span>
                           </p>
                         </div>
                         <button
@@ -733,9 +1023,13 @@ export default function NewTest() {
                             setSwarmModalStep("select");
                             setSelectedSwarm(null);
                           }}
-                          className="ml-4 p-2 hover:bg-neutral-100 transition-colors"
+                          className={`ml-4 p-2 transition-colors rounded-lg ${
+                            isLight
+                              ? "hover:bg-neutral-100"
+                              : "hover:bg-white/10"
+                          }`}
                         >
-                          <X size={20} className="text-neutral-500" />
+                          <X size={20} className={isLight ? "text-neutral-600" : "text-neutral-400"} />
                         </button>
                       </div>
 
@@ -743,67 +1037,117 @@ export default function NewTest() {
                       <div className="flex-1 overflow-y-auto p-6">
                         <div className="max-w-md mx-auto text-center py-12">
                           <div className="mb-6">
-                            <div className="w-16 h-16 mx-auto mb-4 border-2 border-neutral-900 flex items-center justify-center">
-                              <Users size={32} className="text-neutral-900" />
+                            <div className={`w-16 h-16 mx-auto mb-4 border-2 flex items-center justify-center rounded-full ${
+                              isLight
+                                ? "border-neutral-900"
+                                : "border-white"
+                            }`}>
+                              <Users size={32} className={isLight ? "text-neutral-900" : "text-white"} />
                             </div>
-                            <h3 className="text-xl font-light text-neutral-900 mb-2">{selectedSwarm.name}</h3>
+                            <h3 className={`text-xl font-light mb-2 ${
+                              isLight ? "text-neutral-900" : "text-white"
+                            }`}>{selectedSwarm.name}</h3>
                             {selectedSwarm.description && (
-                              <p className="text-sm text-neutral-500 font-light mb-4">
+                              <p className={`text-sm font-light mb-4 ${
+                                isLight ? "text-neutral-600" : "text-neutral-400"
+                              }`}>
                                 {selectedSwarm.description}
                               </p>
                             )}
                           </div>
 
-                          <div className="space-y-3 text-left bg-neutral-50 p-4 border border-neutral-100 mb-6">
+                          <div className={`space-y-3 text-left p-4 border mb-6 rounded-xl ${
+                            isLight
+                              ? "bg-neutral-50 border-neutral-200"
+                              : "bg-[#252525] border-white/10"
+                          }`}>
                             <div className="flex items-center justify-between text-sm">
-                              <span className="text-neutral-600 font-light">Personas</span>
-                              <span className="text-neutral-900 font-medium">{selectedSwarm.personas.length}</span>
+                              <span className={`font-light ${
+                                isLight ? "text-neutral-600" : "text-neutral-400"
+                              }`}>Personas</span>
+                              <span className={`font-medium ${
+                                isLight ? "text-neutral-900" : "text-white"
+                              }`}>{selectedSwarm.personas.length}</span>
                             </div>
                             <div className="flex items-center justify-between text-sm">
-                              <span className="text-neutral-600 font-light">Target URL</span>
-                              <span className="text-neutral-900 font-medium text-xs truncate max-w-[200px]" title={url}>
+                              <span className={`font-light ${
+                                isLight ? "text-neutral-600" : "text-neutral-400"
+                              }`}>Target URL</span>
+                              <span className={`font-medium text-xs truncate max-w-[200px] ${
+                                isLight ? "text-neutral-900" : "text-white"
+                              }`} title={url}>
                                 {url}
                               </span>
                             </div>
-                            <div className="flex items-center justify-between text-sm pt-2 border-t border-neutral-200">
+                            <div className={`flex items-center justify-between text-sm pt-2 border-t ${
+                              isLight ? "border-neutral-200" : "border-white/10"
+                            }`}>
                               <div className="flex items-center gap-2">
-                                <Bot size={14} className={useUXAgent ? "text-green-600" : "text-neutral-500"} />
-                                <span className="text-neutral-600 font-light">{useUXAgent ? "UXAgent Engine" : "Legacy Engine"}</span>
+                                <Bot size={14} className={useUXAgent ? (isLight ? "text-emerald-600" : "text-emerald-400") : (isLight ? "text-neutral-500" : "text-neutral-500")} />
+                                <span className={`font-light ${
+                                  isLight ? "text-neutral-600" : "text-neutral-400"
+                                }`}>{useUXAgent ? "UXAgent Engine" : "Legacy Engine"}</span>
                               </div>
-                              <span className={`text-xs px-2 py-0.5 ${useUXAgent ? "bg-green-50 text-green-700" : "bg-neutral-100 text-neutral-600"}`}>
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                useUXAgent
+                                  ? isLight
+                                    ? "bg-emerald-50 text-emerald-700"
+                                    : "bg-emerald-500/10 text-emerald-400"
+                                  : isLight
+                                    ? "bg-neutral-200 text-neutral-600"
+                                    : "bg-neutral-800 text-neutral-400"
+                              }`}>
                                 {useUXAgent ? "Active" : "Legacy"}
                               </span>
                             </div>
                           </div>
 
                           {!useUXAgent && (
-                            <div className="p-3 bg-amber-50 border border-amber-100 text-xs font-light text-amber-700 mb-6 text-left">
+                            <div className={`p-3 border text-xs font-light mb-6 text-left rounded-lg ${
+                              isLight
+                                ? "bg-amber-50 border-amber-200 text-amber-700"
+                                : "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                            }`}>
                               <span className="font-medium">Legacy mode:</span> Using simpler agent. Enable UXAgent in advanced settings for better insights.
                             </div>
                           )}
 
-                          <p className="text-xs text-neutral-500 font-light mb-6 text-left">
+                          <p className={`text-xs font-light mb-6 text-left ${
+                            isLight ? "text-neutral-500" : "text-neutral-500"
+                          }`}>
                             The simulation will start immediately. Queue system will manage rate limits automatically.
                           </p>
                         </div>
                       </div>
 
                       {/* Footer */}
-                      <div className="p-6 border-t border-neutral-100 bg-white shrink-0">
+                      <div className={`p-6 border-t shrink-0 ${
+                        isLight
+                          ? "border-neutral-200 bg-white"
+                          : "border-white/10 bg-[#1E1E1E]"
+                      }`}>
                         <div className="flex items-center justify-between gap-4">
                           <button
                             onClick={() => {
                               setSwarmModalStep("select");
                               setSelectedSwarm(null);
                             }}
-                            className="px-6 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-900 transition-colors"
+                            className={`px-6 py-2 text-sm font-medium transition-colors ${
+                              isLight
+                                ? "text-neutral-600 hover:text-neutral-900"
+                                : "text-neutral-400 hover:text-white"
+                            }`}
                           >
                             ← Back
                           </button>
                           <button
                             onClick={handleConfirmSwarm}
                             disabled={loading}
-                            className="bg-neutral-900 text-white px-8 py-2 hover:bg-neutral-800 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
+                            className={`px-8 py-2 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg ${
+                              isLight
+                                ? "bg-neutral-900 text-white hover:bg-neutral-800"
+                                : "bg-white text-neutral-900 hover:bg-neutral-200"
+                            }`}
                           >
                             {loading ? (
                               <>

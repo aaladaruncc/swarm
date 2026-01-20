@@ -20,6 +20,7 @@ import {
     FileText,
     RefreshCw
 } from "lucide-react";
+import { useTheme } from "@/contexts/theme-context";
 
 interface InsightsTabProps {
     run: UXAgentRun;
@@ -33,33 +34,39 @@ const categoryIcons: Record<string, React.ReactNode> = {
     navigation: <Navigation size={16} />,
 };
 
-const categoryColors: Record<string, string> = {
-    usability: "bg-blue-50 text-blue-700 border-blue-200",
-    accessibility: "bg-purple-50 text-purple-700 border-purple-200",
-    performance: "bg-orange-50 text-orange-700 border-orange-200",
-    content: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    navigation: "bg-cyan-50 text-cyan-700 border-cyan-200",
-};
+const getCategoryColors = (isLight: boolean): Record<string, string> => ({
+    usability: isLight ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    accessibility: isLight ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-purple-500/10 text-purple-400 border-purple-500/20",
+    performance: isLight ? "bg-orange-50 text-orange-700 border-orange-200" : "bg-orange-500/10 text-orange-400 border-orange-500/20",
+    content: isLight ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    navigation: isLight ? "bg-cyan-50 text-cyan-700 border-cyan-200" : "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
+});
 
-const severityColors: Record<string, string> = {
-    critical: "bg-red-100 text-red-700 border-red-300",
-    high: "bg-orange-100 text-orange-700 border-orange-300",
-    medium: "bg-yellow-100 text-yellow-700 border-yellow-300",
-    low: "bg-neutral-100 text-neutral-600 border-neutral-300",
-};
+const getSeverityColors = (isLight: boolean): Record<string, string> => ({
+    critical: isLight ? "bg-red-50 text-red-700 border-red-200" : "bg-red-500/10 text-red-400 border-red-500/20",
+    high: isLight ? "bg-orange-50 text-orange-700 border-orange-200" : "bg-orange-500/10 text-orange-400 border-orange-500/20",
+    medium: isLight ? "bg-yellow-50 text-yellow-700 border-yellow-200" : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+    low: isLight ? "bg-neutral-50 text-neutral-700 border-neutral-200" : "bg-neutral-500/10 text-neutral-400 border-neutral-500/20",
+});
 
-const severityBorderColors: Record<string, string> = {
-    critical: "border-l-red-500",
-    high: "border-l-orange-500",
-    medium: "border-l-yellow-500",
-    low: "border-l-neutral-400",
-};
+const getSeverityBorderColors = (isLight: boolean): Record<string, string> => ({
+    critical: isLight ? "border-l-red-600" : "border-l-red-500",
+    high: isLight ? "border-l-orange-600" : "border-l-orange-500",
+    medium: isLight ? "border-l-yellow-600" : "border-l-yellow-500",
+    low: isLight ? "border-l-neutral-500" : "border-l-neutral-400",
+});
 
 export function InsightsTab({ run }: InsightsTabProps) {
+    const { theme } = useTheme();
+    const isLight = theme === "light";
     const [insights, setInsights] = useState<UXAgentInsight[]>([]);
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    
+    const categoryColors = getCategoryColors(isLight);
+    const severityColors = getSeverityColors(isLight);
+    const severityBorderColors = getSeverityBorderColors(isLight);
 
     useEffect(() => {
         loadInsights();
@@ -95,9 +102,17 @@ export function InsightsTab({ run }: InsightsTabProps) {
 
     if (loading) {
         return (
-            <div className="border border-neutral-200 p-12 text-center">
-                <Loader2 size={32} className="mx-auto text-neutral-400 mb-3 animate-spin" />
-                <p className="text-neutral-500 font-light">Loading insights...</p>
+            <div className={`border p-12 text-center rounded-xl ${
+                isLight 
+                    ? "border-neutral-200 bg-white" 
+                    : "border-white/10 bg-[#1E1E1E]"
+            }`}>
+                <Loader2 size={32} className={`mx-auto mb-3 animate-spin ${
+                    isLight ? "text-neutral-500" : "text-neutral-400"
+                }`} />
+                <p className={`font-light ${
+                    isLight ? "text-neutral-600" : "text-neutral-400"
+                }`}>Loading insights...</p>
             </div>
         );
     }
@@ -105,23 +120,43 @@ export function InsightsTab({ run }: InsightsTabProps) {
     // No insights yet - show generate button
     if (insights.length === 0) {
         return (
-            <div className="border border-neutral-200 p-8 text-center bg-gradient-to-br from-neutral-50 to-white">
-                <div className="w-16 h-16 rounded-full bg-neutral-100 mx-auto mb-4 flex items-center justify-center">
-                    <Sparkles size={32} className="text-neutral-400" />
+            <div className={`border p-8 text-center rounded-xl ${
+                isLight 
+                    ? "border-neutral-200 bg-white" 
+                    : "border-white/10 bg-[#1E1E1E]"
+            }`}>
+                <div className={`w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center border ${
+                    isLight
+                        ? "bg-neutral-50 border-neutral-200"
+                        : "bg-[#252525] border-white/10"
+                }`}>
+                    <Sparkles size={32} className={isLight ? "text-neutral-500" : "text-neutral-400"} />
                 </div>
-                <h3 className="text-neutral-900 font-medium mb-2 text-lg">Generate AI Insights</h3>
-                <p className="text-neutral-500 font-light text-sm max-w-md mx-auto mb-6">
+                <h3 className={`font-medium mb-2 text-lg ${
+                    isLight ? "text-neutral-900" : "text-white"
+                }`}>Generate AI Insights</h3>
+                <p className={`font-light text-sm max-w-md mx-auto mb-6 ${
+                    isLight ? "text-neutral-600" : "text-neutral-400"
+                }`}>
                     Analyze the agent's thoughts and observations to identify actionable UX improvements using AI.
                 </p>
                 {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-3 rounded mb-4 max-w-md mx-auto">
+                    <div className={`border text-sm p-3 rounded-lg mb-4 max-w-md mx-auto ${
+                        isLight
+                            ? "bg-red-50 border-red-200 text-red-700"
+                            : "bg-red-500/10 border-red-500/20 text-red-400"
+                    }`}>
                         {error}
                     </div>
                 )}
                 <button
                     onClick={handleGenerateInsights}
                     disabled={generating}
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-neutral-900 text-white font-medium hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className={`inline-flex items-center gap-2 px-6 py-3 border font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-lg ${
+                        isLight
+                            ? "bg-neutral-900 text-white border-neutral-900 hover:bg-neutral-800"
+                            : "bg-[#252525] text-white border-white/10 hover:bg-[#333]"
+                    }`}
                 >
                     {generating ? (
                         <>
@@ -157,14 +192,22 @@ export function InsightsTab({ run }: InsightsTabProps) {
         <div className="space-y-6">
             {/* Summary Header */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                <div className="bg-neutral-900 text-white p-4">
+                <div className={`p-4 border rounded-lg ${
+                    isLight
+                        ? "bg-neutral-900 text-white border-neutral-900"
+                        : "bg-[#252525] text-white border-white/10"
+                }`}>
                     <p className="text-3xl font-light">{insights.length}</p>
-                    <p className="text-xs text-neutral-400 uppercase tracking-wide">Total Insights</p>
+                    <p className={`text-xs uppercase tracking-wide font-light ${
+                        isLight ? "text-white/80" : "text-neutral-400"
+                    }`}>Total Insights</p>
                 </div>
                 {['critical', 'high', 'medium', 'low'].map(severity => (
-                    <div key={severity} className={`p-4 border ${severityColors[severity]}`}>
+                    <div key={severity} className={`p-4 border rounded-lg ${severityColors[severity]}`}>
                         <p className="text-2xl font-light">{severityCounts[severity] || 0}</p>
-                        <p className="text-xs uppercase tracking-wide capitalize">{severity}</p>
+                        <p className={`text-xs uppercase tracking-wide capitalize font-light ${
+                            isLight ? "text-neutral-600" : "text-neutral-400"
+                        }`}>{severity}</p>
                     </div>
                 ))}
             </div>
@@ -174,7 +217,11 @@ export function InsightsTab({ run }: InsightsTabProps) {
                 <button
                     onClick={handleGenerateInsights}
                     disabled={generating}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-sm border border-neutral-200 hover:bg-neutral-50 transition-colors disabled:opacity-50"
+                    className={`inline-flex items-center gap-2 px-4 py-2 text-sm border transition-colors disabled:opacity-50 rounded-lg ${
+                        isLight
+                            ? "border-neutral-200 bg-white text-neutral-900 hover:bg-neutral-50"
+                            : "border-white/10 bg-[#252525] text-white hover:bg-[#333]"
+                    }`}
                 >
                     {generating ? (
                         <Loader2 size={14} className="animate-spin" />
@@ -187,32 +234,62 @@ export function InsightsTab({ run }: InsightsTabProps) {
 
             {/* Insights by Category */}
             {Object.entries(byCategory).map(([category, categoryInsights]) => (
-                <div key={category} className="border border-neutral-200">
-                    <div className={`p-4 border-b flex items-center gap-3 ${categoryColors[category] || 'bg-neutral-50'}`}>
+                <div key={category} className={`border rounded-xl overflow-hidden ${
+                    isLight
+                        ? "border-neutral-200 bg-white"
+                        : "border-white/10 bg-[#1E1E1E]"
+                }`}>
+                    <div className={`p-4 border-b flex items-center gap-3 ${
+                        categoryColors[category] || (isLight ? "bg-neutral-50 border-neutral-200" : "bg-[#252525] border-white/10")
+                    }`}>
                         {categoryIcons[category] || <Lightbulb size={16} />}
-                        <h3 className="font-medium capitalize">{category}</h3>
-                        <span className="ml-auto text-sm opacity-70">{categoryInsights.length} issue{categoryInsights.length !== 1 ? 's' : ''}</span>
+                        <h3 className={`font-medium capitalize ${
+                            isLight ? "text-neutral-900" : "text-white"
+                        }`}>{category}</h3>
+                        <span className={`ml-auto text-sm opacity-70 ${
+                            isLight ? "text-neutral-600" : "text-neutral-400"
+                        }`}>{categoryInsights.length} issue{categoryInsights.length !== 1 ? 's' : ''}</span>
                     </div>
-                    <div className="divide-y divide-neutral-100">
+                    <div className={`divide-y ${
+                        isLight ? "divide-neutral-200" : "divide-white/5"
+                    }`}>
                         {categoryInsights.map((insight) => (
                             <div
                                 key={insight.id}
-                                className={`p-5 bg-white border-l-4 ${severityBorderColors[insight.severity] || 'border-l-neutral-400'}`}
+                                className={`p-5 border-l-4 ${
+                                    isLight
+                                        ? "bg-white"
+                                        : "bg-[#1E1E1E]"
+                                } ${severityBorderColors[insight.severity] || (isLight ? 'border-l-neutral-400' : 'border-l-neutral-400')}`}
                             >
                                 <div className="flex items-start justify-between gap-4 mb-3">
-                                    <h4 className="font-medium text-neutral-900">{insight.title}</h4>
-                                    <span className={`shrink-0 text-[10px] px-2 py-1 uppercase font-bold tracking-wider ${severityColors[insight.severity]}`}>
+                                    <h4 className={`font-medium ${
+                                        isLight ? "text-neutral-900" : "text-white"
+                                    }`}>{insight.title}</h4>
+                                    <span className={`shrink-0 text-[10px] px-2 py-1 uppercase font-bold tracking-wider rounded ${severityColors[insight.severity]}`}>
                                         {insight.severity}
                                     </span>
                                 </div>
-                                <p className="text-sm text-neutral-600 font-light mb-4">
+                                <p className={`text-sm font-light mb-4 ${
+                                    isLight ? "text-neutral-700" : "text-neutral-300"
+                                }`}>
                                     {insight.description}
                                 </p>
-                                <div className="flex gap-2 items-start bg-emerald-50 border border-emerald-200 p-3">
-                                    <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+                                <div className={`flex gap-2 items-start border p-3 rounded-lg ${
+                                    isLight
+                                        ? "bg-emerald-50 border-emerald-200"
+                                        : "bg-emerald-500/10 border-emerald-500/20"
+                                }`}>
+                                    <CheckCircle2 size={16} className={`shrink-0 mt-0.5 ${
+                                        isLight ? "text-emerald-600" : "text-emerald-400"
+                                    }`} />
                                     <div>
-                                        <span className="text-xs font-medium text-emerald-700 uppercase tracking-wide block mb-1">Recommendation</span>
-                                        <p className="text-sm text-emerald-800">{insight.recommendation}</p>
+                                        <span className={`text-xs font-medium uppercase tracking-wide block mb-1 ${
+                                            isLight ? "text-emerald-700" : "text-emerald-400"
+                                        }`}>Recommendation</span>
+                                        <p className={`text-sm font-light ${
+                                            isLight ? "text-emerald-800" : "text-emerald-300"
+                                        }`}>{insight.recommendation}</p>
                                     </div>
                                 </div>
                             </div>

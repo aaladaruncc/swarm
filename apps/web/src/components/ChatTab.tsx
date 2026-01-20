@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
     type UXAgentRun,
     type UXAgentChatMessage,
@@ -9,36 +9,74 @@ import {
 } from "@/lib/batch-api";
 import {
     MessageCircle,
-    Send,
     Loader2,
-    User,
-    Bot,
-    Sparkles
+    Copy,
 } from "lucide-react";
+import {
+    ChatContainerRoot,
+    ChatContainerContent,
+    ChatContainerScrollAnchor,
+} from "./prompt-kit/chat-container";
+import { PromptInput } from "./prompt-kit/prompt-input";
+import {
+    Message,
+    MessageAvatar,
+    MessageContent,
+    MessageActions,
+    MessageAction,
+} from "./prompt-kit/message";
+import { useTheme } from "@/contexts/theme-context";
 
 interface ChatTabProps {
     run: UXAgentRun;
 }
 
 export function ChatTab({ run }: ChatTabProps) {
+    const { theme } = useTheme();
+    const isLight = theme === "light";
     const [messages, setMessages] = useState<UXAgentChatMessage[]>([]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const [persona, setPersona] = useState<{ name: string; age: string | number; occupation: string } | null>(null);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Helper function to clean markdown and quote formatting from text
+    const cleanText = (text: string): string => {
+        if (!text) return text;
+        let cleaned = text;
+        // Remove markdown blockquotes (lines starting with >)
+        cleaned = cleaned.replace(/^>\s+/gm, '');
+        // Remove HTML blockquote tags
+        cleaned = cleaned.replace(/<blockquote[^>]*>/gi, '');
+        cleaned = cleaned.replace(/<\/blockquote>/gi, '');
+        // Remove markdown bold (**text** or __text__) - do this first before single markers
+        cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, '$1');
+        cleaned = cleaned.replace(/__([^_]+)__/g, '$1');
+        // Remove markdown italic (*text* or _text_) - after double markers are removed
+        cleaned = cleaned.replace(/\*([^*]+)\*/g, '$1');
+        cleaned = cleaned.replace(/_([^_]+)_/g, '$1');
+        // Remove markdown code (`text`)
+        cleaned = cleaned.replace(/`([^`]+)`/g, '$1');
+        // Remove markdown links [text](url)
+        cleaned = cleaned.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1');
+        // Remove markdown strikethrough (~~text~~)
+        cleaned = cleaned.replace(/~~([^~]+)~~/g, '$1');
+        // Remove leading/trailing quotes if the entire text is wrapped
+        cleaned = cleaned.trim();
+        if ((cleaned.startsWith('"') && cleaned.endsWith('"')) || 
+            (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
+            cleaned = cleaned.slice(1, -1);
+        }
+        // Remove any remaining quote markers at the start/end
+        cleaned = cleaned.replace(/^["']+/, '');
+        cleaned = cleaned.replace(/["']+$/, '');
+        return cleaned.trim();
+    };
 
     useEffect(() => {
         loadChatHistory();
     }, [run.id]);
 
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
-
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    };
 
     const loadChatHistory = async () => {
         try {
@@ -87,7 +125,7 @@ export function ChatTab({ run }: ChatTabProps) {
                 setPersona(result.persona);
             }
 
-            // Add assistant response
+            // Add assistant response with streaming
             const assistantMessage: UXAgentChatMessage = {
                 id: `temp-${Date.now()}-response`,
                 uxagentRunId: run.id,
@@ -106,156 +144,200 @@ export function ChatTab({ run }: ChatTabProps) {
         }
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
-        }
-    };
 
     const personaName = persona?.name || "Test User";
 
     if (loading) {
         return (
-            <div className="border border-neutral-200 p-12 text-center">
-                <Loader2 size={32} className="mx-auto text-neutral-400 mb-3 animate-spin" />
-                <p className="text-neutral-500 font-light">Loading chat...</p>
+            <div className={`border p-12 text-center rounded-xl ${
+                isLight
+                    ? "bg-white border-neutral-200"
+                    : "border-white/10 bg-[#1E1E1E]"
+            }`}>
+                <Loader2 size={32} className={`mx-auto mb-3 animate-spin ${
+                    isLight ? "text-neutral-500" : "text-neutral-400"
+                }`} />
+                <p className={`font-light ${
+                    isLight ? "text-neutral-600" : "text-neutral-400"
+                }`}>Loading chat...</p>
             </div>
         );
     }
 
     return (
-        <div className="border border-neutral-200 flex flex-col h-[600px]">
-            {/* Chat Header */}
-            <div className="bg-neutral-900 text-white p-4 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
-                    <User size={24} />
-                </div>
+        <div className={`border flex flex-col h-[600px] rounded-xl overflow-hidden ${
+            isLight
+                ? "bg-white border-neutral-200"
+                : "border-white/10 bg-[#1E1E1E]"
+        }`}>
+            {/* Chat Header - Simplified */}
+            <div className={`p-3 flex items-center gap-3 border-b shrink-0 ${
+                isLight
+                    ? "bg-neutral-50 border-neutral-200"
+                    : "bg-[#252525] border-white/10"
+            }`}>
+                <MessageAvatar role="assistant" fallback={personaName} />
                 <div className="flex-1">
-                    <h3 className="font-medium">{personaName}</h3>
-                    <p className="text-sm text-neutral-400">
-                        {persona?.age && persona?.occupation ?
-                            `${persona.age} year old ${persona.occupation}` :
-                            "Simulated user persona"
-                        }
-                    </p>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-neutral-400">
-                    <Sparkles size={14} />
-                    AI Persona
+                    <h3 className={`font-medium text-sm ${
+                        isLight ? "text-neutral-900" : "text-white"
+                    }`}>{personaName}</h3>
+                    {persona?.age && persona?.occupation && (
+                        <p className={`text-xs font-light ${
+                            isLight ? "text-neutral-500" : "text-neutral-400"
+                        }`}>
+                            {persona.age} year old {persona.occupation}
+                        </p>
+                    )}
                 </div>
             </div>
 
-            {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-neutral-50">
-                {messages.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-center p-8">
-                        <div className="w-16 h-16 rounded-full bg-neutral-100 mx-auto mb-4 flex items-center justify-center">
-                            <MessageCircle size={32} className="text-neutral-400" />
-                        </div>
-                        <h3 className="text-neutral-900 font-medium mb-2">Chat with {personaName}</h3>
-                        <p className="text-neutral-500 font-light text-sm max-w-md">
-                            Ask questions about their experience testing your website.
-                            The AI will respond based on their persona and what they observed during the test.
-                        </p>
-                        <div className="mt-6 space-y-2">
-                            <p className="text-xs text-neutral-400 uppercase tracking-wide">Try asking:</p>
-                            <div className="flex flex-wrap gap-2 justify-center">
-                                {[
-                                    "What was your first impression?",
-                                    "What confused you the most?",
-                                    "Would you recommend this site?",
-                                ].map((q, i) => (
-                                    <button
-                                        key={i}
-                                        onClick={() => setInput(q)}
-                                        className="text-xs px-3 py-1.5 bg-white border border-neutral-200 hover:border-neutral-400 transition-colors"
-                                    >
-                                        {q}
-                                    </button>
-                                ))}
+            {/* Chat Container */}
+            <ChatContainerRoot className="flex-1">
+                <ChatContainerContent className="p-4 space-y-4">
+                    {messages.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center text-center p-8">
+                            <div className={`w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center border ${
+                                isLight
+                                    ? "bg-neutral-100 border-neutral-200"
+                                    : "bg-[#252525] border-white/10"
+                            }`}>
+                                <MessageCircle size={32} className={isLight ? "text-neutral-500" : "text-neutral-400"} />
+                            </div>
+                            <h3 className={`font-medium mb-2 ${
+                                isLight ? "text-neutral-900" : "text-white"
+                            }`}>Chat with {personaName}</h3>
+                            <p className={`font-light text-sm max-w-md ${
+                                isLight ? "text-neutral-600" : "text-neutral-400"
+                            }`}>
+                                Ask questions about their experience testing your website.
+                                The AI will respond based on their persona and what they observed during the test.
+                            </p>
+                            <div className="mt-6 space-y-2">
+                                <p className={`text-xs uppercase tracking-wide font-light ${
+                                    isLight ? "text-neutral-500" : "text-neutral-500"
+                                }`}>Try asking:</p>
+                                <div className="flex flex-wrap gap-2 justify-center">
+                                    {[
+                                        "What was your first impression?",
+                                        "What confused you the most?",
+                                        "Would you recommend this site?",
+                                    ].map((q, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => setInput(q)}
+                                            className={`text-xs px-3 py-1.5 border transition-colors rounded-lg ${
+                                                isLight
+                                                    ? "bg-white border-neutral-200 text-neutral-900 hover:bg-neutral-50"
+                                                    : "bg-[#252525] border-white/10 text-white hover:bg-[#333]"
+                                            }`}
+                                        >
+                                            {q}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ) : (
-                    <>
-                        {messages.map((message) => (
-                            <div
-                                key={message.id}
-                                className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                            >
-                                {message.role === "assistant" && (
-                                    <div className="w-8 h-8 rounded-full bg-neutral-900 flex items-center justify-center shrink-0">
-                                        <User size={16} className="text-white" />
-                                    </div>
-                                )}
-                                <div
-                                    className={`max-w-[75%] p-4 ${message.role === "user"
-                                            ? "bg-neutral-900 text-white"
-                                            : "bg-white border border-neutral-200"
-                                        }`}
-                                >
-                                    {message.role === "assistant" && (
-                                        <p className="text-xs text-neutral-400 mb-1 font-medium">{personaName}</p>
-                                    )}
-                                    <p className={`text-sm font-light whitespace-pre-wrap ${message.role === "user" ? "text-white" : "text-neutral-700"
+                    ) : (
+                        <>
+                            {messages.map((message) => {
+                                return (
+                                    <Message key={message.id} role={message.role}>
+                                        {message.role === "assistant" ? (
+                                            <>
+                                                <MessageAvatar role="assistant" fallback={personaName} />
+                                                <div className="flex-1 max-w-[75%]">
+                                                    <div className={`border p-3 rounded-lg ${
+                                                        isLight
+                                                            ? "bg-neutral-50 border-neutral-200"
+                                                            : "bg-[#1E1E1E] border-white/10"
+                                                    }`}>
+                                                        <MessageContent markdown={false}>
+                                                            <p className={`text-sm font-light whitespace-pre-wrap ${
+                                                                isLight ? "text-neutral-700" : "text-neutral-300"
+                                                            }`}>
+                                                                {cleanText(message.content)}
+                                                            </p>
+                                                        </MessageContent>
+                                                        <MessageActions>
+                                                            <MessageAction
+                                                                tooltip="Copy message"
+                                                                onClick={async () => {
+                                                                    await navigator.clipboard.writeText(message.content);
+                                                                }}
+                                                            >
+                                                                <Copy size={14} />
+                                                            </MessageAction>
+                                                        </MessageActions>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="flex-1 flex justify-end">
+                                                    <div className="max-w-[75%]">
+                                                        <div className={`border p-3 rounded-lg ${
+                                                            isLight
+                                                                ? "bg-neutral-900 text-white border-neutral-900"
+                                                                : "bg-[#252525] border-white/10"
+                                                        }`}>
+                                                            <MessageContent markdown={false}>
+                                                                <p className={`text-sm font-light whitespace-pre-wrap ${
+                                                                    isLight ? "text-white" : "text-white"
+                                                                }`}>
+                                                                    {message.content}
+                                                                </p>
+                                                            </MessageContent>
+                                                            <MessageActions>
+                                                                <MessageAction
+                                                                    tooltip="Copy message"
+                                                                    onClick={async () => {
+                                                                        await navigator.clipboard.writeText(message.content);
+                                                                    }}
+                                                                >
+                                                                    <Copy size={14} />
+                                                                </MessageAction>
+                                                            </MessageActions>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <MessageAvatar role="user" fallback="You" />
+                                            </>
+                                        )}
+                                    </Message>
+                                );
+                            })}
+                            {sending && (
+                                <Message role="assistant">
+                                    <MessageAvatar role="assistant" fallback={personaName} />
+                                    <div className={`border p-3 rounded-lg ${
+                                        isLight
+                                            ? "bg-neutral-50 border-neutral-200"
+                                            : "bg-[#1E1E1E] border-white/10"
+                                    }`}>
+                                        <div className={`flex items-center gap-2 ${
+                                            isLight ? "text-neutral-500" : "text-neutral-400"
                                         }`}>
-                                        {message.content}
-                                    </p>
-                                </div>
-                                {message.role === "user" && (
-                                    <div className="w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center shrink-0">
-                                        <Bot size={16} className="text-neutral-600" />
+                                            <Loader2 size={14} className="animate-spin" />
+                                            <span className="text-sm font-light">Typing...</span>
+                                        </div>
                                     </div>
-                                )}
-                            </div>
-                        ))}
-                        {sending && (
-                            <div className="flex gap-3 justify-start">
-                                <div className="w-8 h-8 rounded-full bg-neutral-900 flex items-center justify-center shrink-0">
-                                    <User size={16} className="text-white" />
-                                </div>
-                                <div className="bg-white border border-neutral-200 p-4">
-                                    <div className="flex items-center gap-2 text-neutral-400">
-                                        <Loader2 size={14} className="animate-spin" />
-                                        <span className="text-sm">{personaName} is typing...</span>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                        <div ref={messagesEndRef} />
-                    </>
-                )}
-            </div>
+                                </Message>
+                            )}
+                            <ChatContainerScrollAnchor />
+                        </>
+                    )}
+                </ChatContainerContent>
+            </ChatContainerRoot>
 
             {/* Input Area */}
-            <div className="border-t border-neutral-200 p-4 bg-white">
-                <div className="flex gap-3">
-                    <textarea
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder={`Ask ${personaName} about their experience...`}
-                        className="flex-1 resize-none border border-neutral-200 p-3 text-sm focus:outline-none focus:border-neutral-400 transition-colors"
-                        rows={2}
-                        disabled={sending}
-                    />
-                    <button
-                        onClick={handleSend}
-                        disabled={!input.trim() || sending}
-                        className="self-end px-5 py-3 bg-neutral-900 text-white hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                        {sending ? (
-                            <Loader2 size={18} className="animate-spin" />
-                        ) : (
-                            <Send size={18} />
-                        )}
-                    </button>
-                </div>
-                <p className="text-xs text-neutral-400 mt-2">
-                    Press Enter to send • Shift + Enter for new line
-                </p>
-            </div>
+            <PromptInput
+                value={input}
+                onValueChange={setInput}
+                onSubmit={handleSend}
+                isLoading={sending}
+                placeholder={`Ask ${personaName} about their experience...`}
+                disabled={sending}
+            />
         </div>
     );
 }
