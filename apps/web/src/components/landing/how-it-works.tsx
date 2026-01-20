@@ -1,108 +1,89 @@
 "use client";
 
-import React, { useRef } from "react";
-import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-const STEPS = [
+const TABS = [
   {
-    number: "01",
-    title: "Define Your Test Parameters",
-    description: "Start by configuring your swarm with target URLs, user personas, and test scenarios. Our system instantly provisions isolated browser contexts for each agent, ensuring clean and independent test runs.",
-    details: [
-      "Configure target URLs and entry points",
-      "Select or create AI personas with specific behaviors",
-      "Define test scenarios and critical user flows",
-      "Set up device and viewport configurations"
-    ]
+    id: "simulated-data",
+    title: "Simulated Data",
+    shortTitle: "Simulated Data",
+    description: "Generate realistic user behavior patterns and test scenarios using advanced simulation techniques.",
+    content: {
+      overview: "Our simulated data engine creates authentic user interactions by modeling real-world behavior patterns, demographics, and interaction flows.",
+      features: [
+        "Behavioral pattern generation based on real user analytics",
+        "Demographic and psychographic persona modeling",
+        "Realistic interaction sequences and user journeys",
+        "Context-aware scenario generation for edge cases",
+        "Statistical distribution modeling for realistic test coverage"
+      ],
+      benefits: [
+        "Test with data that mirrors real user behavior",
+        "Discover edge cases before production deployment",
+        "Validate UI/UX decisions with realistic scenarios",
+        "Reduce reliance on manual test data creation"
+      ]
+    }
   },
   {
-    number: "02",
-    title: "Launch Autonomous Agents",
-    description: "Once initialized, AI agents begin intelligently navigating your application. They explore user flows, discover edge cases, and interact with your UI just like real users would—clicking, scrolling, and filling forms autonomously.",
-    details: [
-      "Agents navigate using context-aware decision making",
-      "Parallel execution across multiple browser contexts",
-      "Real-time telemetry capture (clicks, scrolls, interactions)",
-      "Automatic discovery of user flows and edge cases"
-    ]
+    id: "user-sessions-synthetic",
+    title: "Synthetic User Sessions",
+    shortTitle: "Synthetic Sessions",
+    description: "Create and replay synthetic user sessions that mimic real user interactions across your application.",
+    content: {
+      overview: "Synthetic user sessions are AI-generated interaction sequences that replicate authentic user behavior, enabling comprehensive testing without requiring real user data or manual test case creation.",
+      features: [
+        "AI-powered session generation with natural interaction patterns",
+        "Multi-step user flows with realistic timing and pauses",
+        "Cross-device and cross-browser session replication",
+        "Session replay and debugging capabilities",
+        "Parallel execution of multiple synthetic sessions"
+      ],
+      benefits: [
+        "Scale testing without manual test case creation",
+        "Reproduce complex user journeys automatically",
+        "Test edge cases and error scenarios systematically",
+        "Maintain test coverage as your application evolves"
+      ]
+    }
   },
   {
-    number: "03",
-    title: "Capture Behavioral Signals",
-    description: "Throughout the exploration, Swarm captures comprehensive behavioral data including DOM snapshots, interaction patterns, performance metrics, and visual regressions. Every action is recorded for detailed analysis.",
-    details: [
-      "DOM snapshots at key interaction points",
-      "Video replays of complete user sessions",
-      "Visual regression detection across viewports",
-      "Performance and accessibility metrics"
-    ]
-  },
-  {
-    number: "04",
-    title: "Generate Actionable Reports",
-    description: "Get comprehensive reports with prioritized issue lists, video replays, and prescriptive recommendations. Our analytics engine identifies common breakdowns, severity scores, and provides ready-to-ship fixes.",
-    details: [
-      "Prioritized issue lists with severity scoring",
-      "Video replays and DOM snapshots for debugging",
-      "Prescriptive recommendations for fixes",
-      "Exportable reports in PDF format"
-    ]
-  },
-  {
-    number: "05",
-    title: "Integrate into Your Workflow",
-    description: "Run Swarm in your CI/CD pipeline or on-demand through our CLI. Get instant feedback on every deploy, baseline drift alerts, and continuous confidence that your changes work as expected.",
-    details: [
-      "CI/CD integration hooks",
-      "Command-line interface for local testing",
-      "Baseline drift detection and alerts",
-      "Continuous monitoring of critical flows"
-    ]
+    id: "uxagent-research",
+    title: "UXAgent Research",
+    shortTitle: "UXAgent Research",
+    description: "Built on cutting-edge research in autonomous agent systems and user experience testing methodologies.",
+    content: {
+      overview: "UXAgent leverages state-of-the-art research in autonomous AI agents, combining dual-loop reasoning systems with memory streams to create intelligent testing agents that think and act like real users.",
+      features: [
+        "Dual-loop architecture: fast reactive loop and slow reasoning loop",
+        "Memory stream system with importance scoring and relevance matching",
+        "Context-aware perception and action planning",
+        "Autonomous exploration with strategic decision-making",
+        "Continuous learning from interaction patterns"
+      ],
+      benefits: [
+        "Agents that understand context and make intelligent decisions",
+        "Comprehensive exploration beyond predefined test cases",
+        "Adaptive testing that evolves with your application",
+        "Research-backed methodology for reliable results"
+      ]
+    }
   }
 ];
 
 export function HowItWorks() {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState(TABS[0].id);
 
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start center", "end center"]
-  });
-
-  // Calculate which step to show based on scroll progress
-  // Map scroll progress (0-1) to step index (0 to STEPS.length-1)
-  const stepProgress = useTransform(
-    scrollYProgress,
-    [0, 1],
-    [0, STEPS.length - 1]
-  );
-
-  // Get the current step index as a number
-  const [currentStep, setCurrentStep] = React.useState(0);
-
-  React.useEffect(() => {
-    const unsubscribe = stepProgress.on("change", (latest) => {
-      // Clamp the value and round to nearest step
-      const clamped = Math.max(0, Math.min(STEPS.length - 1, latest));
-      const newStep = Math.round(clamped);
-      if (newStep !== currentStep && newStep >= 0 && newStep < STEPS.length) {
-        setCurrentStep(newStep);
-      }
-    });
-
-    return () => unsubscribe();
-  }, [stepProgress, currentStep]);
-
-  const activeStep = STEPS[currentStep];
+  const activeTabData = TABS.find(tab => tab.id === activeTab) || TABS[0];
 
   return (
     <section 
       id="how-it-works" 
-      ref={containerRef}
-      className="relative z-10 min-h-screen flex items-center border-b border-white/5 bg-transparent"
+      className="relative z-10 py-24 md:py-32 border-b border-white/5 bg-transparent"
     >
-      <div className="container mx-auto px-6 max-w-7xl w-full py-32">
+      <div className="container mx-auto px-6 max-w-7xl w-full">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -111,142 +92,118 @@ export function HowItWorks() {
           transition={{ duration: 0.6 }}
           className="mb-16 max-w-3xl"
         >
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-light text-white mb-6">
-            How it <span className="text-white/50">Works</span>
+          <h2 className="text-3xl md:text-4xl font-light text-white mb-4 md:mb-6">
+            Intelligent testing for your <br />
+            <span className="text-white/50">development workflow.</span>
           </h2>
-          <p className="text-lg text-white/50 leading-relaxed">
-            From a single command to comprehensive test coverage in minutes. Watch as AI agents autonomously explore your application and deliver actionable insights.
+          <p className="text-base md:text-lg text-white/50 leading-relaxed">
+            Understanding the underlying concepts that power Swarm's intelligent testing capabilities.
           </p>
         </motion.div>
 
-        {/* Step Indicators */}
-        <div className="flex gap-4 mb-12 flex-wrap">
-          {STEPS.map((step, index) => {
-            const isActive = currentStep === index;
-            const isPast = currentStep > index;
-            
-            return (
-              <motion.button
-                key={index}
-                onClick={() => {
-                  // Scroll to position that shows this step
-                  if (containerRef.current) {
-                    const containerTop = containerRef.current.offsetTop;
-                    const containerHeight = containerRef.current.offsetHeight;
-                    const viewportHeight = window.innerHeight;
-                    // Calculate scroll position to center the section
-                    const scrollPosition = containerTop - viewportHeight / 2 + (index / (STEPS.length - 1)) * containerHeight;
-                    window.scrollTo({ top: Math.max(0, scrollPosition), behavior: "smooth" });
-                  }
-                }}
-                className={cn(
-                  "px-4 py-2 rounded-lg border transition-all duration-300 text-sm font-medium",
-                  isActive
-                    ? "border-blue-400/50 bg-blue-400/10 text-blue-300"
-                    : isPast
-                    ? "border-white/30 bg-white/5 text-white/60 hover:border-white/40"
-                    : "border-white/10 bg-transparent text-white/30 hover:border-white/20"
-                )}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                {step.number}
-              </motion.button>
-            );
-          })}
-        </div>
-
-        {/* Main Content Area - Fixed Position */}
-        <div className="relative min-h-[500px] md:min-h-[600px]">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentStep}
-              initial={{ opacity: 0, y: 30, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -30, scale: 0.95 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              className="bg-white/5 border border-white/10 rounded-lg p-8 md:p-12"
-            >
-              {/* Step Number */}
-              <div className="flex items-center gap-4 mb-6">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.2, type: "spring" }}
-                  className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-blue-400/50 bg-blue-400/10 flex items-center justify-center text-lg md:text-xl font-medium text-blue-300"
+        {/* Horizontal Accordion */}
+        <div className="space-y-0">
+          {/* Tab Headers */}
+          <div className="flex gap-2 mb-8 border-b border-white/10 pb-2">
+            {TABS.map((tab) => {
+              const isActive = activeTab === tab.id;
+              
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "px-6 py-3 text-sm md:text-base font-medium transition-all duration-300 relative",
+                    isActive
+                      ? "text-white"
+                      : "text-white/50 hover:text-white/70"
+                  )}
                 >
-                  {activeStep.number}
-                </motion.div>
-                <motion.div
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="h-px flex-1 bg-gradient-to-r from-blue-400/50 to-transparent"
-                />
-              </div>
-
-              {/* Title */}
-              <motion.h3
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="text-2xl md:text-3xl lg:text-4xl font-medium text-white mb-6"
-              >
-                {activeStep.title}
-              </motion.h3>
-
-              {/* Description */}
-              <motion.p
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="text-base md:text-lg text-white/60 leading-relaxed mb-8"
-              >
-                {activeStep.description}
-              </motion.p>
-
-              {/* Details List */}
-              <motion.ul
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.6 }}
-                className="space-y-4"
-              >
-                {activeStep.details.map((detail, detailIndex) => (
-                  <motion.li
-                    key={detailIndex}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.7 + detailIndex * 0.1 }}
-                    className="flex items-start gap-4 text-sm md:text-base text-white/50"
-                  >
-                    <span className="mt-2 w-2 h-2 rounded-full bg-blue-400 flex-shrink-0" />
-                    <span>{detail}</span>
-                  </motion.li>
-                ))}
-              </motion.ul>
-            </motion.div>
-          </AnimatePresence>
-        </div>
-
-        {/* Scroll Progress Indicator */}
-        <div className="mt-12 flex items-center gap-2">
-          <div className="flex-1 h-px bg-white/10 relative overflow-hidden">
-            <motion.div
-              className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-400/50 to-cyan-400/50"
-              style={{
-                width: useTransform(scrollYProgress, [0, 1], ["0%", "100%"]),
-              }}
-            />
+                  {tab.shortTitle}
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeTab"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/80"
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                </button>
+              );
+            })}
           </div>
-          <motion.span
-            className="text-xs text-white/40 font-medium min-w-[60px] text-right"
-            style={{
-              opacity: useTransform(scrollYProgress, [0, 0.1, 0.9, 1], [0, 1, 1, 0]),
-            }}
-          >
-            {currentStep + 1} / {STEPS.length}
-          </motion.span>
+
+          {/* Tab Content */}
+          <div className="relative min-h-[500px]">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                className="bg-white/5 border border-white/10 rounded-lg p-8 md:p-12"
+              >
+                {/* Title */}
+                <h3 className="text-2xl md:text-3xl lg:text-4xl font-medium text-white mb-4">
+                  {activeTabData.title}
+                </h3>
+
+                {/* Description */}
+                <p className="text-base md:text-lg text-white/60 leading-relaxed mb-8">
+                  {activeTabData.description}
+                </p>
+
+                {/* Overview */}
+                <div className="mb-8">
+                  <h4 className="text-lg font-medium text-white/90 mb-3">Overview</h4>
+                  <p className="text-base text-white/50 leading-relaxed">
+                    {activeTabData.content.overview}
+                  </p>
+                </div>
+
+                {/* Features and Benefits Grid */}
+                <div className="grid md:grid-cols-2 gap-8">
+                  {/* Features */}
+                  <div>
+                    <h4 className="text-lg font-medium text-white/90 mb-4">Key Features</h4>
+                    <ul className="space-y-3">
+                      {activeTabData.content.features.map((feature, index) => (
+                        <motion.li
+                          key={index}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className="flex items-start gap-3 text-sm md:text-base text-white/50"
+                        >
+                          <span className="mt-2 w-1.5 h-1.5 rounded-full bg-white/60 flex-shrink-0" />
+                          <span>{feature}</span>
+                        </motion.li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Benefits */}
+                  <div>
+                    <h4 className="text-lg font-medium text-white/90 mb-4">Benefits</h4>
+                    <ul className="space-y-3">
+                      {activeTabData.content.benefits.map((benefit, index) => (
+                        <motion.li
+                          key={index}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className="flex items-start gap-3 text-sm md:text-base text-white/50"
+                        >
+                          <span className="mt-2 w-1.5 h-1.5 rounded-full bg-white/40 flex-shrink-0" />
+                          <span>{benefit}</span>
+                        </motion.li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
       </div>
     </section>

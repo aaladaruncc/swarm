@@ -155,7 +155,7 @@ export default function Dashboard() {
             : 'bg-white border-white text-neutral-900'
           : isLight
             ? 'bg-transparent border-neutral-300 hover:border-neutral-500'
-            : 'bg-transparent border-neutral-600 hover:border-neutral-400'
+          : 'bg-transparent border-neutral-600 hover:border-neutral-400'
         }
       `}
     >

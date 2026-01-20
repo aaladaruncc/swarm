@@ -469,11 +469,11 @@ export default function SwarmsPage() {
                                 p-2 rounded-full shadow-sm border transition-all
                                 ${isMarkedForDeletion 
                                     ? isLight
-                                      ? "bg-red-500 text-white border-red-600 hover:bg-red-600"
+                                    ? "bg-red-500 text-white border-red-600 hover:bg-red-600" 
                                       : "bg-red-500 text-white border-red-600 hover:bg-red-600"
                                     : isLight
                                       ? "bg-white text-neutral-400 border-neutral-300 hover:text-red-600 hover:border-red-300 hover:bg-red-50"
-                                      : "bg-[#252525] text-neutral-400 border-white/10 hover:text-red-400 hover:border-red-500/30 hover:bg-red-500/10"
+                                    : "bg-[#252525] text-neutral-400 border-white/10 hover:text-red-400 hover:border-red-500/30 hover:bg-red-500/10"
                                 }
                             `}
                             title={isMarkedForDeletion ? "Undo Delete" : "Delete Persona"}

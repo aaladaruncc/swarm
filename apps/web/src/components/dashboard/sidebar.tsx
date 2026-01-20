@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { signOut, useSession } from "@/lib/auth-client";
 import { useTheme } from "@/contexts/theme-context";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export function DashboardSidebar() {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -143,6 +144,31 @@ export function DashboardSidebar() {
           );
         })}
       </nav>
+
+      {/* Theme Toggler */}
+      <div className="px-3 py-2">
+        <div className={`flex items-center ${expanded ? "justify-start gap-3 px-3" : "justify-center px-0"}`}>
+          <AnimatedThemeToggler
+            className={`flex items-center justify-center p-2 rounded-xl transition-colors ${
+              isLight
+                ? "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
+                : "text-neutral-400 hover:bg-white/5 hover:text-white"
+            }`}
+          />
+          {expanded && (
+            <motion.span
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.1 }}
+              className={`text-sm font-normal ${
+                isLight ? "text-neutral-600" : "text-neutral-400"
+              }`}
+            >
+              Theme
+            </motion.span>
+          )}
+        </div>
+      </div>
 
       {/* Profile Section */}
       <div className={`p-3 border-t relative ${

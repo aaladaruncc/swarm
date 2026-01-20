@@ -14,13 +14,13 @@ const PersonasVisual = () => {
   }, []);
 
   const personas = [
-    { name: "Alex", color: "from-violet-400 to-purple-500", action: "Clicking checkout..." },
-    { name: "Morgan", color: "from-amber-400 to-orange-500", action: "Browsing products..." },
-    { name: "Sam", color: "from-emerald-400 to-teal-500", action: "Filling form..." },
+    { name: "Alex", color: "from-white/80 to-white/60", action: "Clicking checkout..." },
+    { name: "Morgan", color: "from-white/60 to-white/40", action: "Browsing products..." },
+    { name: "Sam", color: "from-white/40 to-white/20", action: "Filling form..." },
   ];
 
   return (
-    <div className="flex items-start gap-4">
+    <div className="flex items-start gap-4 w-full">
       {/* Stacked avatars */}
       <div className="flex -space-x-3">
         {personas.map((p, i) => (
@@ -82,10 +82,10 @@ const PersonasVisual = () => {
 // Autonomous Exploration Visual - Orbiting dots (more space, but not too much)
 const ExplorationVisual = () => {
   return (
-    <div className="relative w-32 h-32 flex-shrink-0 mx-auto">
+    <div className="relative w-32 h-32 flex-shrink-0 mx-auto my-4">
       {/* Central node */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-400/40 to-teal-500/40 border border-emerald-400/50 flex items-center justify-center">
-        <div className="w-3.5 h-3.5 rounded bg-emerald-400" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-9 h-9 rounded-lg bg-gradient-to-br from-white/30 to-white/20 border border-white/40 flex items-center justify-center">
+        <div className="w-3.5 h-3.5 rounded bg-white/60" />
       </div>
       
       {/* Orbit path */}
@@ -97,7 +97,7 @@ const ExplorationVisual = () => {
       {[0, 1, 2].map((i) => (
         <motion.div
           key={i}
-          className="absolute w-3.5 h-3.5 rounded-full bg-gradient-to-r from-blue-400 to-cyan-400 shadow-lg shadow-blue-400/30"
+          className="absolute w-3.5 h-3.5 rounded-full bg-gradient-to-r from-white/70 to-white/50 shadow-lg shadow-white/20"
           style={{
             top: "50%",
             left: "50%",
@@ -130,7 +130,7 @@ const RegressionVisual = () => {
   }, []);
 
   return (
-    <div className="w-full max-w-[180px]">
+    <div className="w-full max-w-[180px] mx-auto">
       <div className="flex gap-1.5">
         <div className="relative flex-1 h-[64px] rounded-lg overflow-hidden bg-white/10 border border-white/20">
           <div className="absolute top-0.5 left-0.5 text-[7px] text-white/70 px-1 py-0.5 bg-black/50 rounded font-medium">Before</div>
@@ -148,7 +148,7 @@ const RegressionVisual = () => {
               className="h-1.5 rounded"
               animate={{ 
                 width: showAfter ? "50%" : "75%",
-                backgroundColor: showAfter ? "rgba(239, 68, 68, 0.6)" : "rgba(255, 255, 255, 0.3)"
+                backgroundColor: showAfter ? "rgba(255, 255, 255, 0.8)" : "rgba(255, 255, 255, 0.3)"
               }}
               transition={{ duration: 0.3 }}
             />
@@ -158,7 +158,7 @@ const RegressionVisual = () => {
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="absolute bottom-0.5 right-0.5 text-[7px] text-red-300 bg-red-500/30 px-1 py-0.5 rounded font-medium border border-red-500/30"
+              className="absolute bottom-0.5 right-0.5 text-[7px] text-white/90 bg-white/20 px-1 py-0.5 rounded font-medium border border-white/30"
             >
               ⚠ Diff
             </motion.div>
@@ -193,12 +193,12 @@ const InteractionVisual = () => {
   }, []);
 
   return (
-    <div className="relative w-36 h-20 bg-white/10 rounded-lg border border-white/20 overflow-hidden flex-shrink-0">
+    <div className="relative w-full max-w-[200px] h-24 bg-white/10 rounded-lg border border-white/20 overflow-hidden flex-shrink-0">
       {/* Mock UI elements */}
       <div className="absolute top-2 left-2 w-10 h-3 bg-white/30 rounded" />
-      <div className="absolute top-2 right-2 w-5 h-3 bg-blue-400/50 rounded" />
+      <div className="absolute top-2 right-2 w-5 h-3 bg-white/50 rounded" />
       <div className="absolute bottom-2 left-2 w-16 h-4 bg-white/15 rounded" />
-      <div className="absolute bottom-2 right-2 w-6 h-4 bg-emerald-400/40 rounded" />
+      <div className="absolute bottom-2 right-2 w-6 h-4 bg-white/40 rounded" />
       
       {/* Animated cursor */}
       <motion.div
@@ -209,8 +209,8 @@ const InteractionVisual = () => {
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
           <path
             d="M1 1L6 14L8 8L14 6L1 1Z"
-            fill={clicking ? "#60A5FA" : "white"}
-            stroke={clicking ? "#3B82F6" : "rgba(255,255,255,0.7)"}
+            fill={clicking ? "rgba(255,255,255,0.9)" : "white"}
+            stroke={clicking ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.7)"}
             strokeWidth="1"
           />
         </svg>
@@ -219,7 +219,7 @@ const InteractionVisual = () => {
             initial={{ scale: 0.5, opacity: 1 }}
             animate={{ scale: 2, opacity: 0 }}
             transition={{ duration: 0.4 }}
-            className="absolute top-0 left-0 w-4 h-4 rounded-full bg-blue-400/60"
+            className="absolute top-0 left-0 w-4 h-4 rounded-full bg-white/40"
           />
         )}
       </motion.div>
@@ -238,17 +238,17 @@ const TerminalVisual = () => {
 
   const lines = [
     { text: "$ swarm run --ci", color: "text-white/70" },
-    { text: "✓ 24 tests passed", color: "text-emerald-400" },
-    { text: "✓ No regressions", color: "text-emerald-400" },
-    { text: "Deploy ready ✨", color: "text-blue-400" },
+    { text: "✓ 24 tests passed", color: "text-white/90" },
+    { text: "✓ No regressions", color: "text-white/90" },
+    { text: "Deploy ready ✨", color: "text-white/80" },
   ];
 
   return (
-    <div className="w-full max-w-[260px] bg-[#0a0a0a] rounded-lg border border-white/15 overflow-hidden flex-shrink-0">
+    <div className="w-full max-w-[280px] bg-[#0a0a0a] rounded-lg border border-white/15 overflow-hidden flex-shrink-0">
       <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-white/10">
-        <div className="w-2 h-2 rounded-full bg-red-500/80" />
-        <div className="w-2 h-2 rounded-full bg-yellow-500/80" />
-        <div className="w-2 h-2 rounded-full bg-green-500/80" />
+        <div className="w-2 h-2 rounded-full bg-white/60" />
+        <div className="w-2 h-2 rounded-full bg-white/50" />
+        <div className="w-2 h-2 rounded-full bg-white/70" />
       </div>
       <div className="p-2.5 font-mono text-[10px] h-[60px] overflow-hidden">
         {lines.slice(0, line + 1).map((l, i) => (
@@ -276,13 +276,13 @@ const AccessibilityVisual = () => {
   }, []);
 
   const levels = [
-    { label: "AA", color: "from-blue-400 to-cyan-400", score: 95 },
-    { label: "AAA", color: "from-emerald-400 to-teal-400", score: 88 },
-    { label: "WCAG", color: "from-purple-400 to-pink-400", score: 92 },
+    { label: "AA", color: "from-white/70 to-white/50", score: 95 },
+    { label: "AAA", color: "from-white/60 to-white/40", score: 88 },
+    { label: "WCAG", color: "from-white/50 to-white/30", score: 92 },
   ];
 
   return (
-    <div className="flex flex-col gap-3 w-full max-w-[180px]">
+    <div className="flex flex-col gap-3 w-full max-w-[180px] mx-auto">
       {levels.map((level, i) => (
         <div key={level.label} className="flex items-center gap-2">
           <div className={cn(
@@ -308,6 +308,65 @@ const AccessibilityVisual = () => {
           </div>
         </div>
       ))}
+    </div>
+  );
+};
+
+// A/B Testing Visual - Two variants with comparison metrics
+const ABTestingVisual = () => {
+  const [activeVariant, setActiveVariant] = useState(0);
+  
+  useEffect(() => {
+    const interval = setInterval(() => setActiveVariant(v => (v + 1) % 2), 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const variants = [
+    { label: "A", conversion: 42, color: "from-white/60 to-white/40" },
+    { label: "B", conversion: 58, color: "from-white/80 to-white/60" },
+  ];
+
+  return (
+    <div className="w-full max-w-[200px] mx-auto">
+      <div className="flex gap-2 mb-3">
+        {variants.map((variant, i) => (
+          <div
+            key={variant.label}
+            className={cn(
+              "flex-1 rounded-lg border overflow-hidden transition-all",
+              activeVariant === i
+                ? "border-white/40 bg-white/10"
+                : "border-white/15 bg-white/5"
+            )}
+          >
+            <div className={cn(
+              "h-12 bg-gradient-to-br flex items-center justify-center text-sm font-bold text-white",
+              variant.color
+            )}>
+              Variant {variant.label}
+            </div>
+            <div className="p-2">
+              <div className="text-[9px] text-white/50 mb-1">Conversion</div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-sm font-semibold text-white">{variant.conversion}%</span>
+                {activeVariant === i && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="text-[8px] text-white/90 font-medium"
+                  >
+                    ↑ Winner
+                  </motion.span>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-center gap-2 text-[9px] text-white/40">
+        <div className="w-1.5 h-1.5 rounded-full bg-white/60" />
+        <span>Test running...</span>
+      </div>
     </div>
   );
 };
@@ -354,8 +413,8 @@ const FeedbackVisual = () => {
           />
           <defs>
             <linearGradient id="feedbackGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#3B82F6" />
-              <stop offset="100%" stopColor="#06B6D4" />
+              <stop offset="0%" stopColor="rgba(255,255,255,0.8)" />
+              <stop offset="100%" stopColor="rgba(255,255,255,0.5)" />
             </linearGradient>
           </defs>
         </svg>
@@ -365,11 +424,11 @@ const FeedbackVisual = () => {
       </div>
       <div className="flex flex-col gap-1 text-[9px]">
         <div className="flex items-center gap-1">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          <div className="w-1.5 h-1.5 rounded-full bg-white/80" />
           <span className="text-white/70">12 passed</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+          <div className="w-1.5 h-1.5 rounded-full bg-white/50" />
           <span className="text-white/70">2 warnings</span>
         </div>
       </div>
@@ -419,49 +478,57 @@ const FEATURES = [
     description: "Integrate seamlessly into your existing workflow with our powerful CLI and CI/CD pipelines.",
     visual: TerminalVisual,
     className: "md:col-span-2 md:row-span-1"
+  },
+  {
+    title: "A/B Testing",
+    description: "Compare variants and measure performance with statistical confidence to optimize user experiences.",
+    visual: ABTestingVisual,
+    className: "md:col-span-1 md:row-span-1"
   }
 ];
 
 export function FeaturesGrid() {
   return (
-    <section id="features" className="relative z-10 py-32 border-b border-white/5 bg-transparent">
+    <section id="features" className="relative z-10 py-24 md:py-32 border-b border-white/5 bg-transparent">
       <div className="container mx-auto px-6 max-w-7xl">
-        <div className="mb-16 max-w-2xl">
-          <h2 className="text-3xl md:text-4xl font-light text-white mb-6">
+        <div className="mb-12 md:mb-16 max-w-2xl">
+          <h2 className="text-3xl md:text-4xl font-light text-white mb-4 md:mb-6">
             Complete coverage for your <br />
-            <span className="text-white/50">modern web application.</span>
+            <span className="text-white/50">modern application.</span>
           </h2>
-          <p className="text-lg text-white/50 leading-relaxed">
+          <p className="text-base md:text-lg text-white/50 leading-relaxed">
             From visual regression to complex user flows, Swarm handles the tedious parts of testing so you can ship with confidence.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 auto-rows-[220px] border-l border-t border-white/5">
+        <div className="grid grid-cols-1 md:grid-cols-3 auto-rows-[minmax(240px,auto)] gap-0 border-l border-t border-white/5">
           {FEATURES.map((feature) => {
             // Determine spacing based on feature
             const needsMoreSpace = feature.title === "Autonomous Exploration" || feature.title === "AI Personas";
             const isCompact = feature.title === "Visual Regression" || feature.title === "Instant Feedback";
+            const isWide = feature.className.includes("col-span-2");
             
             return (
               <div 
                 key={feature.title}
                 className={cn(
-                  "group relative border-r border-b border-white/5 hover:bg-white/[0.02] transition-colors duration-300 flex flex-col overflow-hidden",
-                  needsMoreSpace ? "p-7" : isCompact ? "p-5" : "p-6",
+                  "group relative border-r border-b border-white/5 hover:bg-white/[0.02] transition-colors duration-300 flex flex-col",
+                  needsMoreSpace ? "p-8" : isCompact ? "p-6" : "p-7",
                   feature.className
                 )}
               >
                 <div className={cn(
-                  "flex-shrink-0",
-                  needsMoreSpace ? "mb-4" : isCompact ? "mb-2" : "mb-4"
+                  "flex-shrink-0 flex items-center justify-center",
+                  needsMoreSpace ? "mb-6" : isCompact ? "mb-4" : "mb-5",
+                  isWide && "justify-start"
                 )}>
                   <feature.visual />
                 </div>
-                <div className="mt-auto">
-                  <h3 className="text-lg font-medium text-white mb-1 group-hover:text-blue-400 transition-colors">
+                <div className="mt-auto pt-2">
+                  <h3 className="text-lg font-medium text-white mb-2 group-hover:text-white/90 transition-colors">
                     {feature.title}
                   </h3>
-                  <p className="text-xs text-white/50 leading-relaxed group-hover:text-white/70 transition-colors line-clamp-2">
+                  <p className="text-sm text-white/50 leading-relaxed group-hover:text-white/70 transition-colors">
                     {feature.description}
                   </p>
                 </div>

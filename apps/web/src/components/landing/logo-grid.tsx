@@ -58,8 +58,8 @@ export function LogoGrid() {
                       logo.isWhite
                         ? "" // No effects for white logos
                         : logo.hasBackground 
-                          ? "grayscale invert mix-blend-screen opacity-100" 
-                          : "grayscale brightness-0 invert"
+                        ? "grayscale invert mix-blend-screen opacity-100" 
+                        : "grayscale brightness-0 invert"
                     )}
                   />
                 </div>

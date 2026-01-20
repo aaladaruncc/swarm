@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useSession, signOut, authClient } from "@/lib/auth-client";
-import { User, Mail, LogOut, Loader2, Check, Bell, BellOff, Sun, Moon } from "lucide-react";
+import { User, Mail, LogOut, Loader2, Check, Bell, BellOff } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
   isNotificationSupported,
@@ -16,7 +16,7 @@ import { useTheme } from "@/contexts/theme-context";
 export default function SettingsPage() {
   const { data: session } = useSession();
   const router = useRouter();
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -164,7 +164,7 @@ export default function SettingsPage() {
         }`}>Manage your account and preferences.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 gap-8">
         {/* Profile Section */}
         <section>
           <h2 className={`text-lg font-medium mb-4 uppercase tracking-widest text-xs border-b pb-2 ${
@@ -288,60 +288,6 @@ export default function SettingsPage() {
                 <LogOut size={14} />
                 Sign Out
               </button>
-            </div>
-          </div>
-        </section>
-
-        {/* Appearance Section */}
-        <section>
-          <h2 className={`text-lg font-medium mb-4 uppercase tracking-widest text-xs border-b pb-2 ${
-            isLight 
-              ? "text-neutral-900 border-neutral-200" 
-              : "text-white border-white/10"
-          }`}>Appearance</h2>
-          
-          <div className={`rounded-xl p-6 ${
-            isLight 
-              ? "bg-white border border-neutral-200" 
-              : "bg-[#1E1E1E] border border-white/10"
-          }`}>
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  {isLight ? (
-                    <Sun size={18} className={isLight ? "text-neutral-900" : "text-white"} />
-                  ) : (
-                    <Moon size={18} className={isLight ? "text-neutral-900" : "text-white"} />
-                  )}
-                  <h3 className={`text-sm font-medium ${
-                    isLight ? "text-neutral-900" : "text-white"
-                  }`}>Theme</h3>
-                </div>
-                <p className={`text-xs font-light ml-7 mb-2 ${
-                  isLight ? "text-neutral-500" : "text-neutral-400"
-                }`}>
-                  Switch between light and dark mode. Your preference will be saved.
-                </p>
-              </div>
-              
-              <div className="flex items-center flex-shrink-0">
-                <button
-                  onClick={toggleTheme}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                    isLight
-                      ? "bg-neutral-900 focus:ring-neutral-900 focus:ring-offset-white"
-                      : "bg-white focus:ring-white focus:ring-offset-[#1E1E1E]"
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full transition-transform ${
-                      isLight
-                        ? "translate-x-1 bg-white"
-                        : "translate-x-6 bg-[#1E1E1E]"
-                    }`}
-                  />
-                </button>
-              </div>
             </div>
           </div>
         </section>
