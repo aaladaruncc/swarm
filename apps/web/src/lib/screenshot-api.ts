@@ -140,6 +140,18 @@ export async function createScreenshotTest(
 }
 
 /**
+ * Re-run a screenshot test
+ */
+export async function rerunScreenshotTest(id: string): Promise<{
+    screenshotTestRun: ScreenshotTestRun;
+    message: string;
+}> {
+    return fetchWithAuth(`/api/screenshot-tests/${id}/rerun`, {
+        method: "POST",
+    });
+}
+
+/**
  * Get screenshot test results
  */
 export async function getScreenshotTest(id: string): Promise<ScreenshotTestResult> {

@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
-import { getScreenshotTest, type ScreenshotTestResult } from "@/lib/screenshot-api";
-import { Loader2, ArrowLeft, CheckCircle2, AlertCircle, Info } from "lucide-react";
+import { getScreenshotTest, rerunScreenshotTest, type ScreenshotTestResult } from "@/lib/screenshot-api";
+import { Loader2, ArrowLeft, CheckCircle2, AlertCircle, Info, RefreshCw } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 
 export default function ScreenshotTestResults() {
@@ -18,6 +18,8 @@ export default function ScreenshotTestResults() {
     const [result, setResult] = useState<ScreenshotTestResult | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [rerunning, setRerunning] = useState(false);
+    const [rerunError, setRerunError] = useState("");
 
     const testId = params.id as string;
 
@@ -98,6 +100,20 @@ export default function ScreenshotTestResults() {
     const isCompleted = testRun.status === "completed";
     const isFailed = testRun.status === "failed";
 
+    const handleRerun = async () => {
+        if (!testId || rerunning) return;
+        setRerunning(true);
+        setRerunError("");
+        try {
+            const data = await rerunScreenshotTest(testId);
+            router.push(`/dashboard/tests/screenshot/${data.screenshotTestRun.id}`);
+        } catch (err) {
+            setRerunError(err instanceof Error ? err.message : "Failed to rerun test");
+        } finally {
+            setRerunning(false);
+        }
+    };
+
     return (
         <div className="h-full flex flex-col p-8 max-w-7xl mx-auto w-full overflow-auto">
             {/* Header */}
@@ -117,7 +133,7 @@ export default function ScreenshotTestResults() {
                         {testRun.testName || "Screenshot Test"}
                     </span>
                 </nav>
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-4">
                     <div>
                         <h1 className={`text-3xl font-light tracking-tight mb-2 ${isLight ? "text-neutral-900" : "text-white"
                             }`}>
@@ -130,13 +146,26 @@ export default function ScreenshotTestResults() {
                             </p>
                         )}
                     </div>
-                    <div className={`px-3 py-1.5 rounded-lg text-xs font-medium ${isAnalyzing
-                            ? isLight ? "bg-blue-100 text-blue-700" : "bg-blue-500/20 text-blue-300"
-                            : isCompleted
-                                ? isLight ? "bg-green-100 text-green-700" : "bg-green-500/20 text-green-300"
-                                : isLight ? "bg-red-100 text-red-700" : "bg-red-500/20 text-red-300"
-                        }`}>
-                        {isAnalyzing ? "Analyzing..." : isCompleted ? "Completed" : "Failed"}
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={handleRerun}
+                            disabled={rerunning || isAnalyzing}
+                            className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isLight
+                                    ? "border border-neutral-200 text-neutral-700 hover:border-neutral-400 hover:text-neutral-900"
+                                    : "border border-white/10 text-neutral-300 hover:border-white/30 hover:text-white"
+                                }`}
+                        >
+                            {rerunning ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                            <span>{rerunning ? "Rerunning..." : "Rerun"}</span>
+                        </button>
+                        <div className={`px-3 py-1.5 rounded-lg text-xs font-medium ${isAnalyzing
+                                ? isLight ? "bg-blue-100 text-blue-700" : "bg-blue-500/20 text-blue-300"
+                                : isCompleted
+                                    ? isLight ? "bg-green-100 text-green-700" : "bg-green-500/20 text-green-300"
+                                    : isLight ? "bg-red-100 text-red-700" : "bg-red-500/20 text-red-300"
+                            }`}>
+                            {isAnalyzing ? "Analyzing..." : isCompleted ? "Completed" : "Failed"}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -175,6 +204,15 @@ export default function ScreenshotTestResults() {
                             </p>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {rerunError && (
+                <div className={`mb-6 p-4 border rounded-lg text-sm font-light ${isLight
+                        ? "border-red-200 bg-red-50 text-red-700"
+                        : "border-red-500/20 bg-red-500/10 text-red-400"
+                    }`}>
+                    {rerunError}
                 </div>
             )}
 

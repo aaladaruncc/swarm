@@ -193,6 +193,100 @@ screenshotTestsRoutes.post(
 );
 
 /**
+ * POST /screenshot-tests/:id/rerun
+ * Re-runs analysis with the same screenshots/persona, creating a new test run
+ */
+screenshotTestsRoutes.post("/:id/rerun", async (c) => {
+    const user = c.get("user");
+    const testId = c.req.param("id");
+
+    try {
+        const [existingTest] = await db
+            .select()
+            .from(schema.screenshotTestRuns)
+            .where(eq(schema.screenshotTestRuns.id, testId));
+
+        if (!existingTest) {
+            return c.json({ error: "Test not found" }, 404);
+        }
+
+        if (existingTest.userId !== user.id) {
+            return c.json({ error: "Unauthorized" }, 403);
+        }
+
+        const existingScreenshots = await db
+            .select()
+            .from(schema.screenshotFlowImages)
+            .where(eq(schema.screenshotFlowImages.screenshotTestRunId, testId))
+            .orderBy(schema.screenshotFlowImages.orderIndex);
+
+        if (existingScreenshots.length === 0) {
+            return c.json({ error: "No screenshots found for this test" }, 400);
+        }
+
+        const [newTestRun] = await db
+            .insert(schema.screenshotTestRuns)
+            .values({
+                userId: user.id,
+                testName: existingTest.testName
+                    ? `${existingTest.testName} (Rerun)`
+                    : `Screenshot Test ${new Date().toISOString().split("T")[0]} (Rerun)`,
+                userDescription: existingTest.userDescription,
+                expectedTask: existingTest.expectedTask,
+                personaData: existingTest.personaData,
+                status: "analyzing",
+                startedAt: new Date(),
+            })
+            .returning();
+
+        const screenshotSequence = await Promise.all(
+            existingScreenshots.map(async (screenshot) => {
+                const [record] = await db
+                    .insert(schema.screenshotFlowImages)
+                    .values({
+                        screenshotTestRunId: newTestRun.id,
+                        orderIndex: screenshot.orderIndex,
+                        s3Key: screenshot.s3Key,
+                        s3Url: screenshot.s3Url,
+                        description: screenshot.description,
+                        context: screenshot.context,
+                    })
+                    .returning();
+                return record;
+            })
+        );
+
+        runScreenshotAnalysisInBackground(
+            newTestRun.id,
+            screenshotSequence.map((s) => ({
+                orderIndex: s.orderIndex,
+                s3Key: s.s3Key,
+                s3Url: s.s3Url,
+                description: s.description || undefined,
+                context: s.context || undefined,
+            })),
+            existingTest.personaData,
+            existingTest.userDescription || "",
+            existingTest.expectedTask || undefined
+        );
+
+        return c.json({
+            screenshotTestRun: newTestRun,
+            message: "Screenshot test rerun started",
+        });
+    } catch (error: any) {
+        console.error("[Rerun Screenshot Test] Error:", error);
+        return c.json(
+            {
+                error: "rerun_failed",
+                message: error?.message || "Failed to rerun screenshot test",
+            },
+            500
+        );
+    }
+});
+
+/**
  * GET /screenshot-tests/:id
  * Gets screenshot test results with analysis
  */
