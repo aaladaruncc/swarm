@@ -79,43 +79,138 @@ const PersonasVisual = () => {
   );
 };
 
-// Autonomous Exploration Visual - Orbiting dots (more space, but not too much)
+// Autonomous Exploration Visual - Orbiting dots (bigger and more animated)
 const ExplorationVisual = () => {
   return (
-    <div className="relative w-32 h-32 flex-shrink-0 mx-auto my-4">
-      {/* Central node */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-9 h-9 rounded-lg bg-gradient-to-br from-white/30 to-white/20 border border-white/40 flex items-center justify-center">
-        <div className="w-3.5 h-3.5 rounded bg-white/60" />
-      </div>
-      
-      {/* Orbit path */}
-      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 128 128">
-        <circle cx="64" cy="64" r="48" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" strokeDasharray="5 5" />
-      </svg>
-      
-      {/* Orbiting agents */}
-      {[0, 1, 2].map((i) => (
-        <motion.div
-          key={i}
-          className="absolute w-3.5 h-3.5 rounded-full bg-gradient-to-r from-white/70 to-white/50 shadow-lg shadow-white/20"
-          style={{
-            top: "50%",
-            left: "50%",
-            marginTop: -7,
-            marginLeft: -7,
-          }}
+    <div className="relative w-56 h-56 flex-shrink-0 mx-auto my-4">
+      {/* Central node with pulse animation */}
+      <motion.div 
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-lg bg-gradient-to-br from-white/40 to-white/25 border-2 border-white/50 flex items-center justify-center"
+        animate={{
+          scale: [1, 1.1, 1],
+          rotate: [0, 5, -5, 0],
+        }}
+        transition={{
+          duration: 3,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      >
+        <motion.div 
+          className="w-5 h-5 rounded bg-white/70"
           animate={{
-            x: [48 * Math.cos((i * 2 * Math.PI) / 3), 48 * Math.cos((i * 2 * Math.PI) / 3 + 2 * Math.PI)],
-            y: [48 * Math.sin((i * 2 * Math.PI) / 3), 48 * Math.sin((i * 2 * Math.PI) / 3 + 2 * Math.PI)],
+            scale: [1, 1.2, 1],
+            opacity: [0.7, 1, 0.7],
           }}
           transition={{
-            duration: 6,
+            duration: 2,
             repeat: Infinity,
-            ease: "linear",
-            delay: i * 0.5,
+            ease: "easeInOut",
           }}
         />
-      ))}
+        {/* Pulsing rings */}
+        {[0, 1, 2].map((ring) => (
+          <motion.div
+            key={ring}
+            className="absolute inset-0 rounded-lg border-2 border-white/30"
+            animate={{
+              scale: [1, 1.5 + ring * 0.3, 1.5 + ring * 0.3],
+              opacity: [0.3, 0, 0],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              delay: ring * 0.3,
+              ease: "easeOut",
+            }}
+          />
+        ))}
+      </motion.div>
+      
+      {/* Multiple orbit paths */}
+      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 224 224">
+        <motion.circle 
+          cx="112" cy="112" r="72" 
+          fill="none" 
+          stroke="rgba(255,255,255,0.2)" 
+          strokeWidth="2" 
+          strokeDasharray="8 4"
+          animate={{
+            strokeDashoffset: [0, -12],
+          }}
+          transition={{
+            duration: 3,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+        />
+        <motion.circle 
+          cx="112" cy="112" r="56" 
+          fill="none" 
+          stroke="rgba(255,255,255,0.15)" 
+          strokeWidth="1.5" 
+          strokeDasharray="6 6"
+          animate={{
+            strokeDashoffset: [0, 12],
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+        />
+      </svg>
+      
+      {/* Orbiting agents with enhanced animation */}
+      {[0, 1, 2, 3, 4].map((i) => {
+        const radius = i < 3 ? 72 : 56;
+        const angle = (i * 2 * Math.PI) / (i < 3 ? 3 : 2);
+        const delay = i * 0.4;
+        
+        return (
+          <motion.div
+            key={i}
+            className="absolute w-4 h-4 rounded-full bg-gradient-to-r from-white/80 to-white/60 shadow-lg shadow-white/30"
+            style={{
+              top: "50%",
+              left: "50%",
+              marginTop: -8,
+              marginLeft: -8,
+            }}
+            animate={{
+              x: [
+                radius * Math.cos(angle),
+                radius * Math.cos(angle + 2 * Math.PI)
+              ],
+              y: [
+                radius * Math.sin(angle),
+                radius * Math.sin(angle + 2 * Math.PI)
+              ],
+              scale: [1, 1.3, 1],
+            }}
+            transition={{
+              duration: i < 3 ? 8 : 6,
+              repeat: Infinity,
+              ease: "linear",
+              delay,
+            }}
+          >
+            {/* Trail effect */}
+            <motion.div
+              className="absolute inset-0 rounded-full bg-white/40"
+              animate={{
+                scale: [1, 2, 1],
+                opacity: [0.4, 0, 0.4],
+              }}
+              transition={{
+                duration: 1.5,
+                repeat: Infinity,
+                delay: delay + 0.2,
+              }}
+            />
+          </motion.div>
+        );
+      })}
     </div>
   );
 };
@@ -169,99 +264,277 @@ const RegressionVisual = () => {
   );
 };
 
-// Interaction Testing Visual - Animated cursor clicks
+// Interaction Testing Visual - Animated cursor clicks (bigger and more animated)
 const InteractionVisual = () => {
-  const [clickPos, setClickPos] = useState({ x: 30, y: 20 });
+  const [clickPos, setClickPos] = useState({ x: 40, y: 30 });
   const [clicking, setClicking] = useState(false);
+  const [activeElement, setActiveElement] = useState(0);
 
   useEffect(() => {
     const positions = [
-      { x: 30, y: 20 },
-      { x: 90, y: 40 },
-      { x: 60, y: 60 },
+      { x: 40, y: 30, element: 0 },
+      { x: 180, y: 50, element: 1 },
+      { x: 120, y: 100, element: 2 },
+      { x: 80, y: 140, element: 3 },
     ];
     let idx = 0;
     
     const interval = setInterval(() => {
       idx = (idx + 1) % positions.length;
       setClickPos(positions[idx]);
+      setActiveElement(positions[idx].element);
       setClicking(true);
-      setTimeout(() => setClicking(false), 200);
-    }, 1500);
+      setTimeout(() => setClicking(false), 300);
+    }, 1800);
     
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="relative w-full max-w-[200px] h-24 bg-white/10 rounded-lg border border-white/20 overflow-hidden flex-shrink-0">
-      {/* Mock UI elements */}
-      <div className="absolute top-2 left-2 w-10 h-3 bg-white/30 rounded" />
-      <div className="absolute top-2 right-2 w-5 h-3 bg-white/50 rounded" />
-      <div className="absolute bottom-2 left-2 w-16 h-4 bg-white/15 rounded" />
-      <div className="absolute bottom-2 right-2 w-6 h-4 bg-white/40 rounded" />
+    <div className="relative w-full max-w-[320px] h-48 bg-white/10 rounded-lg border border-white/20 overflow-hidden flex-shrink-0">
+      {/* Mock UI elements with hover effects */}
+      <motion.div 
+        className="absolute top-4 left-4 w-16 h-4 bg-white/30 rounded"
+        animate={{
+          scale: activeElement === 0 && clicking ? 1.1 : 1,
+          opacity: activeElement === 0 && clicking ? 0.8 : 0.3,
+        }}
+        transition={{ duration: 0.2 }}
+      />
+      <motion.div 
+        className="absolute top-4 right-4 w-8 h-4 bg-white/50 rounded"
+        animate={{
+          scale: activeElement === 1 && clicking ? 1.1 : 1,
+          opacity: activeElement === 1 && clicking ? 0.9 : 0.5,
+        }}
+        transition={{ duration: 0.2 }}
+      />
+      <motion.div 
+        className="absolute bottom-4 left-4 w-24 h-6 bg-white/15 rounded"
+        animate={{
+          scale: activeElement === 2 && clicking ? 1.1 : 1,
+          opacity: activeElement === 2 && clicking ? 0.6 : 0.15,
+        }}
+        transition={{ duration: 0.2 }}
+      />
+      <motion.div 
+        className="absolute bottom-4 right-4 w-10 h-6 bg-white/40 rounded"
+        animate={{
+          scale: activeElement === 3 && clicking ? 1.1 : 1,
+          opacity: activeElement === 3 && clicking ? 0.8 : 0.4,
+        }}
+        transition={{ duration: 0.2 }}
+      />
       
-      {/* Animated cursor */}
+      {/* Additional UI elements for richer scene */}
+      <div className="absolute top-12 left-4 w-12 h-1 bg-white/20 rounded" />
+      <div className="absolute top-20 left-4 w-20 h-1 bg-white/15 rounded" />
+      <div className="absolute bottom-16 left-4 w-16 h-1 bg-white/10 rounded" />
+      
+      {/* Animated cursor with trail */}
       <motion.div
-        className="absolute pointer-events-none"
+        className="absolute pointer-events-none z-10"
         animate={{ x: clickPos.x, y: clickPos.y }}
-        transition={{ type: "spring", stiffness: 200, damping: 20 }}
+        transition={{ type: "spring", stiffness: 150, damping: 15 }}
       >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <motion.svg 
+          width="20" 
+          height="20" 
+          viewBox="0 0 16 16" 
+          fill="none"
+          animate={{
+            rotate: clicking ? [0, -10, 10, 0] : 0,
+            scale: clicking ? 1.2 : 1,
+          }}
+          transition={{ duration: 0.3 }}
+        >
           <path
             d="M1 1L6 14L8 8L14 6L1 1Z"
-            fill={clicking ? "rgba(255,255,255,0.9)" : "white"}
-            stroke={clicking ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.7)"}
-            strokeWidth="1"
+            fill={clicking ? "rgba(255,255,255,1)" : "rgba(255,255,255,0.9)"}
+            stroke={clicking ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.7)"}
+            strokeWidth="1.5"
           />
-        </svg>
+        </motion.svg>
+        
+        {/* Click ripple effect */}
         {clicking && (
-          <motion.div
-            initial={{ scale: 0.5, opacity: 1 }}
-            animate={{ scale: 2, opacity: 0 }}
-            transition={{ duration: 0.4 }}
-            className="absolute top-0 left-0 w-4 h-4 rounded-full bg-white/40"
-          />
+          <>
+            <motion.div
+              initial={{ scale: 0.5, opacity: 1 }}
+              animate={{ scale: 3, opacity: 0 }}
+              transition={{ duration: 0.5 }}
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/30 border-2 border-white/50"
+            />
+            <motion.div
+              initial={{ scale: 0.3, opacity: 0.8 }}
+              animate={{ scale: 4, opacity: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/20"
+            />
+          </>
         )}
+        
+        {/* Cursor trail */}
+        <motion.div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white/40"
+          animate={{
+            scale: [1, 1.5, 1],
+            opacity: [0.4, 0.8, 0.4],
+          }}
+          transition={{
+            duration: 1,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
       </motion.div>
+      
+      {/* Connection lines between clicks */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-30">
+        <motion.path
+          d={`M ${clickPos.x + 10} ${clickPos.y + 10} L ${clickPos.x + 10} ${clickPos.y + 10}`}
+          stroke="rgba(255,255,255,0.3)"
+          strokeWidth="1"
+          strokeDasharray="4 4"
+          animate={{
+            pathLength: [0, 1, 0],
+          }}
+          transition={{
+            duration: 1.8,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      </svg>
     </div>
   );
 };
 
-// CLI & CI/CD Visual - Mini terminal (fixed height, no overflow)
+// CLI & CI/CD Visual - Mini terminal (bigger and more animated)
 const TerminalVisual = () => {
   const [line, setLine] = useState(0);
+  const [typing, setTyping] = useState(false);
+  const [cursorVisible, setCursorVisible] = useState(true);
   
   useEffect(() => {
-    const interval = setInterval(() => setLine(l => (l + 1) % 4), 1000);
+    const interval = setInterval(() => {
+      setTyping(true);
+      setTimeout(() => {
+        setLine(l => (l + 1) % 5);
+        setTyping(false);
+      }, 800);
+    }, 1500);
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    const cursorInterval = setInterval(() => {
+      setCursorVisible(v => !v);
+    }, 530);
+    return () => clearInterval(cursorInterval);
+  }, []);
+
   const lines = [
-    { text: "$ swarm run --ci", color: "text-white/70" },
-    { text: "✓ 24 tests passed", color: "text-white/90" },
-    { text: "✓ No regressions", color: "text-white/90" },
-    { text: "Deploy ready ✨", color: "text-white/80" },
+    { text: "$ swarm run --ci", color: "text-white/70", icon: "💻" },
+    { text: "✓ 24 tests passed", color: "text-green-400/90", icon: "✓" },
+    { text: "✓ No regressions", color: "text-green-400/90", icon: "✓" },
+    { text: "🚀 Deploy ready", color: "text-white/80", icon: "🚀" },
+    { text: "✨ Build successful", color: "text-white/90", icon: "✨" },
   ];
 
   return (
-    <div className="w-full max-w-[280px] bg-[#0a0a0a] rounded-lg border border-white/15 overflow-hidden flex-shrink-0">
-      <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-white/10">
-        <div className="w-2 h-2 rounded-full bg-white/60" />
-        <div className="w-2 h-2 rounded-full bg-white/50" />
-        <div className="w-2 h-2 rounded-full bg-white/70" />
+    <div className="w-full max-w-[400px] bg-[#0a0a0a] rounded-lg border-2 border-white/20 overflow-hidden flex-shrink-0 shadow-lg shadow-white/5">
+      {/* Terminal header with animated dots */}
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-white/10 bg-[#0d0d0d]">
+        <motion.div 
+          className="w-2.5 h-2.5 rounded-full bg-red-500/80"
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        />
+        <motion.div 
+          className="w-2.5 h-2.5 rounded-full bg-yellow-500/80"
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity, delay: 0.2 }}
+        />
+        <motion.div 
+          className="w-2.5 h-2.5 rounded-full bg-green-500/80"
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity, delay: 0.4 }}
+        />
+        <div className="flex-1 text-[9px] text-white/40 font-mono ml-2">swarm-terminal</div>
       </div>
-      <div className="p-2.5 font-mono text-[10px] h-[60px] overflow-hidden">
+      
+      {/* Terminal content with enhanced animations */}
+      <div className="p-3 font-mono text-xs h-[100px] overflow-hidden bg-gradient-to-b from-[#0a0a0a] to-[#050505]">
         {lines.slice(0, line + 1).map((l, i) => (
           <motion.div
             key={i}
-            initial={{ opacity: 0, y: 3 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={cn(l.color, "leading-tight")}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ 
+              opacity: 1, 
+              x: 0,
+              scale: i === line && typing ? [1, 1.02, 1] : 1,
+            }}
+            transition={{ 
+              duration: 0.3,
+              delay: i * 0.1,
+            }}
+            className={cn(l.color, "leading-relaxed flex items-center gap-2 mb-1")}
           >
-            {l.text}
+            <span className="text-[10px]">{l.icon}</span>
+            <span>{l.text}</span>
+            {i === line && (
+              <motion.span
+                animate={{ opacity: cursorVisible ? 1 : 0 }}
+                transition={{ duration: 0.5 }}
+                className="inline-block w-2 h-4 bg-white/70 ml-1"
+              />
+            )}
           </motion.div>
         ))}
+        
+        {/* Progress indicator */}
+        {line < lines.length - 1 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0.3, 0.6, 0.3] }}
+            transition={{ duration: 1, repeat: Infinity }}
+            className="flex items-center gap-1 mt-2 text-white/40 text-[9px]"
+          >
+            <div className="flex gap-0.5">
+              <motion.div
+                className="w-1 h-1 rounded-full bg-white/40"
+                animate={{ scale: [1, 1.3, 1] }}
+                transition={{ duration: 0.8, repeat: Infinity, delay: 0 }}
+              />
+              <motion.div
+                className="w-1 h-1 rounded-full bg-white/40"
+                animate={{ scale: [1, 1.3, 1] }}
+                transition={{ duration: 0.8, repeat: Infinity, delay: 0.2 }}
+              />
+              <motion.div
+                className="w-1 h-1 rounded-full bg-white/40"
+                animate={{ scale: [1, 1.3, 1] }}
+                transition={{ duration: 0.8, repeat: Infinity, delay: 0.4 }}
+              />
+            </div>
+            <span className="ml-1">Running tests...</span>
+          </motion.div>
+        )}
       </div>
+      
+      {/* Animated bottom border */}
+      <motion.div
+        className="h-0.5 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+        animate={{
+          backgroundPosition: ["0%", "100%"],
+        }}
+        transition={{
+          duration: 2,
+          repeat: Infinity,
+          ease: "linear",
+        }}
+      />
     </div>
   );
 };
@@ -489,7 +762,7 @@ const FEATURES = [
 
 export function FeaturesGrid() {
   return (
-    <section id="features" className="relative z-10 py-24 md:py-32 border-b border-white/5 bg-transparent">
+    <section id="features" className="relative z-10 py-24 md:py-32 border-b border-white/5 bg-transparent dark-scrollbar">
       <div className="container mx-auto px-6 max-w-7xl">
         <div className="mb-12 md:mb-16 max-w-2xl">
           <h2 className="text-3xl md:text-4xl font-light text-white mb-4 md:mb-6">

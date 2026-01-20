@@ -24,7 +24,7 @@ export function Footer() {
               height: 'clamp(200px, 25vw, 350px)',
             }}
           >
-            {/* Base logo layer with smooth gradient fade from top */}
+            {/* Base logo layer with smooth gradient fade from top to bottom */}
             <Image
               src="/images/swarm_logo_white.png"
               alt=""
@@ -32,8 +32,8 @@ export function Footer() {
               className="object-contain"
               style={{
                 opacity: 0.06,
-                maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 20%, rgba(0,0,0,0.4) 50%, transparent 85%)',
-                WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 20%, rgba(0,0,0,0.4) 50%, transparent 85%)',
+                maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 15%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.2) 65%, transparent 80%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 15%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.2) 65%, transparent 80%)',
               }}
             />
           </div>
@@ -41,7 +41,7 @@ export function Footer() {
       </div>
 
       {/* Content Layer */}
-      <div className="relative z-20 container mx-auto px-6 max-w-7xl pt-16 pb-24 md:pb-32">
+      <div className="relative z-20 container mx-auto px-6 max-w-7xl pt-16 pb-16 md:pb-20">
         <div className="flex flex-col md:flex-row justify-between items-start gap-8">
           
           {/* Left Side - Copyright & Legal */}

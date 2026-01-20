@@ -7,7 +7,7 @@ import { FlickeringGrid } from "@/components/ui/flickering-grid";
 
 export function Hero() {
   return (
-    <section className="relative h-screen flex flex-col items-center justify-center overflow-hidden bg-transparent pt-0 pb-12 lg:pt-0 lg:pb-0">
+    <section className="relative h-screen flex flex-col items-center justify-center bg-transparent pt-0 pb-12 lg:pt-0 lg:pb-0">
       
       {/* Flickering Grid overlay - MagicUI style with fade out at bottom */}
       <div 

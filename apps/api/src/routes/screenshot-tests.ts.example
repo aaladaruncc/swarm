@@ -1,0 +1,346 @@
+/**
+ * Screenshot-Based Testing Routes
+ * 
+ * This is an example implementation showing how screenshot testing
+ * would be integrated into the existing API structure.
+ * 
+ * To use: Copy this file to screenshot-tests.ts and implement
+ * the database schema changes first.
+ */
+
+import { Hono } from "hono";
+import { z } from "zod";
+import { zValidator } from "@hono/zod-validator";
+import { eq, desc } from "drizzle-orm";
+import { db } from "../db/index.js";
+import { schema } from "@ux-testing/db/schema";
+import { authMiddleware } from "../middleware/auth.js";
+import { uploadScreenshot, generateScreenshotKey } from "../lib/s3.js";
+import { analyzeScreenshotSequence, type ScreenshotInput } from "../lib/screenshot-agent.js";
+import type { Session } from "@ux-testing/db/schema";
+
+type Variables = {
+  user: Session["user"];
+};
+
+const screenshotTestsRoutes = new Hono<{ Variables: Variables }>();
+
+// ============================================================================
+// SCHEMAS
+// ============================================================================
+
+const uploadScreenshotsSchema = z.object({
+  screenshots: z.array(
+    z.object({
+      base64: z.string(), // Base64 encoded image
+      description: z.string().optional(),
+      context: z.string().optional(),
+      order: z.number().optional(), // Optional order, defaults to array index
+    })
+  ).min(1).max(20), // Max 20 screenshots per test
+});
+
+const createScreenshotTestSchema = z.object({
+  testName: z.string().optional(),
+  userDescription: z.string().min(10),
+  screenshotSequence: z.array(
+    z.object({
+      order: z.number(),
+      s3Key: z.string(),
+      s3Url: z.string(),
+      description: z.string().optional(),
+      context: z.string().optional(),
+    })
+  ).min(1),
+  generatedPersonas: z.array(z.any()),
+  selectedPersonaIndices: z.array(z.number()).min(1).max(5),
+  agentCount: z.number().min(1).max(5).optional().default(1),
+});
+
+// ============================================================================
+// ROUTES
+// ============================================================================
+
+/**
+ * POST /screenshot-tests/upload
+ * Uploads screenshots and returns S3 keys/URLs
+ */
+screenshotTestsRoutes.post(
+  "/upload",
+  authMiddleware,
+  zValidator("json", uploadScreenshotsSchema),
+  async (c) => {
+    const user = c.get("user");
+    const { screenshots } = c.req.valid("json");
+
+    try {
+      const uploadedScreenshots = await Promise.all(
+        screenshots.map(async (screenshot, index) => {
+          const order = screenshot.order ?? index + 1;
+          
+          // Convert base64 to buffer
+          const imageBuffer = Buffer.from(screenshot.base64, "base64");
+          
+          // Generate S3 key
+          const key = generateScreenshotKey(`upload-${Date.now()}-${order}`, order);
+          
+          // Upload to S3
+          const { s3Key, s3Url } = await uploadScreenshot(key, imageBuffer, "image/png");
+          
+          return {
+            order,
+            s3Key,
+            s3Url,
+            description: screenshot.description,
+            context: screenshot.context,
+          };
+        })
+      );
+
+      return c.json({
+        uploadedScreenshots,
+        message: `Successfully uploaded ${uploadedScreenshots.length} screenshots`,
+      });
+    } catch (error: any) {
+      console.error("[Screenshot Upload] Error:", error);
+      return c.json(
+        {
+          error: "upload_failed",
+          message: error?.message || "Failed to upload screenshots",
+        },
+        500
+      );
+    }
+  }
+);
+
+/**
+ * POST /screenshot-tests
+ * Creates a screenshot-based test run
+ */
+screenshotTestsRoutes.post(
+  "/",
+  authMiddleware,
+  zValidator("json", createScreenshotTestSchema),
+  async (c) => {
+    const user = c.get("user");
+    const {
+      testName,
+      userDescription,
+      screenshotSequence,
+      generatedPersonas,
+      selectedPersonaIndices,
+      agentCount = 1,
+    } = c.req.valid("json");
+
+    try {
+      // Validate selected personas match agent count
+      if (selectedPersonaIndices.length !== agentCount) {
+        return c.json(
+          {
+            error: "Invalid selection",
+            details: `Please select exactly ${agentCount} personas`,
+          },
+          400
+        );
+      }
+
+      // Create screenshot test run record
+      // NOTE: This requires the screenshot_test_runs table to be created first
+      const [screenshotTestRun] = await db
+        .insert(schema.screenshotTestRuns) // This table needs to be added to schema
+        .values({
+          userId: user.id,
+          testName: testName || `Screenshot Test ${new Date().toISOString()}`,
+          userDescription,
+          screenshotSequence,
+          personaData: generatedPersonas[selectedPersonaIndices[0]], // For single persona
+          generatedPersonas,
+          selectedPersonaIndices,
+          agentCount,
+          status: "analyzing",
+          startedAt: new Date(),
+        })
+        .returning();
+
+      console.log(`[${screenshotTestRun.id}] Created screenshot test run with ${screenshotSequence.length} screenshots`);
+
+      // Run analysis in background
+      runScreenshotAnalysisInBackground(
+        screenshotTestRun.id,
+        screenshotSequence,
+        generatedPersonas[selectedPersonaIndices[0]], // For now, single persona
+        user.id
+      );
+
+      return c.json({
+        screenshotTestRun,
+        message: "Screenshot test started",
+      });
+    } catch (error: any) {
+      console.error("[Screenshot Test] Error:", error);
+      return c.json(
+        {
+          error: "test_creation_failed",
+          message: error?.message || "Failed to create screenshot test",
+        },
+        500
+      );
+    }
+  }
+);
+
+/**
+ * GET /screenshot-tests/:id
+ * Gets screenshot test results
+ */
+screenshotTestsRoutes.get("/:id", authMiddleware, async (c) => {
+  const user = c.get("user");
+  const testId = c.req.param("id");
+
+  try {
+    const testRun = await db.query.screenshotTestRuns.findFirst({
+      where: (runs, { eq, and }) =>
+        and(eq(runs.id, testId), eq(runs.userId, user.id)),
+    });
+
+    if (!testRun) {
+      return c.json({ error: "Test not found" }, 404);
+    }
+
+    // Get analysis results for each screenshot
+    const analyses = await db.query.screenshotAnalysisResults.findMany({
+      where: (results, { eq }) => eq(results.screenshotTestRunId, testId),
+      orderBy: (results, { asc }) => [asc(results.screenshotOrder)],
+    });
+
+    return c.json({
+      testRun,
+      analyses,
+      overallReport: {
+        score: testRun.overallScore,
+        summary: testRun.summary,
+        // Additional aggregated data would go here
+      },
+    });
+  } catch (error: any) {
+    console.error("[Get Screenshot Test] Error:", error);
+    return c.json(
+      {
+        error: "fetch_failed",
+        message: error?.message || "Failed to fetch test results",
+      },
+      500
+    );
+  }
+});
+
+/**
+ * GET /screenshot-tests
+ * Lists all screenshot tests for the user
+ */
+screenshotTestsRoutes.get("/", authMiddleware, async (c) => {
+  const user = c.get("user");
+
+  try {
+    const tests = await db
+      .select()
+      .from(schema.screenshotTestRuns)
+      .where(eq(schema.screenshotTestRuns.userId, user.id))
+      .orderBy(desc(schema.screenshotTestRuns.createdAt));
+
+    return c.json({ tests });
+  } catch (error: any) {
+    console.error("[List Screenshot Tests] Error:", error);
+    return c.json(
+      {
+        error: "fetch_failed",
+        message: error?.message || "Failed to fetch tests",
+      },
+      500
+    );
+  }
+});
+
+// ============================================================================
+// BACKGROUND PROCESSING
+// ============================================================================
+
+/**
+ * Runs screenshot analysis in the background
+ */
+async function runScreenshotAnalysisInBackground(
+  testRunId: string,
+  screenshotSequence: Array<{
+    order: number;
+    s3Key: string;
+    s3Url: string;
+    description?: string;
+    context?: string;
+  }>,
+  persona: any,
+  userId: string
+) {
+  console.log(`[${testRunId}] Starting screenshot analysis...`);
+
+  try {
+    // Convert screenshot sequence to agent input format
+    const screenshots: ScreenshotInput[] = screenshotSequence.map((s) => ({
+      order: s.order,
+      s3Key: s.s3Key,
+      s3Url: s.s3Url,
+      description: s.description,
+      context: s.context,
+    }));
+
+    // Run analysis
+    const result = await analyzeScreenshotSequence(screenshots, persona);
+
+    // Store analysis results
+    await Promise.all(
+      result.analyses.map((analysis) =>
+        db.insert(schema.screenshotAnalysisResults).values({
+          screenshotTestRunId: testRunId,
+          screenshotOrder: analysis.screenshotOrder,
+          s3Key: analysis.s3Key,
+          s3Url: analysis.s3Url,
+          personaName: analysis.personaName,
+          observations: analysis.observations,
+          positiveAspects: analysis.positiveAspects,
+          issues: analysis.issues,
+          accessibilityNotes: analysis.accessibilityNotes,
+          thoughts: analysis.thoughts,
+          comparisonWithPrevious: analysis.comparisonWithPrevious,
+        })
+      )
+    );
+
+    // Update test run with overall results
+    await db
+      .update(schema.screenshotTestRuns)
+      .set({
+        status: "completed",
+        overallScore: result.overallScore,
+        summary: result.summary,
+        fullReport: result as any,
+        completedAt: new Date(),
+      })
+      .where(eq(schema.screenshotTestRuns.id, testRunId));
+
+    console.log(`[${testRunId}] Screenshot analysis completed`);
+  } catch (error: any) {
+    console.error(`[${testRunId}] Screenshot analysis failed:`, error);
+
+    // Update test run with error
+    await db
+      .update(schema.screenshotTestRuns)
+      .set({
+        status: "failed",
+        errorMessage: error?.message || "Analysis failed",
+        completedAt: new Date(),
+      })
+      .where(eq(schema.screenshotTestRuns.id, testRunId));
+  }
+}
+
+export { screenshotTestsRoutes };

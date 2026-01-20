@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
-import { getBatchTests, getBatchTest, type BatchTestRun } from "@/lib/batch-api";
+import { getBatchTests, getBatchTest, deleteBatchTests, type BatchTestRun } from "@/lib/batch-api";
 import { Plus, Loader2, Trash2, CheckSquare, FileText, Download, Check, ChevronUp, ChevronDown } from "lucide-react";
 import { pdf } from '@react-pdf/renderer';
 import { AggregatedReportPDF } from '@/components/pdf/AggregatedReportPDF';
@@ -21,6 +21,7 @@ export default function Dashboard() {
   const [isArchiving, setIsArchiving] = useState(false);
   const [exportingPDF, setExportingPDF] = useState(false);
   const [error, setError] = useState("");
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [sortField, setSortField] = useState<"date" | "agents" | "status" | "targetUrl" | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   
@@ -121,15 +122,18 @@ export default function Dashboard() {
     }
   };
 
+  const handleArchiveClick = () => {
+    if (selectedTests.length === 0) return;
+    setShowArchiveConfirm(true);
+  };
+
   const handleArchive = async () => {
     if (selectedTests.length === 0) return;
-    
-    if (!confirm(`Are you sure you want to archive ${selectedTests.length} test(s)?`)) return;
 
     setIsArchiving(true);
+    setShowArchiveConfirm(false);
     try {
-      // TODO: Implement batch test deletion API
-      // await deleteBatchTests(selectedTests);
+      await deleteBatchTests(selectedTests);
       // Remove locally
       setBatchTests(prev => prev.filter(t => !selectedTests.includes(t.id)));
       setSelectedTests([]);
@@ -385,7 +389,7 @@ export default function Dashboard() {
                       <span>Export PDF ({selectedTests.length})</span>
                     </button>
                     <button
-                      onClick={handleArchive}
+                      onClick={handleArchiveClick}
                       disabled={isArchiving}
                       className={`flex items-center justify-center gap-2 transition-all text-xs font-medium uppercase tracking-wide ${
                         isLight
@@ -417,7 +421,9 @@ export default function Dashboard() {
         </div>
 
         <div className="relative h-[600px]">
-          <div className="h-full w-full overflow-y-auto">
+          <div className={`h-full w-full overflow-y-auto ${
+            isLight ? "playground-scrollbar-light" : "playground-scrollbar-dark"
+          }`}>
             <table className="w-full text-left text-sm">
               <thead className={`sticky top-0 z-10 shadow-sm ${
                 isLight ? "bg-white" : "bg-[#1E1E1E]"
@@ -561,6 +567,52 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Archive Confirmation Modal */}
+      {showArchiveConfirm && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowArchiveConfirm(false)}>
+          <div className={`border p-6 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in-95 duration-200 rounded-xl ${
+            isLight
+              ? "bg-white border-neutral-200"
+              : "bg-[#1E1E1E] border-white/10"
+          }`} onClick={(e) => e.stopPropagation()}>
+            <h3 className={`text-lg font-medium mb-2 ${
+              isLight ? "text-neutral-900" : "text-white"
+            }`}>Archive Tests</h3>
+            <p className={`font-light text-sm mb-6 ${
+              isLight ? "text-neutral-600" : "text-neutral-400"
+            }`}>
+              Are you sure you want to archive {selectedTests.length} test{selectedTests.length !== 1 ? 's' : ''}? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowArchiveConfirm(false)}
+                className={`px-4 py-2 text-sm font-medium transition-colors rounded-lg ${
+                  isLight
+                    ? "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100"
+                    : "text-neutral-400 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleArchive}
+                disabled={isArchiving}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-colors rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isArchiving ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 size={14} className="animate-spin" />
+                    Archiving...
+                  </span>
+                ) : (
+                  "Archive"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

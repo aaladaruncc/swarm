@@ -23,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" style={{ scrollBehavior: 'auto' }}>
+    <html lang="en">
       <body className={`${inter.variable} ${inter.className}`} suppressHydrationWarning>
         {children}
       </body>

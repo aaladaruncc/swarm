@@ -6,68 +6,80 @@ import { cn } from "@/lib/utils";
 
 const TABS = [
   {
-    id: "simulated-data",
-    title: "Simulated Data",
-    shortTitle: "Simulated Data",
-    description: "Generate realistic user behavior patterns and test scenarios using advanced simulation techniques.",
+    id: "input-formats",
+    title: "Multiple Input Formats",
+    shortTitle: "Input Formats",
+    description: "Screenshots, videos, or live URLs—test from any angle.",
     content: {
-      overview: "Our simulated data engine creates authentic user interactions by modeling real-world behavior patterns, demographics, and interaction flows.",
-      features: [
-        "Behavioral pattern generation based on real user analytics",
-        "Demographic and psychographic persona modeling",
-        "Realistic interaction sequences and user journeys",
-        "Context-aware scenario generation for edge cases",
-        "Statistical distribution modeling for realistic test coverage"
-      ],
-      benefits: [
-        "Test with data that mirrors real user behavior",
-        "Discover edge cases before production deployment",
-        "Validate UI/UX decisions with realistic scenarios",
-        "Reduce reliance on manual test data creation"
+      items: [
+        {
+          label: "Screenshots",
+          description: "Upload static images for visual analysis"
+        },
+        {
+          label: "Videos",
+          description: "Analyze user recordings and replays"
+        },
+        {
+          label: "Live URLs",
+          description: "Test real-time with browser automation"
+        },
+        {
+          label: "Visual Diffs",
+          description: "Compare before and after states"
+        }
       ]
     }
   },
   {
-    id: "user-sessions-synthetic",
-    title: "Synthetic User Sessions",
-    shortTitle: "Synthetic Sessions",
-    description: "Create and replay synthetic user sessions that mimic real user interactions across your application.",
+    id: "authentication",
+    title: "Authentication & Access",
+    shortTitle: "Authentication",
+    description: "Test public pages and protected routes alike.",
     content: {
-      overview: "Synthetic user sessions are AI-generated interaction sequences that replicate authentic user behavior, enabling comprehensive testing without requiring real user data or manual test case creation.",
-      features: [
-        "AI-powered session generation with natural interaction patterns",
-        "Multi-step user flows with realistic timing and pauses",
-        "Cross-device and cross-browser session replication",
-        "Session replay and debugging capabilities",
-        "Parallel execution of multiple synthetic sessions"
-      ],
-      benefits: [
-        "Scale testing without manual test case creation",
-        "Reproduce complex user journeys automatically",
-        "Test edge cases and error scenarios systematically",
-        "Maintain test coverage as your application evolves"
+      items: [
+        {
+          label: "Authenticated Links",
+          description: "Test logged-in user experiences"
+        },
+        {
+          label: "Public Links",
+          description: "Test open, accessible pages"
+        },
+        {
+          label: "Protected Routes",
+          description: "Validate permission-based access"
+        },
+        {
+          label: "Session Management",
+          description: "Maintain state across test runs"
+        }
       ]
     }
   },
   {
-    id: "uxagent-research",
-    title: "UXAgent Research",
-    shortTitle: "UXAgent Research",
-    description: "Built on cutting-edge research in autonomous agent systems and user experience testing methodologies.",
+    id: "integrations",
+    title: "Integration Options",
+    shortTitle: "Integrations",
+    description: "CI/CD, online portal, or API—choose your workflow.",
     content: {
-      overview: "UXAgent leverages state-of-the-art research in autonomous AI agents, combining dual-loop reasoning systems with memory streams to create intelligent testing agents that think and act like real users.",
-      features: [
-        "Dual-loop architecture: fast reactive loop and slow reasoning loop",
-        "Memory stream system with importance scoring and relevance matching",
-        "Context-aware perception and action planning",
-        "Autonomous exploration with strategic decision-making",
-        "Continuous learning from interaction patterns"
-      ],
-      benefits: [
-        "Agents that understand context and make intelligent decisions",
-        "Comprehensive exploration beyond predefined test cases",
-        "Adaptive testing that evolves with your application",
-        "Research-backed methodology for reliable results"
+      items: [
+        {
+          label: "CI/CD Pipelines",
+          description: "Automate tests in your deployment flow"
+        },
+        {
+          label: "Online Portal",
+          description: "Manage tests through our web interface"
+        },
+        {
+          label: "REST API",
+          description: "Build custom integrations programmatically"
+        },
+        {
+          label: "CLI Tools",
+          description: "Run tests from your terminal"
+        }
       ]
     }
   }
@@ -93,11 +105,11 @@ export function HowItWorks() {
           className="mb-16 max-w-3xl"
         >
           <h2 className="text-3xl md:text-4xl font-light text-white mb-4 md:mb-6">
-            Intelligent testing for your <br />
-            <span className="text-white/50">development workflow.</span>
+            Test from every angle <br />
+            <span className="text-white/50">and modality.</span>
           </h2>
           <p className="text-base md:text-lg text-white/50 leading-relaxed">
-            Understanding the underlying concepts that power Swarm's intelligent testing capabilities.
+            Screenshots, videos, authenticated links, CI/CD—we accept it all.
           </p>
         </motion.div>
 
@@ -133,7 +145,7 @@ export function HowItWorks() {
           </div>
 
           {/* Tab Content */}
-          <div className="relative min-h-[500px]">
+          <div className="relative min-h-[400px]">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
@@ -144,62 +156,36 @@ export function HowItWorks() {
                 className="bg-white/5 border border-white/10 rounded-lg p-8 md:p-12"
               >
                 {/* Title */}
-                <h3 className="text-2xl md:text-3xl lg:text-4xl font-medium text-white mb-4">
+                <h3 className="text-2xl md:text-3xl font-medium text-white mb-3">
                   {activeTabData.title}
                 </h3>
 
                 {/* Description */}
-                <p className="text-base md:text-lg text-white/60 leading-relaxed mb-8">
+                <p className="text-base text-white/60 mb-8">
                   {activeTabData.description}
                 </p>
 
-                {/* Overview */}
-                <div className="mb-8">
-                  <h4 className="text-lg font-medium text-white/90 mb-3">Overview</h4>
-                  <p className="text-base text-white/50 leading-relaxed">
-                    {activeTabData.content.overview}
-                  </p>
-                </div>
-
-                {/* Features and Benefits Grid */}
-                <div className="grid md:grid-cols-2 gap-8">
-                  {/* Features */}
-                  <div>
-                    <h4 className="text-lg font-medium text-white/90 mb-4">Key Features</h4>
-                    <ul className="space-y-3">
-                      {activeTabData.content.features.map((feature, index) => (
-                        <motion.li
-                          key={index}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                          className="flex items-start gap-3 text-sm md:text-base text-white/50"
-                        >
-                          <span className="mt-2 w-1.5 h-1.5 rounded-full bg-white/60 flex-shrink-0" />
-                          <span>{feature}</span>
-                        </motion.li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Benefits */}
-                  <div>
-                    <h4 className="text-lg font-medium text-white/90 mb-4">Benefits</h4>
-                    <ul className="space-y-3">
-                      {activeTabData.content.benefits.map((benefit, index) => (
-                        <motion.li
-                          key={index}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                          className="flex items-start gap-3 text-sm md:text-base text-white/50"
-                        >
-                          <span className="mt-2 w-1.5 h-1.5 rounded-full bg-white/40 flex-shrink-0" />
-                          <span>{benefit}</span>
-                        </motion.li>
-                      ))}
-                    </ul>
-                  </div>
+                {/* Items Grid */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  {activeTabData.content.items.map((item, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="flex items-start gap-4"
+                    >
+                      <div className="mt-1 w-2 h-2 rounded-full bg-white/60 flex-shrink-0" />
+                      <div>
+                        <h4 className="text-base font-medium text-white mb-1">
+                          {item.label}
+                        </h4>
+                        <p className="text-sm text-white/50 leading-relaxed">
+                          {item.description}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
               </motion.div>
             </AnimatePresence>

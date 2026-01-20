@@ -341,6 +341,13 @@ export async function terminateBatchTest(id: string): Promise<{ message: string;
   });
 }
 
+export async function deleteBatchTests(ids: string[]): Promise<{ message: string }> {
+  return fetchWithAuth("/api/tests", {
+    method: "DELETE",
+    body: JSON.stringify({ ids }),
+  });
+}
+
 // UXAgent Thoughts API
 export async function getUXAgentThoughts(runId: string): Promise<{ thoughts: UXAgentThought[] }> {
   return fetchWithAuth(`/api/uxagent/runs/${runId}/thoughts`);
