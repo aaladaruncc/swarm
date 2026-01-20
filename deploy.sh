@@ -39,8 +39,8 @@ deploy_service() {
     FULL_IMAGE_URL="${ECR_URL}/${IMAGE_NAME}:latest"
 
     echo "📦 Building Docker image..."
-    # Build with --no-cache to ensure latest code is used
-    docker build --no-cache --platform linux/amd64 -t "${IMAGE_NAME}" -f "${DOCKERFILE}" "${CONTEXT}"
+    # Build for linux/amd64 (required for ECS)
+    docker build --platform linux/amd64 -t "${IMAGE_NAME}" -f "${DOCKERFILE}" "${CONTEXT}"
 
     echo "🏷️ Tagging image..."
     docker tag "${IMAGE_NAME}:latest" "${FULL_IMAGE_URL}"

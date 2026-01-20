@@ -107,7 +107,7 @@ async function analyzeScreenshotWithVision(
 ): Promise<Omit<ScreenshotAnalysis, "screenshotOrder" | "s3Key" | "s3Url" | "personaName">> {
   // Download image
   const imageBase64 = await downloadImageAsBase64(screenshot.s3Url);
-  
+
   // Generate analysis prompt
   const prompt = generateScreenshotAnalysisPrompt(
     persona,
@@ -201,7 +201,7 @@ THOUGHTS:
 function parseAnalysisResponse(
   responseText: string,
   previousContext: string
-): Omit<ScreenshotAnalysis, "screenshotOrder" | "s3Key" | "s3Url" | "personaName">> {
+): Omit<ScreenshotAnalysis, "screenshotOrder" | "s3Key" | "s3Url" | "personaName"> {
   const result: Omit<ScreenshotAnalysis, "screenshotOrder" | "s3Key" | "s3Url" | "personaName"> = {
     observations: [],
     positiveAspects: [],
