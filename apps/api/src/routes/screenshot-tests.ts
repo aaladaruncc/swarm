@@ -9,7 +9,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { db, schema } from "../db/index.js";
 import { uploadScreenshot, generateFlowScreenshotKey, getPresignedUrl } from "../lib/s3.js";
 import { analyzeScreenshotSequence, type ScreenshotInput, type UserPersona } from "../lib/screenshot-agent.js";
@@ -312,13 +312,26 @@ async function runScreenshotAnalysisInBackground(
 
     try {
         // Convert to ScreenshotInput format expected by the agent
-        const screenshots: ScreenshotInput[] = screenshotSequence.map((s) => ({
-            order: s.orderIndex,
-            s3Key: s.s3Key,
-            s3Url: s.s3Url,
-            description: s.description,
-            context: s.context || (expectedTask ? `Expected task: ${expectedTask}` : undefined),
-        }));
+        const screenshots: ScreenshotInput[] = await Promise.all(
+            screenshotSequence.map(async (s) => {
+                let signedUrl = s.s3Url;
+                if (s.s3Key) {
+                    try {
+                        signedUrl = await getPresignedUrl(s.s3Key, 3600);
+                    } catch (err) {
+                        console.error(`Failed to generate presigned URL for ${s.s3Key}:`, err);
+                    }
+                }
+
+                return {
+                    order: s.orderIndex,
+                    s3Key: s.s3Key,
+                    s3Url: signedUrl,
+                    description: s.description,
+                    context: s.context || (expectedTask ? `Expected task: ${expectedTask}` : undefined),
+                };
+            })
+        );
 
         // Convert persona data to UserPersona format
         const persona: UserPersona = {
@@ -353,7 +366,10 @@ async function runScreenshotAnalysisInBackground(
                     comparisonWithPrevious: analysis.comparisonWithPrevious,
                 })
                 .where(
-                    eq(schema.screenshotFlowImages.screenshotTestRunId, testRunId)
+                    and(
+                        eq(schema.screenshotFlowImages.screenshotTestRunId, testRunId),
+                        eq(schema.screenshotFlowImages.orderIndex, analysis.screenshotOrder)
+                    )
                 );
             // Note: Ideally we'd match by s3Key or orderIndex, but for MVP this works
         }

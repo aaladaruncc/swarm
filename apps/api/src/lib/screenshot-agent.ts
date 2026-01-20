@@ -51,6 +51,7 @@ export interface ScreenshotAnalysis {
 
 export interface ScreenshotTestResult {
   analyses: ScreenshotAnalysis[];
+  reflections: ScreenshotReflection[];
   overallScore: number;
   summary: string;
   commonIssues: Array<{
@@ -62,6 +63,12 @@ export interface ScreenshotTestResult {
   positiveAspects: string[];
   recommendations: string[];
   personaSpecificFeedback: string;
+}
+
+export interface ScreenshotReflection {
+  startOrder: number;
+  endOrder: number;
+  reflection: string;
 }
 
 // ============================================================================
@@ -132,6 +139,33 @@ async function analyzeScreenshotWithVision(
 
   // Parse structured response
   return parseAnalysisResponse(text, previousContext);
+}
+
+async function generateReflection(
+  persona: UserPersona,
+  recentAnalyses: ScreenshotAnalysis[],
+  priorReflection: string,
+  model: any
+): Promise<string> {
+  const summary = recentAnalyses
+    .map((analysis) => `Screenshot ${analysis.screenshotOrder + 1} thoughts: ${analysis.thoughts}`)
+    .join("\n");
+
+  const prompt = `You are ${persona.name}. Reflect on the last few screenshots you just analyzed.
+
+${priorReflection ? `PREVIOUS REFLECTION:\n${priorReflection}\n\n` : ""}
+RECENT THOUGHTS:\n${summary}
+
+Write a concise reflection (3-5 sentences) covering:
+1) What changed or progressed in the flow
+2) The most important friction or confusion
+3) What you expect or hope to see next
+4) Any overall sentiment shift
+`;
+
+  const result = await model.generateContent([{ text: prompt }]);
+  const response = await result.response;
+  return response.text().trim();
 }
 
 /**
@@ -290,16 +324,21 @@ export async function analyzeScreenshotSequence(
 ): Promise<ScreenshotTestResult> {
   const model = getGeminiClient().getGenerativeModel({ model: "gemini-2.0-flash-exp" });
   const analyses: ScreenshotAnalysis[] = [];
+  const reflections: ScreenshotReflection[] = [];
   let previousContext = "";
+  let latestReflection = "";
+  const reflectionInterval = 3;
 
   // Analyze each screenshot sequentially
-  for (const screenshot of screenshots.sort((a, b) => a.order - b.order)) {
+  const orderedScreenshots = screenshots.sort((a, b) => a.order - b.order);
+  for (let index = 0; index < orderedScreenshots.length; index += 1) {
+    const screenshot = orderedScreenshots[index];
     console.log(`[Screenshot Agent] Analyzing screenshot ${screenshot.order}/${screenshots.length}...`);
 
     const analysis = await analyzeScreenshotWithVision(
       screenshot,
       persona,
-      previousContext,
+      [previousContext, latestReflection].filter(Boolean).join("\n\n"),
       model
     );
 
@@ -313,6 +352,19 @@ export async function analyzeScreenshotSequence(
 
     analyses.push(fullAnalysis);
     previousContext = analysis.thoughts; // Use thoughts as context for next screenshot
+
+    const shouldReflect = (index + 1) % reflectionInterval === 0 || index === orderedScreenshots.length - 1;
+    if (shouldReflect) {
+      const windowStart = Math.max(0, analyses.length - reflectionInterval);
+      const recentAnalyses = analyses.slice(windowStart);
+      const reflection = await generateReflection(persona, recentAnalyses, latestReflection, model);
+      reflections.push({
+        startOrder: recentAnalyses[0].screenshotOrder,
+        endOrder: recentAnalyses[recentAnalyses.length - 1].screenshotOrder,
+        reflection,
+      });
+      latestReflection = reflection;
+    }
   }
 
   // Generate overall report
@@ -320,6 +372,7 @@ export async function analyzeScreenshotSequence(
 
   return {
     analyses,
+    reflections,
     ...overallReport,
   };
 }
