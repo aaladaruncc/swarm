@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
-import { getBatchTests, getBatchTest, deleteBatchTests, type BatchTestRun } from "@/lib/batch-api";
+import { getBatchTests, getBatchTest, deleteBatchTests, getUXAgentInsights, type BatchTestRun, type UXAgentInsight } from "@/lib/batch-api";
 import { Plus, Loader2, Trash2, CheckSquare, FileText, Download, Check, ChevronUp, ChevronDown } from "lucide-react";
 import { pdf } from '@react-pdf/renderer';
-import { AggregatedReportPDF } from '@/components/pdf/AggregatedReportPDF';
+import { ComprehensiveTestReportPDF } from '@/components/pdf/ComprehensiveTestReportPDF';
 import { useTheme } from "@/contexts/theme-context";
 
 export default function Dashboard() {
@@ -79,18 +79,38 @@ export default function Dashboard() {
       // Process each selected test sequentially
       for (const id of selectedTests) {
         try {
-          // Fetch full test details to get the aggregated report
+          // Fetch full test details to get all data
           const data = await getBatchTest(id);
-          const { batchTestRun, aggregatedReport, testRuns } = data;
+          const { batchTestRun, aggregatedReport, testRuns, uxagentRuns } = data;
           
-          if (!batchTestRun || !aggregatedReport) continue;
+          if (!batchTestRun) continue;
+
+          // Fetch insights for all UXAgent runs
+          const insightsByRunId: Record<string, UXAgentInsight[]> = {};
+          if (uxagentRuns && uxagentRuns.length > 0) {
+            await Promise.all(
+              uxagentRuns.map(async (run) => {
+                try {
+                  const result = await getUXAgentInsights(run.id);
+                  if (result.insights && result.insights.length > 0) {
+                    insightsByRunId[run.id] = result.insights;
+                  }
+                } catch (err) {
+                  console.error(`Failed to fetch insights for run ${run.id}:`, err);
+                  // Continue even if some insights fail to load
+                }
+              })
+            );
+          }
           
-          // Generate PDF
+          // Generate comprehensive PDF with all data
           const blob = await pdf(
-            <AggregatedReportPDF 
+            <ComprehensiveTestReportPDF 
               batchTestRun={batchTestRun}
+              testRuns={testRuns}
+              uxagentRuns={uxagentRuns || []}
               aggregatedReport={aggregatedReport}
-              agentCount={testRuns.length}
+              insightsByRunId={insightsByRunId}
             />
           ).toBlob();
           
@@ -98,7 +118,8 @@ export default function Dashboard() {
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
-          link.download = `aggregated-report-${batchTestRun.targetUrl.replace(/[^a-z0-9]/gi, '_').substring(0, 20)}-${new Date().toISOString().split('T')[0]}.pdf`;
+          const urlSlug = batchTestRun.targetUrl.replace(/[^a-z0-9]/gi, '_').substring(0, 20);
+          link.download = `comprehensive-test-report-${urlSlug}-${new Date().toISOString().split('T')[0]}.pdf`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);

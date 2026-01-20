@@ -49,6 +49,8 @@ export interface ScreenshotAnalysis {
   comparisonWithPrevious?: string;
 }
 
+type ScreenshotAnalysisData = Omit<ScreenshotAnalysis, "screenshotOrder" | "s3Key" | "s3Url" | "personaName">;
+
 export interface ScreenshotTestResult {
   analyses: ScreenshotAnalysis[];
   overallScore: number;
@@ -104,7 +106,7 @@ async function analyzeScreenshotWithVision(
   persona: UserPersona,
   previousContext: string,
   model: any
-): Promise<Omit<ScreenshotAnalysis, "screenshotOrder" | "s3Key" | "s3Url" | "personaName">> {
+): Promise<ScreenshotAnalysisData> {
   // Download image
   const imageBase64 = await downloadImageAsBase64(screenshot.s3Url);
   
@@ -201,8 +203,8 @@ THOUGHTS:
 function parseAnalysisResponse(
   responseText: string,
   previousContext: string
-): Omit<ScreenshotAnalysis, "screenshotOrder" | "s3Key" | "s3Url" | "personaName">> {
-  const result: Omit<ScreenshotAnalysis, "screenshotOrder" | "s3Key" | "s3Url" | "personaName"> = {
+): ScreenshotAnalysisData {
+  const result: ScreenshotAnalysisData = {
     observations: [],
     positiveAspects: [],
     issues: [],

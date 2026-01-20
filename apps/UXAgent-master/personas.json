@@ -1,24 +1,68 @@
 [
   {
-    "persona": "Persona: Alice Chen\n\nBackground:\nAlice Chen is a 32-year-old Senior Financial Analyst from USA.\n\nDemographics:\nAge: 32\nGender: Female\nEducation: Master's Degree in Finance\nProfession: Senior Financial Analyst\nIncome: $150,000 USD\n\nFinancial Situation:\nAlice Chen has a high income level and manages their spending accordingly.\n\nBrowsing Habits:\nTech savviness: advanced. \n\nProfessional Life:\nWorks as a Senior Financial Analyst.\n\nPersonal Style:\nPractical and goal-oriented.\n\nPrimary Goal: To optimize portfolio performance and reduce reporting time.\nPain Points: Time-consuming manual data aggregation; Difficulty in real-time market analysis; Lack of integrated forecasting tools; Keeping up with regulatory changes",
-    "intent": "To optimize portfolio performance and reduce reporting time.",
-    "name": "Alice Chen",
-    "age": 32,
+    "persona": "Persona: Sarah Chen\n\nBackground:\nSarah Chen is a 28-year-old Software Engineer from USA.\n\nDemographics:\nAge: 28\nGender: Female\nEducation: Master's Degree\nProfession: Software Engineer\nIncome: $120,000 USD\n\nFinancial Situation:\nSarah Chen has a high income level and manages their spending accordingly.\n\nBrowsing Habits:\nTech savviness: advanced. \n\nProfessional Life:\nWorks as a Software Engineer.\n\nPersonal Style:\nPractical and goal-oriented.\n\nPrimary Goal: To find quick, healthy, and delicious meal options that fit into a busy work schedule.\nPain Points: Lack of time for meal prepping; Difficulty finding truly healthy convenience meals; Concerns about the freshness and taste of frozen meals; Desire for variety in meal options",
+    "intent": "To find quick, healthy, and delicious meal options that fit into a busy work schedule.",
+    "name": "Sarah Chen",
+    "age": 28,
     "gender": "Female",
-    "maritalStatus": "married",
+    "maritalStatus": "single",
     "country": "USA",
-    "occupation": "Senior Financial Analyst",
-    "education": "Master's Degree in Finance",
+    "occupation": "Software Engineer",
+    "education": "Master's Degree",
     "incomeLevel": "high",
-    "income": "$150,000 USD",
+    "income": "$120,000 USD",
     "techSavviness": "advanced",
-    "primaryGoal": "To optimize portfolio performance and reduce reporting time.",
+    "primaryGoal": "To find quick, healthy, and delicious meal options that fit into a busy work schedule.",
     "painPoints": [
-      "Time-consuming manual data aggregation",
-      "Difficulty in real-time market analysis",
-      "Lack of integrated forecasting tools",
-      "Keeping up with regulatory changes"
+      "Lack of time for meal prepping",
+      "Difficulty finding truly healthy convenience meals",
+      "Concerns about the freshness and taste of frozen meals",
+      "Desire for variety in meal options"
     ],
     "relevanceScore": 9
+  },
+  {
+    "persona": "Persona: David Miller\n\nBackground:\nDavid Miller is a 45-year-old Project Manager from Canada.\n\nDemographics:\nAge: 45\nGender: Male\nEducation: Bachelor's Degree\nProfession: Project Manager\nIncome: $150,000 CAD\n\nFinancial Situation:\nDavid Miller has a high income level and manages their spending accordingly.\n\nBrowsing Habits:\nTech savviness: intermediate. \n\nProfessional Life:\nWorks as a Project Manager.\n\nPersonal Style:\nPractical and goal-oriented.\n\nPrimary Goal: To provide his family with nutritious and convenient meals without sacrificing taste or quality.\nPain Points: Picky eaters in the family; Balancing work and family mealtime; Finding meals that cater to different dietary preferences; Cost of healthy convenience food",
+    "intent": "To provide his family with nutritious and convenient meals without sacrificing taste or quality.",
+    "name": "David Miller",
+    "age": 45,
+    "gender": "Male",
+    "maritalStatus": "married",
+    "country": "Canada",
+    "occupation": "Project Manager",
+    "education": "Bachelor's Degree",
+    "incomeLevel": "high",
+    "income": "$150,000 CAD",
+    "techSavviness": "intermediate",
+    "primaryGoal": "To provide his family with nutritious and convenient meals without sacrificing taste or quality.",
+    "painPoints": [
+      "Picky eaters in the family",
+      "Balancing work and family mealtime",
+      "Finding meals that cater to different dietary preferences",
+      "Cost of healthy convenience food"
+    ],
+    "relevanceScore": 8
+  },
+  {
+    "persona": "Persona: Chloe Dubois\n\nBackground:\nChloe Dubois is a 22-year-old Student from France.\n\nDemographics:\nAge: 22\nGender: Female\nEducation: High School Diploma\nProfession: Student\nIncome: €15,000 EUR\n\nFinancial Situation:\nChloe Dubois has a low income level and manages their spending accordingly.\n\nBrowsing Habits:\nTech savviness: intermediate. \n\nProfessional Life:\nWorks as a Student.\n\nPersonal Style:\nPractical and goal-oriented.\n\nPrimary Goal: To eat healthy on a student budget without spending too much time cooking.\nPain Points: Limited budget for food; Lack of cooking facilities or skills; Desire for nutritious meals; Convenience for studying",
+    "intent": "To eat healthy on a student budget without spending too much time cooking.",
+    "name": "Chloe Dubois",
+    "age": 22,
+    "gender": "Female",
+    "maritalStatus": "single",
+    "country": "France",
+    "occupation": "Student",
+    "education": "High School Diploma",
+    "incomeLevel": "low",
+    "income": "€15,000 EUR",
+    "techSavviness": "intermediate",
+    "primaryGoal": "To eat healthy on a student budget without spending too much time cooking.",
+    "painPoints": [
+      "Limited budget for food",
+      "Lack of cooking facilities or skills",
+      "Desire for nutritious meals",
+      "Convenience for studying"
+    ],
+    "relevanceScore": 6
   }
 ]

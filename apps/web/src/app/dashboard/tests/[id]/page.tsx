@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
-import { getBatchTest, terminateBatchTest, type TestRunWithReport, type AggregatedReport, type BatchTestRun, type UXAgentRun } from "@/lib/batch-api";
+import { getBatchTest, terminateBatchTest, getUXAgentInsights, type TestRunWithReport, type AggregatedReport, type BatchTestRun, type UXAgentRun, type UXAgentInsight } from "@/lib/batch-api";
 import ReactMarkdown from "react-markdown";
 import { Loader2, ExternalLink, Download, X, CheckCircle2, AlertCircle, Play, ChevronDown, ChevronUp, Users, BarChart3, Eye, MousePointer, Image as ImageIcon, Brain, Lightbulb, FileText, Clock, MessageCircle } from "lucide-react";
 import { ChatTab } from "@/components/ChatTab";
@@ -13,6 +13,7 @@ import { SessionTranscriptViewer } from "@/components/SessionTranscriptViewer";
 import { pdf } from '@react-pdf/renderer';
 import { AggregatedReportPDF } from '@/components/pdf/AggregatedReportPDF';
 import { PersonaReportPDF } from '@/components/pdf/PersonaReportPDF';
+import { ComprehensiveTestReportPDF } from '@/components/pdf/ComprehensiveTestReportPDF';
 import { UXAgentReportView } from "@/components/UXAgentReportView";
 import { useTheme } from "@/contexts/theme-context";
 
@@ -91,6 +92,54 @@ export default function TestDetails() {
     } catch (err) {
       console.error('Failed to generate PDF:', err);
       setError('Failed to export PDF');
+    } finally {
+      setExportingPDF(false);
+    }
+  };
+
+  const handleExportComprehensivePDF = async () => {
+    if (!batchTestRun) return;
+
+    setExportingPDF(true);
+    try {
+      // Fetch insights for all UXAgent runs
+      const insightsByRunId: Record<string, UXAgentInsight[]> = {};
+      if (uxagentRuns.length > 0) {
+        await Promise.all(
+          uxagentRuns.map(async (run) => {
+            try {
+              const result = await getUXAgentInsights(run.id);
+              if (result.insights && result.insights.length > 0) {
+                insightsByRunId[run.id] = result.insights;
+              }
+            } catch (err) {
+              console.error(`Failed to fetch insights for run ${run.id}:`, err);
+              // Continue even if some insights fail to load
+            }
+          })
+        );
+      }
+
+      const blob = await pdf(
+        <ComprehensiveTestReportPDF
+          batchTestRun={batchTestRun}
+          testRuns={testRuns}
+          uxagentRuns={uxagentRuns}
+          aggregatedReport={aggregatedReport}
+          insightsByRunId={insightsByRunId}
+        />
+      ).toBlob();
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const urlSlug = batchTestRun.targetUrl.replace(/[^a-z0-9]/gi, '_').substring(0, 30);
+      link.download = `comprehensive-test-report-${urlSlug}-${new Date().toISOString().split('T')[0]}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to generate comprehensive PDF:', err);
+      setError('Failed to export comprehensive PDF');
     } finally {
       setExportingPDF(false);
     }
@@ -295,9 +344,9 @@ export default function TestDetails() {
           <h1 className={`text-3xl font-light tracking-tight mb-2 ${
             isLight ? "text-neutral-900" : "text-white"
           }`}>Test Results</h1>
-          {batchTestRun?.status === "completed" && aggregatedReport && (
+          {(batchTestRun?.status === "completed" || (batchTestRun?.useUXAgent && uxagentRuns.length > 0)) && (
             <button
-              onClick={selectedView === "aggregated" ? handleExportAggregatedPDF : () => typeof selectedView === "number" && handleExportPersonaPDF(selectedView)}
+              onClick={handleExportComprehensivePDF}
               disabled={exportingPDF}
               className={`flex items-center gap-2 px-4 py-2 transition-all text-sm font-medium shadow-sm rounded-lg disabled:opacity-50 ${
                 isLight
@@ -782,7 +831,7 @@ export default function TestDetails() {
                                     </div>
                                   </div>
                                 </div>
-                                {tr.report?.score !== null && (
+                                {tr.report?.score !== null && tr.report && (
                                   <div className={`text-right ${
                                     isSelected
                                       ? isLight ? "text-white" : "text-white"
@@ -1699,7 +1748,7 @@ export default function TestDetails() {
                                           isLight ? "bg-neutral-50" : "bg-[#252525]"
                                         }`}>
                                           <img
-                                            src={currentScreenshot.signedUrl || currentScreenshot.s3Url}
+                                            src={currentScreenshot.signedUrl ?? currentScreenshot.s3Url ?? undefined}
                                             alt={`Step ${currentScreenshot.stepNumber}`}
                                             className={`w-full h-auto border shadow-lg rounded-lg ${
                                               isLight ? "border-neutral-200" : "border-white/10"

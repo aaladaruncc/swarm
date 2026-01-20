@@ -54,6 +54,7 @@ const fallbackPersonas = SAMPLE_PERSONAS.map((persona, index) => {
   return {
     ...persona,
     gender: "Not specified",
+    maritalStatus: "single" as const,
     education: "Not specified",
     income: incomeByLevel[persona.incomeLevel] || "Not specified",
     background: `${persona.name} is a ${persona.age}-year-old ${persona.occupation} from ${persona.country}.`,
