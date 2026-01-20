@@ -322,7 +322,7 @@ export async function analyzeScreenshotSequence(
   screenshots: ScreenshotInput[],
   persona: UserPersona
 ): Promise<ScreenshotTestResult> {
-  const model = getGeminiClient().getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+  const model = getGeminiClient().getGenerativeModel({ model: "gemini-3-flash-preview" });
   const analyses: ScreenshotAnalysis[] = [];
   const reflections: ScreenshotReflection[] = [];
   let previousContext = "";
@@ -383,7 +383,7 @@ export async function analyzeScreenshotSequence(
 function generateOverallReport(
   analyses: ScreenshotAnalysis[],
   persona: UserPersona
-): Omit<ScreenshotTestResult, "analyses"> {
+): Omit<ScreenshotTestResult, "analyses" | "reflections"> {
   // Aggregate issues across all screenshots
   const allIssues = analyses.flatMap((analysis, idx) =>
     analysis.issues.map((issue) => ({

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { Upload, X, GripVertical, Image as ImageIcon, ArrowUp, ArrowDown } from "lucide-react";
+import { Upload, X, GripVertical } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 
 interface ScreenshotFile {
@@ -26,6 +26,8 @@ export function ScreenshotUploader({
     const isLight = theme === "light";
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [dragOver, setDragOver] = useState(false);
+    const [dragOverId, setDragOverId] = useState<string | null>(null);
+    const dragIndexRef = useRef<number | null>(null);
 
     const handleFiles = useCallback((files: FileList | null) => {
         if (!files) return;
@@ -73,13 +75,42 @@ export function ScreenshotUploader({
         onScreenshotsChange(screenshots.filter(s => s.id !== id));
     };
 
-    const moveScreenshot = (index: number, direction: "up" | "down") => {
-        const newIndex = direction === "up" ? index - 1 : index + 1;
-        if (newIndex < 0 || newIndex >= screenshots.length) return;
+    const moveScreenshot = (fromIndex: number, toIndex: number) => {
+        if (fromIndex === toIndex) return;
+        if (fromIndex < 0 || toIndex < 0) return;
+        if (fromIndex >= screenshots.length || toIndex >= screenshots.length) return;
 
         const newScreenshots = [...screenshots];
-        [newScreenshots[index], newScreenshots[newIndex]] = [newScreenshots[newIndex], newScreenshots[index]];
+        const [moved] = newScreenshots.splice(fromIndex, 1);
+        newScreenshots.splice(toIndex, 0, moved);
         onScreenshotsChange(newScreenshots);
+    };
+
+    const handleDragStart = (index: number) => (event: React.DragEvent) => {
+        dragIndexRef.current = index;
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", screenshots[index]?.id || "");
+    };
+
+    const handleDragOverItem = (id: string) => (event: React.DragEvent) => {
+        event.preventDefault();
+        setDragOverId(id);
+        event.dataTransfer.dropEffect = "move";
+    };
+
+    const handleDropItem = (index: number) => (event: React.DragEvent) => {
+        event.preventDefault();
+        const fromIndex = dragIndexRef.current;
+        dragIndexRef.current = null;
+        setDragOverId(null);
+
+        if (fromIndex === null) return;
+        moveScreenshot(fromIndex, index);
+    };
+
+    const handleDragEnd = () => {
+        dragIndexRef.current = null;
+        setDragOverId(null);
     };
 
     const updateDescription = (id: string, description: string) => {
@@ -141,38 +172,35 @@ export function ScreenshotUploader({
                         {screenshots.map((screenshot, index) => (
                             <div
                                 key={screenshot.id}
-                                className={`flex items-start gap-3 p-3 border rounded-lg ${isLight
+                                onDragOver={handleDragOverItem(screenshot.id)}
+                                onDrop={handleDropItem(index)}
+                                className={`flex items-start gap-3 p-3 border rounded-lg transition-colors ${dragOverId === screenshot.id
+                                        ? isLight
+                                            ? "border-neutral-400 bg-neutral-50"
+                                            : "border-white/30 bg-white/5"
+                                        : isLight
                                         ? "border-neutral-200 bg-white"
                                         : "border-white/10 bg-[#1E1E1E]"
                                     }`}
                             >
-                                {/* Order Controls */}
+                                {/* Order + Drag Handle */}
                                 <div className="flex flex-col items-center gap-1 pt-2">
                                     <span className={`text-xs font-mono ${isLight ? "text-neutral-400" : "text-neutral-500"}`}>
                                         {index + 1}
                                     </span>
-                                    <div className="flex flex-col gap-0.5">
-                                        <button
-                                            onClick={() => moveScreenshot(index, "up")}
-                                            disabled={index === 0}
-                                            className={`p-1 rounded transition-colors disabled:opacity-30 ${isLight
-                                                    ? "hover:bg-neutral-100"
-                                                    : "hover:bg-white/10"
-                                                }`}
-                                        >
-                                            <ArrowUp size={12} className={isLight ? "text-neutral-600" : "text-neutral-400"} />
-                                        </button>
-                                        <button
-                                            onClick={() => moveScreenshot(index, "down")}
-                                            disabled={index === screenshots.length - 1}
-                                            className={`p-1 rounded transition-colors disabled:opacity-30 ${isLight
-                                                    ? "hover:bg-neutral-100"
-                                                    : "hover:bg-white/10"
-                                                }`}
-                                        >
-                                            <ArrowDown size={12} className={isLight ? "text-neutral-600" : "text-neutral-400"} />
-                                        </button>
-                                    </div>
+                                    <button
+                                        type="button"
+                                        draggable
+                                        onDragStart={handleDragStart(index)}
+                                        onDragEnd={handleDragEnd}
+                                        className={`p-1.5 rounded transition-colors cursor-grab active:cursor-grabbing ${isLight
+                                                ? "hover:bg-neutral-100 text-neutral-500"
+                                                : "hover:bg-white/10 text-neutral-400"
+                                            }`}
+                                        aria-label="Drag to reorder screenshot"
+                                    >
+                                        <GripVertical size={14} />
+                                    </button>
                                 </div>
 
                                 {/* Thumbnail */}
