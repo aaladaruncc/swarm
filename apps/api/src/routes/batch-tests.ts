@@ -391,6 +391,100 @@ batchTestsRoutes.post("/:id/terminate", async (c) => {
   }
 });
 
+// POST /batch-tests/:id/share - Enable/disable sharing and get share URL
+batchTestsRoutes.post("/:id/share", async (c) => {
+  const user = c.get("user");
+  const batchId = c.req.param("id");
+
+  try {
+    const body = await c.req.json().catch(() => ({}));
+    const enableShare = body.enabled !== false; // Default to enabling
+
+    // Verify ownership
+    const [batchTestRun] = await db
+      .select()
+      .from(schema.batchTestRuns)
+      .where(eq(schema.batchTestRuns.id, batchId));
+
+    if (!batchTestRun || batchTestRun.userId !== user.id) {
+      return c.json({ error: "Batch test not found" }, 404);
+    }
+
+    let shareToken = (batchTestRun as any).shareToken;
+
+    // Generate a new token if enabling and none exists
+    if (enableShare && !shareToken) {
+      const crypto = await import("crypto");
+      shareToken = crypto.randomBytes(16).toString("base64url");
+    }
+
+    // Update share settings
+    await db
+      .update(schema.batchTestRuns)
+      .set({
+        shareToken,
+        shareEnabled: enableShare,
+      } as any)
+      .where(eq(schema.batchTestRuns.id, batchId));
+
+    const shareUrl = enableShare && shareToken
+      ? `${process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000'}/share/batch/${shareToken}`
+      : null;
+
+    return c.json({
+      enabled: enableShare,
+      shareToken: enableShare ? shareToken : null,
+      shareUrl,
+      message: enableShare ? "Sharing enabled" : "Sharing disabled",
+    });
+  } catch (error) {
+    console.error("Failed to update share settings:", error);
+    return c.json(
+      {
+        error: "Failed to update share settings",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      500
+    );
+  }
+});
+
+// GET /batch-tests/:id/share - Get current share status
+batchTestsRoutes.get("/:id/share", async (c) => {
+  const user = c.get("user");
+  const batchId = c.req.param("id");
+
+  try {
+    const [batchTestRun] = await db
+      .select()
+      .from(schema.batchTestRuns)
+      .where(eq(schema.batchTestRuns.id, batchId));
+
+    if (!batchTestRun || batchTestRun.userId !== user.id) {
+      return c.json({ error: "Batch test not found" }, 404);
+    }
+
+    const shareUrl = (batchTestRun as any).shareEnabled && (batchTestRun as any).shareToken
+      ? `${process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000'}/share/batch/${(batchTestRun as any).shareToken}`
+      : null;
+
+    return c.json({
+      enabled: (batchTestRun as any).shareEnabled || false,
+      shareToken: (batchTestRun as any).shareEnabled ? (batchTestRun as any).shareToken : null,
+      shareUrl,
+    });
+  } catch (error) {
+    console.error("Failed to get share status:", error);
+    return c.json(
+      {
+        error: "Failed to get share status",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      500
+    );
+  }
+});
+
 // ============================================================================
 // BACKGROUND PROCESSING
 // ============================================================================

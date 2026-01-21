@@ -78,6 +78,9 @@ export const batchTestRuns = pgTable("batch_test_runs", {
   selectedPersonaIndices: jsonb("selected_persona_indices").$type<number[]>(), // Which 5 were selected
   status: text("status").notNull().default("pending"), // pending, generating_personas, running_tests, aggregating, completed, failed
   useUXAgent: boolean("use_ux_agent").default(false), // Whether UXAgent service was used
+  // Shareable link fields
+  shareToken: text("share_token").unique(), // Unique token for public sharing
+  shareEnabled: boolean("share_enabled").default(false), // Whether sharing is enabled
   createdAt: timestamp("created_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
   errorMessage: text("error_message"),
@@ -338,6 +341,10 @@ export const screenshotTestRuns = pgTable("screenshot_test_runs", {
   overallScore: integer("overall_score"), // 0-100
   summary: text("summary"),
   fullReport: jsonb("full_report"),
+
+  // Shareable link fields
+  shareToken: text("share_token").unique(), // Unique token for public sharing
+  shareEnabled: boolean("share_enabled").default(false), // Whether sharing is enabled
 
   // Timestamps
   createdAt: timestamp("created_at").notNull().defaultNow(),

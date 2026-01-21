@@ -467,23 +467,109 @@ function generateOverallReport(
   const allPositiveAspects = analyses.flatMap((a) => a.positiveAspects);
   const uniquePositiveAspects = Array.from(new Set(allPositiveAspects));
 
-  // Calculate overall score (0-100)
-  // Base score: 70, then adjust based on issues and positive aspects
-  let score = 70;
-  commonIssues.forEach((issue) => {
-    const severityPenalty = { low: -2, medium: -5, high: -10, critical: -15 };
-    score += severityPenalty[issue.severity];
+  // Aggregate accessibility concerns
+  const allAccessibilityNotes = analyses.flatMap((a) => a.accessibilityNotes);
+
+  // ============================================================================
+  // IMPROVED SCORING ALGORITHM
+  // ============================================================================
+  // 
+  // Score starts at 100 and gets reduced based on issues found.
+  // This provides a more accurate representation of the UX quality.
+  //
+  // Factors considered:
+  // 1. Total issue count weighted by severity
+  // 2. Issue spread (how many screenshots are affected)
+  // 3. Accessibility concerns
+  // 4. Positive aspects (small bonus)
+  // 5. Normalized by number of screenshots
+  //
+
+  let score = 100;
+  const screenshotCount = analyses.length;
+
+  // 1. Individual Issue Penalties (penalize EVERY issue, not just grouped ones)
+  const severityPenalty = { low: 2, medium: 5, high: 10, critical: 20 };
+  const allIssuesFlat = analyses.flatMap((a) => a.issues);
+
+  allIssuesFlat.forEach((issue) => {
+    score -= severityPenalty[issue.severity];
   });
-  score += Math.min(uniquePositiveAspects.length * 3, 15); // Bonus for positive aspects
-  score = Math.max(0, Math.min(100, score)); // Clamp to 0-100
+
+  // 2. Common/Recurring Issue Multiplier
+  // Issues that appear across many screenshots indicate systemic problems
+  commonIssues.forEach((issue) => {
+    const spreadRatio = issue.affectedScreenshots.length / screenshotCount;
+    if (spreadRatio >= 0.5) {
+      // Issue affects 50%+ of screenshots - additional penalty
+      const additionalPenalty = severityPenalty[issue.severity] * 0.5;
+      score -= additionalPenalty;
+    }
+  });
+
+  // 3. Accessibility Penalty
+  // Each unique accessibility concern reduces score
+  const uniqueAccessibilityNotes = new Set(allAccessibilityNotes.map(n => n.toLowerCase().trim()));
+  score -= uniqueAccessibilityNotes.size * 3;
+
+  // 4. Positive Aspects Bonus (capped to prevent over-inflation)
+  // Give credit for good UX elements, but cap the bonus
+  const positiveBonus = Math.min(uniquePositiveAspects.length * 2, 15);
+  score += positiveBonus;
+
+  // 5. Normalize by screenshot count
+  // More screenshots = more opportunities to find issues, so normalize
+  // If we found very few issues across many screenshots, that's good
+  const issueRatio = allIssuesFlat.length / screenshotCount;
+  if (issueRatio < 1) {
+    // Less than 1 issue per screenshot on average - small bonus
+    score += 5;
+  } else if (issueRatio > 3) {
+    // More than 3 issues per screenshot on average - additional penalty
+    score -= 10;
+  }
+
+  // 6. Critical issue floor
+  // If there are critical issues, score cannot exceed 60
+  const criticalCount = allIssuesFlat.filter(i => i.severity === "critical").length;
+  const highCount = allIssuesFlat.filter(i => i.severity === "high").length;
+
+  if (criticalCount > 0) {
+    score = Math.min(score, 60 - (criticalCount - 1) * 10);
+  } else if (highCount >= 3) {
+    score = Math.min(score, 70);
+  }
+
+  // Clamp to 0-100
+  score = Math.max(0, Math.min(100, Math.round(score)));
+
+  // Generate descriptive rating
+  const getRating = (s: number) => {
+    if (s >= 90) return "excellent";
+    if (s >= 75) return "good";
+    if (s >= 60) return "acceptable";
+    if (s >= 40) return "needs improvement";
+    return "poor";
+  };
 
   // Generate summary
-  const summary = `Analyzed ${analyses.length} screenshots as ${persona.name}. Found ${commonIssues.length} common issues and ${uniquePositiveAspects.length} positive aspects. Overall experience: ${score >= 70 ? "positive" : score >= 50 ? "mixed" : "needs improvement"}.`;
+  const totalIssueCount = allIssuesFlat.length;
+  const criticalHighCount = criticalCount + highCount;
+  const summary = `Analyzed ${analyses.length} screenshot${analyses.length !== 1 ? 's' : ''} as ${persona.name}. Found ${totalIssueCount} total issue${totalIssueCount !== 1 ? 's' : ''} (${criticalHighCount} critical/high severity) and ${uniquePositiveAspects.length} positive aspect${uniquePositiveAspects.length !== 1 ? 's' : ''}. Overall experience: ${getRating(score)}.`;
 
-  // Generate recommendations
+  // Generate recommendations - prioritize by severity and frequency
   const recommendations = commonIssues
     .slice(0, 5)
-    .map((issue) => `Address ${issue.description.toLowerCase()} (affects ${issue.affectedScreenshots.length} screenshots)`);
+    .map((issue) => {
+      const affectedCount = issue.affectedScreenshots.length;
+      const urgency = issue.severity === "critical" ? "URGENT: " : issue.severity === "high" ? "Important: " : "";
+      return `${urgency}${issue.description} (affects ${affectedCount} screenshot${affectedCount !== 1 ? 's' : ''})`;
+    });
+
+  // Add accessibility recommendations if needed
+  if (uniqueAccessibilityNotes.size > 0) {
+    recommendations.push(`Address ${uniqueAccessibilityNotes.size} accessibility concern${uniqueAccessibilityNotes.size !== 1 ? 's' : ''} for better inclusivity`);
+  }
 
   // Generate persona-specific feedback
   const personaFeedback = analyses

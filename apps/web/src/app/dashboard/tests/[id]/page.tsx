@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
-import { getBatchTest, terminateBatchTest, type TestRunWithReport, type AggregatedReport, type BatchTestRun, type UXAgentRun } from "@/lib/batch-api";
+import { getBatchTest, terminateBatchTest, enableBatchTestSharing, disableBatchTestSharing, getBatchTestShareStatus, type TestRunWithReport, type AggregatedReport, type BatchTestRun, type UXAgentRun, type ShareStatus } from "@/lib/batch-api";
 import ReactMarkdown from "react-markdown";
-import { Loader2, ExternalLink, Download, X, CheckCircle2, AlertCircle, Play, ChevronDown, ChevronUp, Users, BarChart3, Eye, MousePointer, Image as ImageIcon, Brain, Lightbulb, FileText, Clock, MessageCircle } from "lucide-react";
+import { Loader2, ExternalLink, Download, X, CheckCircle2, AlertCircle, Play, ChevronDown, ChevronUp, Users, BarChart3, Eye, MousePointer, Image as ImageIcon, Brain, Lightbulb, FileText, Clock, MessageCircle, Share2, Link as LinkIcon, Check } from "lucide-react";
 import { ChatTab } from "@/components/ChatTab";
 import { InsightsTab } from "@/components/InsightsTab";
 import { SessionTranscriptViewer } from "@/components/SessionTranscriptViewer";
@@ -40,6 +40,11 @@ export default function TestDetails() {
   const [swarmAgentActiveTab, setSwarmAgentActiveTab] = useState<"overview" | "actions" | "screenshots" | "memory" | "insights" | "logs" | "chat">("overview");
   const [swarmScreenshotIndex, setSwarmScreenshotIndex] = useState(0);
   const [swarmMemoryExpanded, setSwarmMemoryExpanded] = useState<number | null>(null);
+
+  // Share state
+  const [shareStatus, setShareStatus] = useState<ShareStatus | null>(null);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const testId = params.id as string;
 
@@ -141,6 +146,43 @@ export default function TestDetails() {
 
     return () => clearInterval(pollInterval);
   }, [batchTestRun?.status, testId]);
+
+  // Fetch share status on load
+  useEffect(() => {
+    if (!testId || !session?.user) return;
+    getBatchTestShareStatus(testId)
+      .then(setShareStatus)
+      .catch(() => setShareStatus(null));
+  }, [testId, session?.user]);
+
+  const handleToggleShare = async () => {
+    if (!testId || shareLoading) return;
+    setShareLoading(true);
+    try {
+      if (shareStatus?.enabled) {
+        const result = await disableBatchTestSharing(testId);
+        setShareStatus(result);
+      } else {
+        const result = await enableBatchTestSharing(testId);
+        setShareStatus(result);
+      }
+    } catch (err) {
+      console.error("Failed to toggle sharing:", err);
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  const handleCopyShareLink = async () => {
+    if (!shareStatus?.shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareStatus.shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
 
   if (isPending || !session?.user) {
     return (
@@ -289,28 +331,72 @@ export default function TestDetails() {
         <div className="flex items-center justify-between">
           <h1 className={`text-3xl font-light tracking-tight mb-2 ${isLight ? "text-neutral-900" : "text-white"
             }`}>Test Results</h1>
-          {batchTestRun?.status === "completed" && aggregatedReport && (
-            <button
-              onClick={selectedView === "aggregated" ? handleExportAggregatedPDF : () => typeof selectedView === "number" && handleExportPersonaPDF(selectedView)}
-              disabled={exportingPDF}
-              className={`flex items-center gap-2 px-4 py-2 transition-all text-sm font-medium shadow-sm rounded-lg disabled:opacity-50 ${isLight
-                ? "bg-neutral-900 text-white border border-neutral-900 hover:bg-neutral-800"
-                : "bg-[#252525] text-white border border-white/10 hover:bg-[#333]"
-                }`}
-            >
-              {exportingPDF ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" />
-                  <span>Generating...</span>
-                </>
-              ) : (
-                <>
-                  <Download size={14} />
-                  <span>Export PDF</span>
-                </>
-              )}
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {/* Share Button */}
+            {batchTestRun?.status === "completed" && (
+              <div className="flex items-center gap-2">
+                {shareStatus?.enabled && shareStatus?.shareUrl ? (
+                  <>
+                    <button
+                      onClick={handleCopyShareLink}
+                      className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${isLight
+                        ? "border border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
+                        : "border border-green-500/30 bg-green-500/10 text-green-400 hover:bg-green-500/20"
+                        }`}
+                    >
+                      {copied ? <Check size={14} /> : <LinkIcon size={14} />}
+                      <span>{copied ? "Copied!" : "Copy Link"}</span>
+                    </button>
+                    <button
+                      onClick={handleToggleShare}
+                      disabled={shareLoading}
+                      className={`p-2 rounded-lg transition-colors ${isLight
+                        ? "text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100"
+                        : "text-neutral-500 hover:text-neutral-300 hover:bg-white/10"
+                        }`}
+                      title="Disable sharing"
+                    >
+                      <X size={14} />
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleToggleShare}
+                    disabled={shareLoading}
+                    className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 ${isLight
+                      ? "bg-white border border-neutral-200 text-neutral-700 hover:border-neutral-400"
+                      : "bg-[#252525] border border-white/10 text-neutral-300 hover:border-white/30"
+                      }`}
+                  >
+                    {shareLoading ? <Loader2 size={14} className="animate-spin" /> : <Share2 size={14} />}
+                    <span>{shareLoading ? "Sharing..." : "Share"}</span>
+                  </button>
+                )}
+              </div>
+            )}
+            {batchTestRun?.status === "completed" && aggregatedReport && (
+              <button
+                onClick={selectedView === "aggregated" ? handleExportAggregatedPDF : () => typeof selectedView === "number" && handleExportPersonaPDF(selectedView)}
+                disabled={exportingPDF}
+                className={`flex items-center gap-2 px-4 py-2 transition-all text-sm font-medium shadow-sm rounded-lg disabled:opacity-50 ${isLight
+                  ? "bg-neutral-900 text-white border border-neutral-900 hover:bg-neutral-800"
+                  : "bg-[#252525] text-white border border-white/10 hover:bg-[#333]"
+                  }`}
+              >
+                {exportingPDF ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Generating...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download size={14} />
+                    <span>Export PDF</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

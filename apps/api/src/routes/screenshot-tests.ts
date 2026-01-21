@@ -450,6 +450,108 @@ screenshotTestsRoutes.get("/", async (c) => {
     }
 });
 
+/**
+ * POST /screenshot-tests/:id/share
+ * Enable/disable sharing and get share URL
+ */
+screenshotTestsRoutes.post("/:id/share", async (c) => {
+    const user = c.get("user");
+    const testId = c.req.param("id");
+
+    try {
+        const body = await c.req.json().catch(() => ({}));
+        const enableShare = body.enabled !== false; // Default to enabling
+
+        // Verify ownership
+        const [testRun] = await db
+            .select()
+            .from(schema.screenshotTestRuns)
+            .where(eq(schema.screenshotTestRuns.id, testId));
+
+        if (!testRun || testRun.userId !== user.id) {
+            return c.json({ error: "Test not found" }, 404);
+        }
+
+        let shareToken = (testRun as any).shareToken;
+
+        // Generate a new token if enabling and none exists
+        if (enableShare && !shareToken) {
+            const crypto = await import("crypto");
+            shareToken = crypto.randomBytes(16).toString("base64url");
+        }
+
+        // Update share settings
+        await db
+            .update(schema.screenshotTestRuns)
+            .set({
+                shareToken,
+                shareEnabled: enableShare,
+            } as any)
+            .where(eq(schema.screenshotTestRuns.id, testId));
+
+        const shareUrl = enableShare && shareToken
+            ? `${process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000'}/share/screenshot/${shareToken}`
+            : null;
+
+        return c.json({
+            enabled: enableShare,
+            shareToken: enableShare ? shareToken : null,
+            shareUrl,
+            message: enableShare ? "Sharing enabled" : "Sharing disabled",
+        });
+    } catch (error: any) {
+        console.error("[Share Screenshot Test] Error:", error);
+        return c.json(
+            {
+                error: "share_update_failed",
+                message: error?.message || "Failed to update share settings",
+            },
+            500
+        );
+    }
+});
+
+/**
+ * GET /screenshot-tests/:id/share
+ * Get current share status
+ */
+screenshotTestsRoutes.get("/:id/share", async (c) => {
+    const user = c.get("user");
+    const testId = c.req.param("id");
+
+    try {
+        const [testRun] = await db
+            .select()
+            .from(schema.screenshotTestRuns)
+            .where(eq(schema.screenshotTestRuns.id, testId));
+
+        if (!testRun || testRun.userId !== user.id) {
+            return c.json({ error: "Test not found" }, 404);
+        }
+
+        const shareEnabled = (testRun as any).shareEnabled || false;
+        const shareToken = (testRun as any).shareToken;
+        const shareUrl = shareEnabled && shareToken
+            ? `${process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000'}/share/screenshot/${shareToken}`
+            : null;
+
+        return c.json({
+            enabled: shareEnabled,
+            shareToken: shareEnabled ? shareToken : null,
+            shareUrl,
+        });
+    } catch (error: any) {
+        console.error("[Get Share Status] Error:", error);
+        return c.json(
+            {
+                error: "share_fetch_failed",
+                message: error?.message || "Failed to get share status",
+            },
+            500
+        );
+    }
+});
+
 // ============================================================================
 // BACKGROUND PROCESSING
 // ============================================================================

@@ -199,3 +199,41 @@ export async function getScreenshotTests(): Promise<{
 }> {
     return fetchWithAuth("/api/screenshot-tests");
 }
+
+// ============================================================================
+// SHARE MANAGEMENT
+// ============================================================================
+
+export interface ShareStatus {
+    enabled: boolean;
+    shareToken: string | null;
+    shareUrl: string | null;
+}
+
+/**
+ * Enable sharing for a screenshot test
+ */
+export async function enableScreenshotTestSharing(id: string): Promise<ShareStatus & { message: string }> {
+    return fetchWithAuth(`/api/screenshot-tests/${id}/share`, {
+        method: "POST",
+        body: JSON.stringify({ enabled: true }),
+    });
+}
+
+/**
+ * Disable sharing for a screenshot test
+ */
+export async function disableScreenshotTestSharing(id: string): Promise<ShareStatus & { message: string }> {
+    return fetchWithAuth(`/api/screenshot-tests/${id}/share`, {
+        method: "POST",
+        body: JSON.stringify({ enabled: false }),
+    });
+}
+
+/**
+ * Get share status for a screenshot test
+ */
+export async function getScreenshotTestShareStatus(id: string): Promise<ShareStatus> {
+    return fetchWithAuth(`/api/screenshot-tests/${id}/share`);
+}
+

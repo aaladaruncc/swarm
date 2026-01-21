@@ -383,6 +383,43 @@ export async function sendUXAgentChatMessage(runId: string, message: string): Pr
   });
 }
 
+// ============================================================================
+// SHARE MANAGEMENT
+// ============================================================================
+
+export interface ShareStatus {
+  enabled: boolean;
+  shareToken: string | null;
+  shareUrl: string | null;
+}
+
+/**
+ * Enable sharing for a batch test
+ */
+export async function enableBatchTestSharing(id: string): Promise<ShareStatus & { message: string }> {
+  return fetchWithAuth(`/api/batch-tests/${id}/share`, {
+    method: "POST",
+    body: JSON.stringify({ enabled: true }),
+  });
+}
+
+/**
+ * Disable sharing for a batch test
+ */
+export async function disableBatchTestSharing(id: string): Promise<ShareStatus & { message: string }> {
+  return fetchWithAuth(`/api/batch-tests/${id}/share`, {
+    method: "POST",
+    body: JSON.stringify({ enabled: false }),
+  });
+}
+
+/**
+ * Get share status for a batch test
+ */
+export async function getBatchTestShareStatus(id: string): Promise<ShareStatus> {
+  return fetchWithAuth(`/api/batch-tests/${id}/share`);
+}
+
 export type {
   GeneratedPersona,
   BatchTestRun,

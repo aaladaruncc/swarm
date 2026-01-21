@@ -78,6 +78,10 @@ app.route("/api/screenshot-tests", screenshotTestsRoutes);
 // UXAgent routes (API key auth handled internally)
 app.route("/api/uxagent", uxagentRoutes);
 
+// Public share routes (no auth required)
+import { publicShareRoutes } from "./routes/public-share.js";
+app.route("/api/share", publicShareRoutes);
+
 // Start server
 const port = parseInt(process.env.PORT || "8080", 10);
 
