@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { getBatchTests, getBatchTest, deleteBatchTests, type BatchTestRun } from "@/lib/batch-api";
 import { getScreenshotTests, type ScreenshotTestRun } from "@/lib/screenshot-api";
-import { Plus, Loader2, Trash2, CheckSquare, FileText, Download, Check, ChevronUp, ChevronDown, Image, LayoutGrid, Zap } from "lucide-react";
+import { Plus, Loader2, Trash2, CheckSquare, FileText, Download, Check, ChevronUp, ChevronDown, Image, Activity } from "lucide-react";
 import { pdf } from '@react-pdf/renderer';
 import { AggregatedReportPDF } from '@/components/pdf/AggregatedReportPDF';
 import { useTheme } from "@/contexts/theme-context";
@@ -18,7 +18,7 @@ export default function Dashboard() {
   const { theme } = useTheme();
 
   // Test type toggle
-  const [activeTestType, setActiveTestType] = useState<"all" | "live" | "screenshot">("all");
+  const [activeTestType, setActiveTestType] = useState<"runtime" | "static">("runtime");
 
   // Batch tests state
   const [batchTests, setBatchTests] = useState<BatchTestRun[]>([]);
@@ -73,9 +73,9 @@ export default function Dashboard() {
     }
   };
 
-  const handleTestTypeChange = (type: "all" | "live" | "screenshot") => {
+  const handleTestTypeChange = (type: "runtime" | "static") => {
     setActiveTestType(type);
-    if (type === "screenshot") {
+    if (type === "static") {
       setIsSelectionMode(false);
       setSelectedTests([]);
     }
@@ -337,8 +337,8 @@ export default function Dashboard() {
   const totalTestCount = batchTests.length + screenshotTests.length;
 
   return (
-    <div className="p-8 max-w-7xl mx-auto w-full">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
+    <div className="h-full flex flex-col p-8 max-w-7xl mx-auto w-full overflow-hidden min-h-0">
+      <div className="flex-shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
         <div>
           <h1 className={`text-3xl font-light tracking-tight mb-2 ${isLight ? "text-neutral-900" : "text-white"
             }`}>Playground</h1>
@@ -354,14 +354,13 @@ export default function Dashboard() {
               }`}
           >
             <Plus size={16} />
-            <span>New Simulation</span>
+            <span>New Test</span>
           </Link>
         </div>
       </div>
 
-
       {error && (
-        <div className={`px-4 py-3 text-sm border mb-8 font-light rounded-lg ${isLight
+        <div className={`flex-shrink-0 px-4 py-3 text-sm border mb-8 font-light rounded-lg ${isLight
           ? "bg-red-50 text-red-700 border-red-200"
           : "bg-red-500/10 text-red-400 border-red-500/20"
           }`}>
@@ -369,22 +368,20 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className={`border flex flex-col relative overflow-hidden shadow-sm rounded-xl ${isLight
+      <div className={`flex-1 flex flex-col relative overflow-hidden shadow-sm rounded-xl min-h-0 ${isLight
         ? "border-neutral-200 bg-white"
         : "border-white/10 bg-[#1E1E1E]"
         }`}>
         {/* Table Header / Toolbar */}
-        <div className={`flex items-center justify-between px-6 py-4 border-b backdrop-blur-sm z-20 ${isLight
+        <div className={`flex-shrink-0 flex items-center justify-between px-6 py-4 border-b backdrop-blur-sm z-20 ${isLight
           ? "border-neutral-200 bg-white"
           : "border-white/5 bg-[#1E1E1E]"
           }`}>
           <div className={`text-sm font-medium ${isLight ? "text-neutral-600" : "text-neutral-400"
             }`}>
-            {activeTestType === "all"
-              ? (loading || screenshotLoading ? "Loading..." : `${totalTestCount} Total Tests`)
-              : activeTestType === "live"
-                ? (loading ? "Loading..." : `${batchTests.length} Simulations`)
-                : (screenshotLoading ? "Loading..." : `${screenshotTests.length} Screenshot Tests`)
+            {activeTestType === "runtime"
+              ? (loading ? "Loading..." : `${batchTests.length} Runtime Tests`)
+              : (screenshotLoading ? "Loading..." : `${screenshotTests.length} Static Tests`)
             }
           </div>
 
@@ -394,8 +391,8 @@ export default function Dashboard() {
               : "border-white/10 bg-[#252525]"
               }`}>
               <button
-                onClick={() => handleTestTypeChange("all")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors rounded-full ${activeTestType === "all"
+                onClick={() => handleTestTypeChange("runtime")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors rounded-full ${activeTestType === "runtime"
                   ? isLight
                     ? "bg-neutral-900 text-white"
                     : "bg-white text-neutral-900"
@@ -404,26 +401,12 @@ export default function Dashboard() {
                     : "text-neutral-400 hover:text-white"
                   }`}
               >
-                <LayoutGrid size={12} />
-                <span>All</span>
+                <Activity size={12} />
+                <span>Runtime</span>
               </button>
               <button
-                onClick={() => handleTestTypeChange("live")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors rounded-full ${activeTestType === "live"
-                  ? isLight
-                    ? "bg-neutral-900 text-white"
-                    : "bg-white text-neutral-900"
-                  : isLight
-                    ? "text-neutral-600 hover:text-neutral-900"
-                    : "text-neutral-400 hover:text-white"
-                  }`}
-              >
-                <Zap size={12} />
-                <span>Live</span>
-              </button>
-              <button
-                onClick={() => handleTestTypeChange("screenshot")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors rounded-full ${activeTestType === "screenshot"
+                onClick={() => handleTestTypeChange("static")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors rounded-full ${activeTestType === "static"
                   ? isLight
                     ? "bg-neutral-900 text-white"
                     : "bg-white text-neutral-900"
@@ -433,71 +416,70 @@ export default function Dashboard() {
                   }`}
               >
                 <Image size={12} />
-                <span>Screenshot</span>
+                <span>Static</span>
               </button>
             </div>
-            {activeTestType === "live" && (
-              <>
-                {isSelectionMode ? (
-                  <>
-                    <button
-                      onClick={toggleSelectionMode}
-                      className={`text-xs transition-colors font-medium px-2 uppercase tracking-wide ${isLight
-                        ? "text-neutral-600 hover:text-neutral-900"
-                        : "text-neutral-400 hover:text-white"
-                        }`}
-                    >
-                      Cancel
-                    </button>
-                    {selectedTests.length > 0 && (
-                      <>
-                        <button
-                          onClick={handleExportPDF}
-                          disabled={exportingPDF}
-                          className={`flex items-center justify-center gap-2 transition-all text-xs font-medium uppercase tracking-wide disabled:opacity-50 ${isLight
-                            ? "text-neutral-600 hover:text-neutral-900"
-                            : "text-neutral-400 hover:text-white"
-                            }`}
-                        >
-                          {exportingPDF ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-                          <span>Export PDF ({selectedTests.length})</span>
-                        </button>
-                        <button
-                          onClick={handleArchiveClick}
-                          disabled={isArchiving}
-                          className={`flex items-center justify-center gap-2 transition-all text-xs font-medium uppercase tracking-wide ${isLight
-                            ? "text-red-600 hover:text-red-700"
-                            : "text-red-400 hover:text-red-300"
-                            }`}
-                        >
-                          {isArchiving ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                          <span>Archive ({selectedTests.length})</span>
-                        </button>
-                      </>
-                    )}
-                  </>
-                ) : (
+            <>
+              {isSelectionMode && activeTestType === "runtime" ? (
+                <>
                   <button
                     onClick={toggleSelectionMode}
-                    disabled={batchTests.length === 0}
-                    className={`flex items-center gap-1.5 text-xs transition-colors font-medium uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed ${isLight
+                    className={`text-xs transition-colors font-medium px-2 uppercase tracking-wide ${isLight
                       ? "text-neutral-600 hover:text-neutral-900"
                       : "text-neutral-400 hover:text-white"
                       }`}
                   >
-                    <CheckSquare size={14} />
-                    <span>Select</span>
+                    Cancel
                   </button>
-                )}
-              </>
-            )}
+                  {selectedTests.length > 0 && (
+                    <>
+                      <button
+                        onClick={handleExportPDF}
+                        disabled={exportingPDF}
+                        className={`flex items-center justify-center gap-2 transition-all text-xs font-medium uppercase tracking-wide disabled:opacity-50 ${isLight
+                          ? "text-neutral-600 hover:text-neutral-900"
+                          : "text-neutral-400 hover:text-white"
+                          }`}
+                      >
+                        {exportingPDF ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                        <span>Export PDF ({selectedTests.length})</span>
+                      </button>
+                      <button
+                        onClick={handleArchiveClick}
+                        disabled={isArchiving}
+                        className={`flex items-center justify-center gap-2 transition-all text-xs font-medium uppercase tracking-wide ${isLight
+                          ? "text-red-600 hover:text-red-700"
+                          : "text-red-400 hover:text-red-300"
+                          }`}
+                      >
+                        {isArchiving ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                        <span>Archive ({selectedTests.length})</span>
+                      </button>
+                    </>
+                  )}
+                </>
+              ) : (
+                <button
+                  onClick={toggleSelectionMode}
+                  disabled={activeTestType === "static" || (activeTestType === "runtime" && batchTests.length === 0)}
+                  className={`flex items-center gap-1.5 text-xs transition-colors font-medium uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed ${isLight
+                    ? "text-neutral-600 hover:text-neutral-900"
+                    : "text-neutral-400 hover:text-white"
+                    }`}
+                >
+                  <CheckSquare size={14} />
+                  <span>Select</span>
+                </button>
+              )}
+            </>
           </div>
         </div>
 
-        <div className="relative flex-1 overflow-y-auto">
-          {/* Live Tests Table */}
-          {(activeTestType === "all" || activeTestType === "live") && (
-            <table className="w-full text-left text-sm">
+        <div className="relative flex-1 overflow-hidden min-h-0">
+          {/* Runtime Tests Table Container */}
+          {activeTestType === "runtime" && (
+            <div className="h-full overflow-y-auto">
+              <table className="w-full text-left text-sm">
               <thead className={`sticky top-0 z-10 ${isLight ? "bg-neutral-50/95 backdrop-blur-sm" : "bg-[#252525]/95 backdrop-blur-sm"}`}>
                 <tr className={`border-b ${isLight
                   ? "border-neutral-200"
@@ -619,11 +601,13 @@ export default function Dashboard() {
                 )}
               </tbody>
             </table>
+            </div>
           )}
 
-          {/* Screenshot Tests Table */}
-          {(activeTestType === "all" || activeTestType === "screenshot") && (
-            <table className="w-full text-left text-sm">
+          {/* Static Tests Table Container */}
+          {activeTestType === "static" && (
+            <div className="h-full overflow-y-auto">
+              <table className="w-full text-left text-sm">
               <thead className={`sticky top-0 z-10 ${isLight ? "bg-neutral-50/95 backdrop-blur-sm" : "bg-[#252525]/95 backdrop-blur-sm"}`}>
                 <tr className={`border-b ${isLight
                   ? "border-neutral-200"
@@ -662,7 +646,7 @@ export default function Dashboard() {
                         <Loader2 className={`animate-spin w-6 h-6 ${isLight ? "text-neutral-500" : "text-neutral-400"
                           }`} />
                         <span className={`text-sm font-light ${isLight ? "text-neutral-600" : "text-neutral-500"
-                          }`}>Loading screenshot tests...</span>
+                          }`}>Loading static tests...</span>
                       </div>
                     </td>
                   </tr>
@@ -672,7 +656,7 @@ export default function Dashboard() {
                       <div className="flex flex-col items-center justify-center gap-3">
                         <Image size={32} className={`${isLight ? "text-neutral-300" : "text-neutral-600"}`} />
                         <h3 className={`text-base font-medium ${isLight ? "text-neutral-900" : "text-white"
-                          }`}>No screenshot tests yet</h3>
+                          }`}>No static tests yet</h3>
                         <p className={`font-light text-sm max-w-sm ${isLight ? "text-neutral-500" : "text-neutral-400"
                           }`}>
                           Upload screenshots of a user flow to get AI-powered UX analysis.
@@ -725,6 +709,7 @@ export default function Dashboard() {
                 )}
               </tbody>
             </table>
+            </div>
           )}
 
         </div>

@@ -7,6 +7,7 @@ import { useSession } from "@/lib/auth-client";
 import { getScreenshotTest, rerunScreenshotTest, enableScreenshotTestSharing, disableScreenshotTestSharing, getScreenshotTestShareStatus, type ScreenshotTestResult, type ShareStatus } from "@/lib/screenshot-api";
 import { Loader2, ArrowLeft, CheckCircle2, AlertCircle, Info, RefreshCw, Share2, Link as LinkIcon, Check, X } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
+import { ScreenshotCanvas } from "@/components/screenshot-tests/ScreenshotCanvas";
 
 export default function ScreenshotTestResults() {
     type PersonaAnalysis = NonNullable<ScreenshotTestResult["personaResults"]>[number]["analyses"][number];
@@ -45,24 +46,30 @@ export default function ScreenshotTestResults() {
         };
 
         fetchResults();
+    }, [session, testId]);
 
-        // Poll for updates if still analyzing
+    // Poll for updates if still analyzing - separate effect to avoid dependency issues
+    useEffect(() => {
+        if (!testId || !result) return;
+        
+        // Only poll if status is analyzing
+        if (result.testRun.status !== "analyzing") return;
+
         const interval = setInterval(async () => {
-            if (result?.testRun.status === "analyzing") {
-                try {
-                    const data = await getScreenshotTest(testId);
-                    setResult(data);
-                    if (data.testRun.status !== "analyzing") {
-                        clearInterval(interval);
-                    }
-                } catch (err) {
-                    console.error("Polling error:", err);
+            try {
+                const data = await getScreenshotTest(testId);
+                setResult(data);
+                // Stop polling if no longer analyzing
+                if (data.testRun.status !== "analyzing") {
+                    clearInterval(interval);
                 }
+            } catch (err) {
+                console.error("Polling error:", err);
             }
-        }, 3000);
+        }, 2000); // Poll every 2 seconds for faster updates
 
         return () => clearInterval(interval);
-    }, [session, testId, result?.testRun.status]);
+    }, [testId, result?.testRun.status]);
 
     const personaResults = result?.personaResults ?? [];
 
@@ -195,7 +202,7 @@ export default function ScreenshotTestResults() {
     };
 
     return (
-        <div className="h-full flex flex-col p-8 max-w-7xl mx-auto w-full overflow-auto">
+        <div className="h-full flex flex-col p-8 max-w-7xl mx-auto w-full overflow-hidden">
             {/* Header */}
             <div className="mb-8 flex-shrink-0">
                 <nav className="flex items-center gap-2 text-sm mb-6">
@@ -292,22 +299,25 @@ export default function ScreenshotTestResults() {
                 </div>
             </div>
 
-            {/* Analyzing State */}
+            {/* Analyzing State - Canvas View */}
             {isAnalyzing && (
-                <div className={`mb-6 p-6 border rounded-xl text-center ${isLight
-                    ? "border-blue-200 bg-blue-50"
-                    : "border-blue-500/20 bg-blue-500/10"
-                    }`}>
-                    <Loader2 className={`w-8 h-8 animate-spin mx-auto mb-3 ${isLight ? "text-blue-600" : "text-blue-400"
-                        }`} />
-                    <p className={`text-sm font-medium ${isLight ? "text-blue-900" : "text-blue-300"
-                        }`}>
-                        AI is analyzing your screenshots...
-                    </p>
-                    <p className={`text-xs font-light mt-1 ${isLight ? "text-blue-700" : "text-blue-400"
-                        }`}>
-                        This usually takes 30-60 seconds
-                    </p>
+                <div className="flex-1 min-h-0">
+                    <ScreenshotCanvas
+                        screenshots={screenshots}
+                        isAnalyzing={isAnalyzing}
+                        analyzingStep={
+                            (() => {
+                                // Get the maximum number of analyses across all personas
+                                const maxAnalyses = personaResults.reduce((max, persona) => {
+                                    const count = persona.analyses?.length || 0;
+                                    return Math.max(max, count);
+                                }, 0);
+                                // Current step is the next one to be analyzed (1-indexed)
+                                return maxAnalyses + 1;
+                            })()
+                        }
+                        totalSteps={screenshots.length}
+                    />
                 </div>
             )}
 
@@ -340,7 +350,7 @@ export default function ScreenshotTestResults() {
 
             {/* Overall Score */}
             {isCompleted && overallReport && (
-                <div className={`mb-6 p-6 border rounded-xl ${isLight
+                <div className={`mb-6 p-6 border rounded-xl flex-shrink-0 ${isLight
                     ? "border-neutral-200 bg-white"
                     : "border-white/10 bg-[#1E1E1E]"
                     }`}>
@@ -362,8 +372,8 @@ export default function ScreenshotTestResults() {
                 </div>
             )}
 
-            {hasMultiplePersonas && (
-                <div className={`mb-6 p-4 border rounded-xl ${isLight
+            {hasMultiplePersonas && isCompleted && (
+                <div className={`mb-6 p-4 border rounded-xl flex-shrink-0 ${isLight
                     ? "border-neutral-200 bg-white"
                     : "border-white/10 bg-[#1E1E1E]"
                     }`}>
@@ -400,8 +410,9 @@ export default function ScreenshotTestResults() {
                 </div>
             )}
 
-            {/* Screenshots Analysis */}
-            <div className="space-y-4">
+            {/* Screenshots Analysis - Only show when completed */}
+            {isCompleted && (
+            <div className="space-y-4 flex-1 overflow-y-auto min-h-0">
                 <h2 className={`text-xl font-medium ${isLight ? "text-neutral-900" : "text-white"
                     }`}>
                     Screenshot Analysis
@@ -556,6 +567,7 @@ export default function ScreenshotTestResults() {
                     )
                 })}
             </div>
+            )}
 
             {/* Back Button */}
             <div className="mt-8 flex-shrink-0">
