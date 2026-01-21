@@ -87,8 +87,9 @@ publicShareRoutes.get("/batch/:token", async (c) => {
                     testRunIds.includes(ur.testRunId!)
                 );
 
-                // Get screenshots for each UXAgent run
+                // Get screenshots and insights for each UXAgent run
                 for (const run of uxagentRuns) {
+                    // Fetch screenshots
                     const screenshots = await db
                         .select()
                         .from(schema.uxagentScreenshots)
@@ -107,6 +108,13 @@ publicShareRoutes.get("/batch/:token", async (c) => {
                             return { ...s, signedUrl };
                         })
                     );
+
+                    // Fetch insights
+                    const insights = await db
+                        .select()
+                        .from(schema.uxagentInsights)
+                        .where(eq(schema.uxagentInsights.uxagentRunId, run.id));
+                    run.insights = insights;
                 }
             }
         }
