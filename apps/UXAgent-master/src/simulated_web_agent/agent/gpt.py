@@ -18,23 +18,44 @@ from anthropic.types.beta import (
 from dotenv import load_dotenv
 
 # from litellm import drop_params, token_counter
+# CRITICAL: Disable litellm logging BEFORE importing Router
+# The LoggingWorker creates an asyncio Queue bound to a specific event loop,
+# which causes RuntimeError when accessed from different event loops in concurrent threads
+import os
+os.environ["LITELLM_LOG"] = "ERROR"
+os.environ["LITELLM_DISABLE_LOGGING"] = "true"
+
 from litellm.router import Router
 import litellm
 
-# Disable LiteLLM async logging worker to prevent event loop errors
-# This must be done before any Router instances are created
-# The async logging worker creates a queue bound to a specific event loop,
-# which causes errors when accessed from different event loops in concurrent tasks
+# Aggressively disable all async logging features to prevent event loop errors
 try:
     litellm.suppress_debug_info = True
-    # Disable async callbacks that use the logging worker
+    litellm.set_verbose = False
+    
+    # Disable all async callbacks
     litellm._async_success_callback = []
     litellm._async_failure_callback = []
+    litellm.success_callback = []
+    litellm.failure_callback = []
+    
     # Disable the logging worker entirely
-    litellm.set_verbose = False
-    # Set environment variable to disable async logging
-    import os
-    os.environ.setdefault("LITELLM_LOG", "ERROR")
+    # The logging worker has a Queue that gets bound to an event loop
+    if hasattr(litellm, '_logging_worker') and litellm._logging_worker is not None:
+        try:
+            litellm._logging_worker = None
+        except Exception:
+            pass
+    
+    # Prevent logging callback from being created
+    if hasattr(litellm, 'callbacks'):
+        litellm.callbacks = []
+    
+    # Also set the global logging level to suppress litellm logs
+    import logging
+    logging.getLogger("LiteLLM").setLevel(logging.ERROR)
+    logging.getLogger("LiteLLM Router").setLevel(logging.ERROR)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 except Exception:
     pass  # Continue even if litellm config fails
 
