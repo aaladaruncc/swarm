@@ -494,247 +494,237 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="relative h-[600px] flex flex-col gap-8 overflow-y-auto">
-          {/* Live Tests Section */}
-          {activeTestType !== "screenshot" && (
-            <div className={`rounded-xl border shadow-sm ${isLight ? "bg-white border-neutral-200" : "bg-[#1E1E1E] border-white/10"}`}>
-              <div className="px-6 py-4 border-b border-inherit">
-                <h2 className={`text-base font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>Live Simulations</h2>
-              </div>
-              <table className="w-full text-left text-sm">
-                <thead className={isLight ? "bg-neutral-50/50" : "bg-[#252525]/50"}>
-                  <tr className={`border-b ${isLight
-                    ? "border-neutral-200"
-                    : "border-white/5"
-                    }`}>
-                    {isSelectionMode && (
-                      <th className={`px-6 py-4 w-12 ${isLight ? "bg-neutral-100" : "bg-[#252525]"
-                        }`}>
-                        <CustomCheckbox
-                          checked={batchTests.length > 0 && selectedTests.length === batchTests.length}
-                          onChange={toggleSelectAll}
-                        />
-                      </th>
-                    )}
-                    <SortableHeader field="targetUrl" className="w-1/3">Target URL</SortableHeader>
-                    <SortableHeader field="agents">Agents</SortableHeader>
-                    <SortableHeader field="status">Status</SortableHeader>
-                    <SortableHeader field="date">Date</SortableHeader>
-                    <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs text-right ${isLight
-                      ? "text-neutral-600"
-                      : "text-neutral-400"
-                      }`}>Action</th>
-                  </tr>
-                </thead>
-                <tbody className={`divide-y ${isLight
-                  ? "divide-neutral-200 bg-white"
-                  : "divide-white/5 bg-[#1E1E1E]"
+        <div className="relative flex-1 overflow-y-auto">
+          {/* Live Tests Table */}
+          {(activeTestType === "all" || activeTestType === "live") && (
+            <table className="w-full text-left text-sm">
+              <thead className={`sticky top-0 z-10 ${isLight ? "bg-neutral-50/95 backdrop-blur-sm" : "bg-[#252525]/95 backdrop-blur-sm"}`}>
+                <tr className={`border-b ${isLight
+                  ? "border-neutral-200"
+                  : "border-white/5"
                   }`}>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={isSelectionMode ? 6 : 5} className="px-6 py-12 text-center">
-                        <div className="flex flex-col items-center justify-center gap-3">
-                          <Loader2 className={`animate-spin w-6 h-6 ${isLight ? "text-neutral-500" : "text-neutral-400"
-                            }`} />
-                          <span className={`text-sm font-light ${isLight ? "text-neutral-600" : "text-neutral-500"
-                            }`}>Loading simulations...</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : batchTests.length === 0 ? (
-                    <tr>
-                      <td colSpan={isSelectionMode ? 6 : 5} className="px-6 py-12 text-center">
-                        <div className="flex flex-col items-center justify-center gap-3">
-                          <h3 className={`text-base font-medium ${isLight ? "text-neutral-900" : "text-white"
-                            }`}>No simulations yet</h3>
-                          <p className={`font-light text-sm max-w-sm ${isLight ? "text-neutral-500" : "text-neutral-400"
-                            }`}>
-                            Launch your first multi-agent batch simulation to start testing.
-                          </p>
-                          <Link
-                            href="/dashboard/tests/new"
-                            className={`inline-flex items-center justify-center gap-2 border px-5 py-2.5 transition-all text-sm font-medium mt-2 rounded-lg ${isLight
-                              ? "bg-neutral-900 text-white border-neutral-900 hover:bg-neutral-800"
-                              : "border-white/10 bg-[#252525] text-white hover:bg-[#333]"
-                              }`}
-                          >
-                            Start Simulation
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    sortedTests.map((test) => (
-                      <tr key={test.id} className={`group transition-colors ${selectedTests.includes(test.id)
-                        ? isLight
-                          ? "bg-neutral-50"
-                          : "bg-white/5"
-                        : isLight
-                          ? "hover:bg-neutral-50"
-                          : "hover:bg-white/5"
-                        }`}>
-                        {isSelectionMode && (
-                          <td className="px-6 py-5">
-                            <CustomCheckbox
-                              checked={selectedTests.includes(test.id)}
-                              onChange={() => toggleSelect(test.id)}
-                            />
-                          </td>
-                        )}
-                        <td className={`px-6 py-5 font-light ${isLight ? "text-neutral-900" : "text-white"
-                          }`}>
-                          <div className="flex items-center gap-3">
-                            <div className={`w-1.5 h-1.5 rounded-full transition-colors ${isLight
-                              ? "bg-neutral-400 group-hover:bg-neutral-600"
-                              : "bg-neutral-400 group-hover:bg-white"
-                              }`}></div>
-                            <a href={test.targetUrl} target="_blank" rel="noopener noreferrer" className={`hover:underline underline-offset-4 truncate max-w-[300px] block ${isLight
-                              ? "decoration-neutral-400"
-                              : "decoration-neutral-500"
-                              }`}>
-                              {test.targetUrl.replace(/^https?:\/\//, '')}
-                            </a>
-                          </div>
-                        </td>
-                        <td className={`px-6 py-5 font-light ${isLight ? "text-neutral-600" : "text-neutral-300"
-                          }`}>
-                          {test.selectedPersonaIndices?.length || 0} personas
-                        </td>
-                        <td className="px-6 py-5">
-                          {getStatusBadge(test.status)}
-                        </td>
-                        <td className={`px-6 py-5 font-light tabular-nums text-xs ${isLight ? "text-neutral-500" : "text-neutral-400"
-                          }`}>
-                          {new Date(test.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </td>
-                        <td className="px-6 py-5 text-right">
-                          <Link
-                            href={`/dashboard/tests/${test.id}`}
-                            className={`inline-flex items-center justify-center border px-4 py-1.5 text-xs font-medium transition-colors shadow-sm rounded-lg ${isLight
-                              ? "bg-neutral-900 text-white border-neutral-900 hover:bg-neutral-800"
-                              : "bg-[#252525] text-white border-white/10 hover:bg-[#333]"
-                              }`}
-                          >
-                            View Results
-                          </Link>
-                        </td>
-                      </tr>
-                    ))
+                  {isSelectionMode && (
+                    <th className={`px-6 py-4 w-12 ${isLight ? "bg-neutral-100" : "bg-[#252525]"
+                      }`}>
+                      <CustomCheckbox
+                        checked={batchTests.length > 0 && selectedTests.length === batchTests.length}
+                        onChange={toggleSelectAll}
+                      />
+                    </th>
                   )}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Screenshot Tests Section */}
-          {activeTestType === "screenshot" && (
-            <div className={`rounded-xl border shadow-sm ${isLight ? "bg-white border-neutral-200" : "bg-[#1E1E1E] border-white/10"}`}>
-              <div className="px-6 py-4 border-b border-inherit">
-                <h2 className={`text-base font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>Screenshot Flow Tests</h2>
-              </div>
-              <table className="w-full text-left text-sm">
-                <thead className={isLight ? "bg-neutral-50/50" : "bg-[#252525]/50"}>
-                  <tr className={`border-b ${isLight
-                    ? "border-neutral-200"
-                    : "border-white/5"
-                    }`}>
-                    <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs w-1/3 ${isLight
-                      ? "text-neutral-600"
-                      : "text-neutral-400"
-                      }`}>Test Name</th>
-                    <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs ${isLight
-                      ? "text-neutral-600"
-                      : "text-neutral-400"
-                      }`}>Score</th>
-                    <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs ${isLight
-                      ? "text-neutral-600"
-                      : "text-neutral-400"
-                      }`}>Status</th>
-                    <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs ${isLight
-                      ? "text-neutral-600"
-                      : "text-neutral-400"
-                      }`}>Date</th>
-                    <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs text-right ${isLight
-                      ? "text-neutral-600"
-                      : "text-neutral-400"
-                      }`}>Action</th>
+                  <SortableHeader field="targetUrl" className="w-1/3">Target URL</SortableHeader>
+                  <SortableHeader field="agents">Agents</SortableHeader>
+                  <SortableHeader field="status">Status</SortableHeader>
+                  <SortableHeader field="date">Date</SortableHeader>
+                  <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs text-right ${isLight
+                    ? "text-neutral-600"
+                    : "text-neutral-400"
+                    }`}>Action</th>
+                </tr>
+              </thead>
+              <tbody className={`divide-y ${isLight
+                ? "divide-neutral-200 bg-white"
+                : "divide-white/5 bg-[#1E1E1E]"
+                }`}>
+                {loading ? (
+                  <tr>
+                    <td colSpan={isSelectionMode ? 6 : 5} className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <Loader2 className={`animate-spin w-6 h-6 ${isLight ? "text-neutral-500" : "text-neutral-400"
+                          }`} />
+                        <span className={`text-sm font-light ${isLight ? "text-neutral-600" : "text-neutral-500"
+                          }`}>Loading simulations...</span>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className={`divide-y ${isLight
-                  ? "divide-neutral-200 bg-white"
-                  : "divide-white/5 bg-[#1E1E1E]"
-                  }`}>
-                  {screenshotLoading ? (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center">
-                        <div className="flex flex-col items-center justify-center gap-3">
-                          <Loader2 className={`animate-spin w-6 h-6 ${isLight ? "text-neutral-500" : "text-neutral-400"
-                            }`} />
-                          <span className={`text-sm font-light ${isLight ? "text-neutral-600" : "text-neutral-500"
-                            }`}>Loading screenshot tests...</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : screenshotTests.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center">
-                        <div className="flex flex-col items-center justify-center gap-3">
-                          <Image size={32} className={`${isLight ? "text-neutral-300" : "text-neutral-600"}`} />
-                          <h3 className={`text-base font-medium ${isLight ? "text-neutral-900" : "text-white"
-                            }`}>No screenshot tests yet</h3>
-                          <p className={`font-light text-sm max-w-sm ${isLight ? "text-neutral-500" : "text-neutral-400"
-                            }`}>
-                            Upload screenshots of a user flow to get AI-powered UX analysis.
-                          </p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    screenshotTests.map((test) => (
-                      <tr key={test.id} className={`group transition-colors ${isLight
+                ) : batchTests.length === 0 ? (
+                  <tr>
+                    <td colSpan={isSelectionMode ? 6 : 5} className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <h3 className={`text-base font-medium ${isLight ? "text-neutral-900" : "text-white"
+                          }`}>No simulations yet</h3>
+                        <p className={`font-light text-sm max-w-sm ${isLight ? "text-neutral-500" : "text-neutral-400"
+                          }`}>
+                          Launch your first multi-agent batch simulation to start testing.
+                        </p>
+                        <Link
+                          href="/dashboard/tests/new"
+                          className={`inline-flex items-center justify-center gap-2 border px-5 py-2.5 transition-all text-sm font-medium mt-2 rounded-lg ${isLight
+                            ? "bg-neutral-900 text-white border-neutral-900 hover:bg-neutral-800"
+                            : "border-white/10 bg-[#252525] text-white hover:bg-[#333]"
+                            }`}
+                        >
+                          Start Simulation
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  sortedTests.map((test) => (
+                    <tr key={test.id} className={`group transition-colors ${selectedTests.includes(test.id)
+                      ? isLight
+                        ? "bg-neutral-50"
+                        : "bg-white/5"
+                      : isLight
                         ? "hover:bg-neutral-50"
                         : "hover:bg-white/5"
-                        }`}>
-                        <td className={`px-6 py-5 font-light ${isLight ? "text-neutral-900" : "text-white"
-                          }`}>
-                          <div className="flex items-center gap-3">
-                            <div className={`w-1.5 h-1.5 rounded-full transition-colors ${isLight
-                              ? "bg-neutral-400 group-hover:bg-neutral-600"
-                              : "bg-neutral-400 group-hover:bg-white"
-                              }`}></div>
-                            <span className="truncate max-w-[300px] block">
-                              {test.testName || "Untitled Test"}
-                            </span>
-                          </div>
-                        </td>
-                        <td className={`px-6 py-5 font-light ${isLight ? "text-neutral-600" : "text-neutral-300"
-                          }`}>
-                          {test.overallScore !== null ? `${test.overallScore}/100` : "—"}
-                        </td>
+                      }`}>
+                      {isSelectionMode && (
                         <td className="px-6 py-5">
-                          {getStatusBadge(test.status)}
+                          <CustomCheckbox
+                            checked={selectedTests.includes(test.id)}
+                            onChange={() => toggleSelect(test.id)}
+                          />
                         </td>
-                        <td className={`px-6 py-5 font-light tabular-nums text-xs ${isLight ? "text-neutral-500" : "text-neutral-400"
+                      )}
+                      <td className={`px-6 py-5 font-light ${isLight ? "text-neutral-900" : "text-white"
+                        }`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`w-1.5 h-1.5 rounded-full transition-colors ${isLight
+                            ? "bg-neutral-400 group-hover:bg-neutral-600"
+                            : "bg-neutral-400 group-hover:bg-white"
+                            }`}></div>
+                          <a href={test.targetUrl} target="_blank" rel="noopener noreferrer" className={`hover:underline underline-offset-4 truncate max-w-[300px] block ${isLight
+                            ? "decoration-neutral-400"
+                            : "decoration-neutral-500"
+                            }`}>
+                            {test.targetUrl.replace(/^https?:\/\//, '')}
+                          </a>
+                        </div>
+                      </td>
+                      <td className={`px-6 py-5 font-light ${isLight ? "text-neutral-600" : "text-neutral-300"
+                        }`}>
+                        {test.selectedPersonaIndices?.length || 0} personas
+                      </td>
+                      <td className="px-6 py-5">
+                        {getStatusBadge(test.status)}
+                      </td>
+                      <td className={`px-6 py-5 font-light tabular-nums text-xs ${isLight ? "text-neutral-500" : "text-neutral-400"
+                        }`}>
+                        {new Date(test.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </td>
+                      <td className="px-6 py-5 text-right">
+                        <Link
+                          href={`/dashboard/tests/${test.id}`}
+                          className={`inline-flex items-center justify-center border px-4 py-1.5 text-xs font-medium transition-colors shadow-sm rounded-lg ${isLight
+                            ? "bg-neutral-900 text-white border-neutral-900 hover:bg-neutral-800"
+                            : "bg-[#252525] text-white border-white/10 hover:bg-[#333]"
+                            }`}
+                        >
+                          View Results
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+
+          {/* Screenshot Tests Table */}
+          {(activeTestType === "all" || activeTestType === "screenshot") && (
+            <table className="w-full text-left text-sm">
+              <thead className={`sticky top-0 z-10 ${isLight ? "bg-neutral-50/95 backdrop-blur-sm" : "bg-[#252525]/95 backdrop-blur-sm"}`}>
+                <tr className={`border-b ${isLight
+                  ? "border-neutral-200"
+                  : "border-white/5"
+                  }`}>
+                  <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs w-1/3 ${isLight
+                    ? "text-neutral-600"
+                    : "text-neutral-400"
+                    }`}>Test Name</th>
+                  <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs ${isLight
+                    ? "text-neutral-600"
+                    : "text-neutral-400"
+                    }`}>Score</th>
+                  <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs ${isLight
+                    ? "text-neutral-600"
+                    : "text-neutral-400"
+                    }`}>Status</th>
+                  <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs ${isLight
+                    ? "text-neutral-600"
+                    : "text-neutral-400"
+                    }`}>Date</th>
+                  <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs text-right ${isLight
+                    ? "text-neutral-600"
+                    : "text-neutral-400"
+                    }`}>Action</th>
+                </tr>
+              </thead>
+              <tbody className={`divide-y ${isLight
+                ? "divide-neutral-200 bg-white"
+                : "divide-white/5 bg-[#1E1E1E]"
+                }`}>
+                {screenshotLoading ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <Loader2 className={`animate-spin w-6 h-6 ${isLight ? "text-neutral-500" : "text-neutral-400"
+                          }`} />
+                        <span className={`text-sm font-light ${isLight ? "text-neutral-600" : "text-neutral-500"
+                          }`}>Loading screenshot tests...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : screenshotTests.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <Image size={32} className={`${isLight ? "text-neutral-300" : "text-neutral-600"}`} />
+                        <h3 className={`text-base font-medium ${isLight ? "text-neutral-900" : "text-white"
+                          }`}>No screenshot tests yet</h3>
+                        <p className={`font-light text-sm max-w-sm ${isLight ? "text-neutral-500" : "text-neutral-400"
                           }`}>
-                          {new Date(test.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </td>
-                        <td className="px-6 py-5 text-right">
-                          <Link
-                            href={`/dashboard/tests/screenshot/${test.id}`}
-                            className={`inline-flex items-center justify-center border px-4 py-1.5 text-xs font-medium transition-colors shadow-sm rounded-lg ${isLight
-                              ? "bg-neutral-900 text-white border-neutral-900 hover:bg-neutral-800"
-                              : "bg-[#252525] text-white border-white/10 hover:bg-[#333]"
-                              }`}
-                          >
-                            View Results
-                          </Link>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                          Upload screenshots of a user flow to get AI-powered UX analysis.
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  screenshotTests.map((test) => (
+                    <tr key={test.id} className={`group transition-colors ${isLight
+                      ? "hover:bg-neutral-50"
+                      : "hover:bg-white/5"
+                      }`}>
+                      <td className={`px-6 py-5 font-light ${isLight ? "text-neutral-900" : "text-white"
+                        }`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`w-1.5 h-1.5 rounded-full transition-colors ${isLight
+                            ? "bg-neutral-400 group-hover:bg-neutral-600"
+                            : "bg-neutral-400 group-hover:bg-white"
+                            }`}></div>
+                          <span className="truncate max-w-[300px] block">
+                            {test.testName || "Untitled Test"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className={`px-6 py-5 font-light ${isLight ? "text-neutral-600" : "text-neutral-300"
+                        }`}>
+                        {test.overallScore !== null ? `${test.overallScore}/100` : "—"}
+                      </td>
+                      <td className="px-6 py-5">
+                        {getStatusBadge(test.status)}
+                      </td>
+                      <td className={`px-6 py-5 font-light tabular-nums text-xs ${isLight ? "text-neutral-500" : "text-neutral-400"
+                        }`}>
+                        {new Date(test.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </td>
+                      <td className="px-6 py-5 text-right">
+                        <Link
+                          href={`/dashboard/tests/screenshot/${test.id}`}
+                          className={`inline-flex items-center justify-center border px-4 py-1.5 text-xs font-medium transition-colors shadow-sm rounded-lg ${isLight
+                            ? "bg-neutral-900 text-white border-neutral-900 hover:bg-neutral-800"
+                            : "bg-[#252525] text-white border-white/10 hover:bg-[#333]"
+                            }`}
+                        >
+                          View Results
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           )}
 
         </div>
