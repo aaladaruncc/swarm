@@ -428,7 +428,7 @@ batchTestsRoutes.post("/:id/share", async (c) => {
       .where(eq(schema.batchTestRuns.id, batchId));
 
     const shareUrl = enableShare && shareToken
-      ? `${process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000'}/share/batch/${shareToken}`
+      ? `${process.env.NEXT_PUBLIC_WEB_URL || 'https://useswarm.co'}/share/batch/${shareToken}`
       : null;
 
     return c.json({
@@ -465,7 +465,7 @@ batchTestsRoutes.get("/:id/share", async (c) => {
     }
 
     const shareUrl = (batchTestRun as any).shareEnabled && (batchTestRun as any).shareToken
-      ? `${process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000'}/share/batch/${(batchTestRun as any).shareToken}`
+      ? `${process.env.NEXT_PUBLIC_WEB_URL || 'https://useswarm.co'}/share/batch/${(batchTestRun as any).shareToken}`
       : null;
 
     return c.json({
