@@ -100,6 +100,14 @@ export default function ScreenshotTestResults() {
         return map;
     }, [activePersona]);
 
+    // Fetch share status on load - MUST be before any early returns
+    useEffect(() => {
+        if (!testId || !session?.user) return;
+        getScreenshotTestShareStatus(testId)
+            .then(setShareStatus)
+            .catch(() => setShareStatus(null));
+    }, [testId, session?.user]);
+
     if (isPending || loading) {
         return (
             <div className={`h-full flex items-center justify-center ${isLight ? "bg-neutral-50" : "bg-neutral-950"
@@ -142,6 +150,7 @@ export default function ScreenshotTestResults() {
     const isAnalyzing = testRun.status === "analyzing";
     const isCompleted = testRun.status === "completed";
     const isFailed = testRun.status === "failed";
+
     const handleRerun = async () => {
         if (!testId || rerunning) return;
         setRerunning(true);
@@ -155,14 +164,6 @@ export default function ScreenshotTestResults() {
             setRerunning(false);
         }
     };
-
-    // Fetch share status on load
-    useEffect(() => {
-        if (!testId || !session?.user) return;
-        getScreenshotTestShareStatus(testId)
-            .then(setShareStatus)
-            .catch(() => setShareStatus(null));
-    }, [testId, session?.user]);
 
     const handleToggleShare = async () => {
         if (!testId || shareLoading) return;
