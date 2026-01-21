@@ -326,6 +326,9 @@ export const screenshotTestRuns = pgTable("screenshot_test_runs", {
 
   // Persona
   personaData: jsonb("persona_data"), // Single persona for MVP
+  generatedPersonas: jsonb("generated_personas").$type<any[]>(),
+  selectedPersonaIndices: jsonb("selected_persona_indices").$type<number[]>(),
+  agentCount: integer("agent_count").default(1),
 
   // Status
   status: text("status").notNull().default("pending"),
@@ -369,6 +372,33 @@ export const screenshotFlowImages = pgTable("screenshot_flow_images", {
   }>>(),
   accessibilityNotes: jsonb("accessibility_notes").$type<string[]>(),
   thoughts: text("thoughts"), // Agent's stream of consciousness
+  comparisonWithPrevious: text("comparison_with_previous"),
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Per-persona analysis results for screenshots
+export const screenshotAnalysisResults = pgTable("screenshot_analysis_results", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  screenshotTestRunId: uuid("screenshot_test_run_id")
+    .notNull()
+    .references(() => screenshotTestRuns.id, { onDelete: "cascade" }),
+
+  screenshotOrder: integer("screenshot_order").notNull(),
+  s3Key: text("s3_key").notNull(),
+  s3Url: text("s3_url").notNull(),
+  personaIndex: integer("persona_index").notNull(),
+  personaName: text("persona_name"),
+
+  observations: jsonb("observations").$type<string[]>(),
+  positiveAspects: jsonb("positive_aspects").$type<string[]>(),
+  issues: jsonb("issues").$type<Array<{
+    severity: "low" | "medium" | "high" | "critical";
+    description: string;
+    recommendation: string;
+  }>>(),
+  accessibilityNotes: jsonb("accessibility_notes").$type<string[]>(),
+  thoughts: text("thoughts"),
   comparisonWithPrevious: text("comparison_with_previous"),
 
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -427,3 +457,6 @@ export type NewScreenshotTestRun = typeof screenshotTestRuns.$inferInsert;
 
 export type ScreenshotFlowImage = typeof screenshotFlowImages.$inferSelect;
 export type NewScreenshotFlowImage = typeof screenshotFlowImages.$inferInsert;
+
+export type ScreenshotAnalysisResult = typeof screenshotAnalysisResults.$inferSelect;
+export type NewScreenshotAnalysisResult = typeof screenshotAnalysisResults.$inferInsert;

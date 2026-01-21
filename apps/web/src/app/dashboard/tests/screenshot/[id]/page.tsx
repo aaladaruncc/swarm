@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
@@ -9,6 +9,7 @@ import { Loader2, ArrowLeft, CheckCircle2, AlertCircle, Info, RefreshCw } from "
 import { useTheme } from "@/contexts/theme-context";
 
 export default function ScreenshotTestResults() {
+    type PersonaAnalysis = NonNullable<ScreenshotTestResult["personaResults"]>[number]["analyses"][number];
     const params = useParams();
     const router = useRouter();
     const { data: session, isPending } = useSession();
@@ -20,6 +21,7 @@ export default function ScreenshotTestResults() {
     const [error, setError] = useState("");
     const [rerunning, setRerunning] = useState(false);
     const [rerunError, setRerunError] = useState("");
+    const [activePersonaIndex, setActivePersonaIndex] = useState<number>(0);
 
     const testId = params.id as string;
 
@@ -56,6 +58,42 @@ export default function ScreenshotTestResults() {
 
         return () => clearInterval(interval);
     }, [session, testId, result?.testRun.status]);
+
+    const personaResults = result?.personaResults ?? [];
+
+    useEffect(() => {
+        if (personaResults.length > 0) {
+            setActivePersonaIndex(personaResults[0].personaIndex);
+        }
+    }, [personaResults.length]);
+
+    const personaSummaries = useMemo(() => {
+        const summaries = new Map<number, { summary?: string; overallScore?: number; reflections?: any[] }>();
+        const fullReport = result?.overallReport?.fullReport as any;
+        if (fullReport?.personaResults) {
+            fullReport.personaResults.forEach((entry: any) => {
+                summaries.set(entry.personaIndex, {
+                    summary: entry.summary,
+                    overallScore: entry.overallScore,
+                    reflections: entry.reflections,
+                });
+            });
+        }
+        return summaries;
+    }, [result?.overallReport]);
+
+    const hasMultiplePersonas = personaResults.length > 0;
+    const activePersona = hasMultiplePersonas
+        ? personaResults.find((persona) => persona.personaIndex === activePersonaIndex) || personaResults[0]
+        : null;
+    const activeAnalysesByOrder = useMemo(() => {
+        if (!activePersona) return new Map<number, PersonaAnalysis>();
+        const map = new Map<number, PersonaAnalysis>();
+        activePersona.analyses.forEach((analysis) => {
+            map.set(analysis.screenshotOrder, analysis);
+        });
+        return map;
+    }, [activePersona]);
 
     if (isPending || loading) {
         return (
@@ -99,7 +137,6 @@ export default function ScreenshotTestResults() {
     const isAnalyzing = testRun.status === "analyzing";
     const isCompleted = testRun.status === "completed";
     const isFailed = testRun.status === "failed";
-
     const handleRerun = async () => {
         if (!testId || rerunning) return;
         setRerunning(true);
@@ -240,13 +277,55 @@ export default function ScreenshotTestResults() {
                 </div>
             )}
 
+            {hasMultiplePersonas && (
+                <div className={`mb-6 p-4 border rounded-xl ${isLight
+                        ? "border-neutral-200 bg-white"
+                        : "border-white/10 bg-[#1E1E1E]"
+                    }`}>
+                    <div className="flex flex-wrap items-center gap-2">
+                        {personaResults.map((persona) => {
+                            const summary = personaSummaries.get(persona.personaIndex);
+                            const isActive = persona.personaIndex === activePersonaIndex;
+                            return (
+                                <button
+                                    key={persona.personaIndex}
+                                    onClick={() => setActivePersonaIndex(persona.personaIndex)}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${isActive
+                                            ? isLight
+                                                ? "bg-neutral-900 text-white"
+                                                : "bg-white text-neutral-900"
+                                            : isLight
+                                                ? "bg-neutral-100 text-neutral-600 hover:text-neutral-900"
+                                                : "bg-[#252525] text-neutral-400 hover:text-white"
+                                        }`}
+                                >
+                                    {persona.personaName}
+                                    {summary?.overallScore !== undefined && summary?.overallScore !== null
+                                        ? ` · ${summary.overallScore}/100`
+                                        : ""}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    {activePersona && personaSummaries.get(activePersona.personaIndex)?.summary && (
+                        <p className={`mt-3 text-sm font-light ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
+                            {personaSummaries.get(activePersona.personaIndex)?.summary}
+                        </p>
+                    )}
+                </div>
+            )}
+
             {/* Screenshots Analysis */}
             <div className="space-y-4">
                 <h2 className={`text-xl font-medium ${isLight ? "text-neutral-900" : "text-white"
                     }`}>
                     Screenshot Analysis
                 </h2>
-                {screenshots.map((screenshot, index) => (
+                {screenshots.map((screenshot, index) => {
+                    const analysis = hasMultiplePersonas && activePersona
+                        ? activeAnalysesByOrder.get(screenshot.orderIndex)
+                        : screenshot;
+                    return (
                     <div
                         key={screenshot.id}
                         className={`border rounded-xl p-6 ${isLight
@@ -281,7 +360,7 @@ export default function ScreenshotTestResults() {
 
                             {/* Analysis */}
                             <div className="lg:col-span-2 space-y-4">
-                                {screenshot.thoughts && (
+                                {analysis?.thoughts && (
                                     <div>
                                         <h4 className={`text-sm font-medium mb-2 ${isLight ? "text-neutral-900" : "text-white"
                                             }`}>
@@ -289,19 +368,19 @@ export default function ScreenshotTestResults() {
                                         </h4>
                                         <p className={`text-sm font-light ${isLight ? "text-neutral-600" : "text-neutral-400"
                                             }`}>
-                                            {screenshot.thoughts}
+                                            {analysis.thoughts}
                                         </p>
                                     </div>
                                 )}
 
-                                {screenshot.observations && screenshot.observations.length > 0 && (
+                                {analysis?.observations && analysis.observations.length > 0 && (
                                     <div>
                                         <h4 className={`text-sm font-medium mb-2 ${isLight ? "text-neutral-900" : "text-white"
                                             }`}>
                                             Observations
                                         </h4>
                                         <ul className="space-y-1">
-                                            {screenshot.observations.map((obs, i) => (
+                                            {analysis.observations.map((obs, i) => (
                                                 <li key={i} className={`text-xs font-light flex items-start gap-2 ${isLight ? "text-neutral-600" : "text-neutral-400"
                                                     }`}>
                                                     <span>•</span>
@@ -312,7 +391,7 @@ export default function ScreenshotTestResults() {
                                     </div>
                                 )}
 
-                                {screenshot.positiveAspects && screenshot.positiveAspects.length > 0 && (
+                                {analysis?.positiveAspects && analysis.positiveAspects.length > 0 && (
                                     <div>
                                         <h4 className={`text-sm font-medium mb-2 flex items-center gap-2 ${isLight ? "text-green-700" : "text-green-400"
                                             }`}>
@@ -320,7 +399,7 @@ export default function ScreenshotTestResults() {
                                             Positive Aspects
                                         </h4>
                                         <ul className="space-y-1">
-                                            {screenshot.positiveAspects.map((aspect, i) => (
+                                            {analysis.positiveAspects.map((aspect, i) => (
                                                 <li key={i} className={`text-xs font-light flex items-start gap-2 ${isLight ? "text-green-600" : "text-green-400"
                                                     }`}>
                                                     <span>•</span>
@@ -331,7 +410,7 @@ export default function ScreenshotTestResults() {
                                     </div>
                                 )}
 
-                                {screenshot.issues && screenshot.issues.length > 0 && (
+                                {analysis?.issues && analysis.issues.length > 0 && (
                                     <div>
                                         <h4 className={`text-sm font-medium mb-2 flex items-center gap-2 ${isLight ? "text-red-700" : "text-red-400"
                                             }`}>
@@ -339,7 +418,7 @@ export default function ScreenshotTestResults() {
                                             Issues Found
                                         </h4>
                                         <div className="space-y-2">
-                                            {screenshot.issues.map((issue, i) => (
+                                            {analysis.issues.map((issue, i) => (
                                                 <div
                                                     key={i}
                                                     className={`p-3 border rounded-lg ${isLight
@@ -373,7 +452,7 @@ export default function ScreenshotTestResults() {
                                     </div>
                                 )}
 
-                                {screenshot.comparisonWithPrevious && index > 0 && (
+                                {analysis?.comparisonWithPrevious && index > 0 && (
                                     <div>
                                         <h4 className={`text-sm font-medium mb-2 flex items-center gap-2 ${isLight ? "text-neutral-900" : "text-white"
                                             }`}>
@@ -382,14 +461,14 @@ export default function ScreenshotTestResults() {
                                         </h4>
                                         <p className={`text-xs font-light ${isLight ? "text-neutral-600" : "text-neutral-400"
                                             }`}>
-                                            {screenshot.comparisonWithPrevious}
+                                            {analysis.comparisonWithPrevious}
                                         </p>
                                     </div>
                                 )}
                             </div>
                         </div>
                     </div>
-                ))}
+                )})}
             </div>
 
             {/* Back Button */}

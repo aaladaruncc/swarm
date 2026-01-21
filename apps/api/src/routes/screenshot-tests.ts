@@ -49,7 +49,10 @@ const createScreenshotTestSchema = z.object({
             context: z.string().optional(),
         })
     ).min(1),
-    personaData: z.any(), // Single persona for MVP
+    personaData: z.any().optional(), // Single persona fallback
+    generatedPersonas: z.array(z.any()).optional(),
+    selectedPersonaIndices: z.array(z.number()).min(1).max(5).optional(),
+    agentCount: z.number().min(1).max(5).optional(),
 });
 
 // ============================================================================
@@ -127,9 +130,36 @@ screenshotTestsRoutes.post(
             expectedTask,
             screenshotSequence,
             personaData,
+            generatedPersonas,
+            selectedPersonaIndices,
+            agentCount,
         } = c.req.valid("json");
 
         try {
+            const hasMultiplePersonas = Array.isArray(generatedPersonas) && generatedPersonas.length > 0
+                && Array.isArray(selectedPersonaIndices) && selectedPersonaIndices.length > 0;
+            if (!hasMultiplePersonas && !personaData) {
+                return c.json(
+                    { error: "Missing persona data" },
+                    400
+                );
+            }
+
+            const selectedPersonaEntries = hasMultiplePersonas
+                ? selectedPersonaIndices
+                    .map((idx) => ({ idx, persona: generatedPersonas[idx] }))
+                    .filter((entry) => Boolean(entry.persona))
+                : [];
+            const finalPersonas = hasMultiplePersonas
+                ? selectedPersonaEntries.map((entry) => entry.persona)
+                : [personaData];
+            const finalPersonaIndices = hasMultiplePersonas
+                ? selectedPersonaEntries.map((entry) => entry.idx)
+                : [0];
+            if (finalPersonas.length === 0) {
+                return c.json({ error: "No valid personas selected" }, 400);
+            }
+
             // Create screenshot test run record
             const [screenshotTestRun] = await db
                 .insert(schema.screenshotTestRuns)
@@ -138,7 +168,10 @@ screenshotTestsRoutes.post(
                     testName: testName || `Screenshot Test ${new Date().toISOString().split('T')[0]}`,
                     userDescription,
                     expectedTask,
-                    personaData,
+                    personaData: hasMultiplePersonas ? null : personaData,
+                    generatedPersonas: hasMultiplePersonas ? generatedPersonas : personaData ? [personaData] : null,
+                    selectedPersonaIndices: hasMultiplePersonas ? finalPersonaIndices : personaData ? [0] : null,
+                    agentCount: hasMultiplePersonas ? (agentCount || finalPersonaIndices.length || 1) : 1,
                     status: "analyzing",
                     startedAt: new Date(),
                 })
@@ -170,7 +203,8 @@ screenshotTestsRoutes.post(
             runScreenshotAnalysisInBackground(
                 screenshotTestRun.id,
                 screenshotSequence,
-                personaData,
+                finalPersonas,
+                finalPersonaIndices,
                 userDescription,
                 expectedTask
             );
@@ -256,6 +290,17 @@ screenshotTestsRoutes.post("/:id/rerun", async (c) => {
             })
         );
 
+        const personasForRerun = Array.isArray(existingTest.generatedPersonas) && existingTest.generatedPersonas.length > 0
+            ? existingTest.generatedPersonas
+            : existingTest.personaData
+                ? [existingTest.personaData]
+                : [];
+        const personaIndicesForRerun = Array.isArray(existingTest.selectedPersonaIndices) && existingTest.selectedPersonaIndices.length > 0
+            ? existingTest.selectedPersonaIndices
+            : personasForRerun.length > 0
+                ? [0]
+                : [];
+
         runScreenshotAnalysisInBackground(
             newTestRun.id,
             screenshotSequence.map((s) => ({
@@ -265,7 +310,8 @@ screenshotTestsRoutes.post("/:id/rerun", async (c) => {
                 description: s.description || undefined,
                 context: s.context || undefined,
             })),
-            existingTest.personaData,
+            personasForRerun,
+            personaIndicesForRerun,
             existingTest.userDescription || "",
             existingTest.expectedTask || undefined
         );
@@ -316,6 +362,12 @@ screenshotTestsRoutes.get("/:id", async (c) => {
             .where(eq(schema.screenshotFlowImages.screenshotTestRunId, testId))
             .orderBy(schema.screenshotFlowImages.orderIndex);
 
+        const analysisRows = await db
+            .select()
+            .from(schema.screenshotAnalysisResults)
+            .where(eq(schema.screenshotAnalysisResults.screenshotTestRunId, testId))
+            .orderBy(schema.screenshotAnalysisResults.screenshotOrder);
+
         // Generate presigned URLs for each screenshot
         const screenshotsWithUrls = await Promise.all(
             screenshots.map(async (screenshot) => {
@@ -337,6 +389,22 @@ screenshotTestsRoutes.get("/:id", async (c) => {
         return c.json({
             testRun,
             screenshots: screenshotsWithUrls,
+            personaResults: analysisRows.length > 0
+                ? Array.from(
+                    analysisRows.reduce((map, row) => {
+                        const key = row.personaIndex;
+                        if (!map.has(key)) {
+                            map.set(key, {
+                                personaIndex: row.personaIndex,
+                                personaName: row.personaName || `Persona ${row.personaIndex + 1}`,
+                                analyses: [],
+                            });
+                        }
+                        map.get(key)!.analyses.push(row);
+                        return map;
+                    }, new Map<number, { personaIndex: number; personaName: string; analyses: Array<typeof analysisRows[number]> }>()).values()
+                )
+                : [],
             overallReport: testRun.status === "completed" ? {
                 score: testRun.overallScore,
                 summary: testRun.summary,
@@ -398,13 +466,17 @@ async function runScreenshotAnalysisInBackground(
         description?: string;
         context?: string;
     }>,
-    personaData: any,
+    personasData: any[],
+    personaIndices: number[],
     userDescription: string,
     expectedTask?: string
 ) {
     console.log(`[${testRunId}] Starting screenshot analysis...`);
 
     try {
+        if (!personasData || personasData.length === 0) {
+            throw new Error("No personas provided for screenshot analysis");
+        }
         // Convert to ScreenshotInput format expected by the agent
         const screenshots: ScreenshotInput[] = await Promise.all(
             screenshotSequence.map(async (s) => {
@@ -427,55 +499,71 @@ async function runScreenshotAnalysisInBackground(
             })
         );
 
-        // Convert persona data to UserPersona format
-        const persona: UserPersona = {
-            name: personaData.name || "Test User",
-            age: personaData.age || 30,
-            country: personaData.country || "United States",
-            occupation: personaData.occupation || "Professional",
-            incomeLevel: personaData.incomeLevel || "medium",
-            techSavviness: personaData.techSavviness || "intermediate",
-            financialGoal: personaData.financialGoal || personaData.primaryGoal || "Evaluate the user experience",
-            painPoints: personaData.painPoints || [],
-            context: expectedTask || userDescription,
-        };
+        const personaResults = await Promise.all(
+            personasData.map(async (personaData, index) => {
+                const personaIndex = personaIndices[index] ?? index;
+                const persona: UserPersona = {
+                    name: personaData?.name || "Test User",
+                    age: personaData?.age || 30,
+                    country: personaData?.country || "United States",
+                    occupation: personaData?.occupation || "Professional",
+                    incomeLevel: personaData?.incomeLevel || "medium",
+                    techSavviness: personaData?.techSavviness || "intermediate",
+                    financialGoal: personaData?.financialGoal || personaData?.primaryGoal || "Evaluate the user experience",
+                    painPoints: personaData?.painPoints || [],
+                    context: expectedTask || userDescription,
+                };
 
-        console.log(`[${testRunId}] Analyzing ${screenshots.length} screenshots as ${persona.name}...`);
+                console.log(`[${testRunId}] Analyzing ${screenshots.length} screenshots as ${persona.name}...`);
 
-        // Run analysis using the screenshot agent
-        const result = await analyzeScreenshotSequence(screenshots, persona);
+                const result = await analyzeScreenshotSequence(screenshots, persona);
 
-        console.log(`[${testRunId}] Analysis complete. Score: ${result.overallScore}`);
-
-        // Update each screenshot record with its analysis
-        for (const analysis of result.analyses) {
-            await db
-                .update(schema.screenshotFlowImages)
-                .set({
-                    observations: analysis.observations,
-                    positiveAspects: analysis.positiveAspects,
-                    issues: analysis.issues,
-                    accessibilityNotes: analysis.accessibilityNotes,
-                    thoughts: analysis.thoughts,
-                    comparisonWithPrevious: analysis.comparisonWithPrevious,
-                })
-                .where(
-                    and(
-                        eq(schema.screenshotFlowImages.screenshotTestRunId, testRunId),
-                        eq(schema.screenshotFlowImages.orderIndex, analysis.screenshotOrder)
-                    )
+                await db.insert(schema.screenshotAnalysisResults).values(
+                    result.analyses.map((analysis) => ({
+                        screenshotTestRunId: testRunId,
+                        screenshotOrder: analysis.screenshotOrder,
+                        s3Key: analysis.s3Key,
+                        s3Url: analysis.s3Url,
+                        personaIndex,
+                        personaName: analysis.personaName,
+                        observations: analysis.observations,
+                        positiveAspects: analysis.positiveAspects,
+                        issues: analysis.issues,
+                        accessibilityNotes: analysis.accessibilityNotes,
+                        thoughts: analysis.thoughts,
+                        comparisonWithPrevious: analysis.comparisonWithPrevious,
+                    }))
                 );
-            // Note: Ideally we'd match by s3Key or orderIndex, but for MVP this works
-        }
+
+                console.log(`[${testRunId}] Analysis complete for ${persona.name}. Score: ${result.overallScore}`);
+
+                return {
+                    personaIndex,
+                    personaName: persona.name,
+                    result,
+                };
+            })
+        );
+
+        const averageScore = Math.round(
+            personaResults.reduce((sum, entry) => sum + entry.result.overallScore, 0) / Math.max(personaResults.length, 1)
+        );
+        const overallSummary = `Analyzed ${screenshots.length} screenshots across ${personaResults.length} persona${personaResults.length !== 1 ? "s" : ""}. Overall experience: ${averageScore >= 70 ? "positive" : averageScore >= 50 ? "mixed" : "needs improvement"}.`;
 
         // Update test run with overall results
         await db
             .update(schema.screenshotTestRuns)
             .set({
                 status: "completed",
-                overallScore: result.overallScore,
-                summary: result.summary,
-                fullReport: result as any,
+                overallScore: averageScore,
+                summary: overallSummary,
+                fullReport: {
+                    personaResults: personaResults.map((entry) => ({
+                        personaIndex: entry.personaIndex,
+                        personaName: entry.personaName,
+                        ...entry.result,
+                    })),
+                } as any,
                 completedAt: new Date(),
             })
             .where(eq(schema.screenshotTestRuns.id, testRunId));

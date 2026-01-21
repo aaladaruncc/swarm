@@ -83,6 +83,33 @@ function getGeminiClient() {
   return new GoogleGenerativeAI(apiKey);
 }
 
+function isOverloadedError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const message = "message" in error && typeof error.message === "string"
+    ? error.message.toLowerCase()
+    : "";
+  const status = "status" in error && typeof error.status === "number"
+    ? error.status
+    : undefined;
+  return message.includes("overloaded") || message.includes("quota") || status === 429 || status === 503;
+}
+
+async function generateContentWithFallback(
+  primaryModel: any,
+  fallbackModel: any,
+  content: any[]
+) {
+  try {
+    return await primaryModel.generateContent(content);
+  } catch (error) {
+    if (!fallbackModel || !isOverloadedError(error)) {
+      throw error;
+    }
+    console.warn("[Screenshot Agent] Primary model overloaded, falling back.");
+    return fallbackModel.generateContent(content);
+  }
+}
+
 // ============================================================================
 // SCREENSHOT ANALYSIS
 // ============================================================================
@@ -110,7 +137,8 @@ async function analyzeScreenshotWithVision(
   screenshot: ScreenshotInput,
   persona: UserPersona,
   previousContext: string,
-  model: any
+  model: any,
+  fallbackModel: any
 ): Promise<Omit<ScreenshotAnalysis, "screenshotOrder" | "s3Key" | "s3Url" | "personaName">> {
   // Download image
   const imageBase64 = await downloadImageAsBase64(screenshot.s3Url);
@@ -124,7 +152,7 @@ async function analyzeScreenshotWithVision(
   );
 
   // Use Gemini Vision API
-  const result = await model.generateContent([
+  const result = await generateContentWithFallback(model, fallbackModel, [
     {
       inlineData: {
         data: imageBase64,
@@ -145,7 +173,8 @@ async function generateReflection(
   persona: UserPersona,
   recentAnalyses: ScreenshotAnalysis[],
   priorReflection: string,
-  model: any
+  model: any,
+  fallbackModel: any
 ): Promise<string> {
   const summary = recentAnalyses
     .map((analysis) => `Screenshot ${analysis.screenshotOrder + 1} thoughts: ${analysis.thoughts}`)
@@ -163,7 +192,7 @@ Write a concise reflection (3-5 sentences) covering:
 4) Any overall sentiment shift
 `;
 
-  const result = await model.generateContent([{ text: prompt }]);
+  const result = await generateContentWithFallback(model, fallbackModel, [{ text: prompt }]);
   const response = await result.response;
   return response.text().trim();
 }
@@ -322,7 +351,9 @@ export async function analyzeScreenshotSequence(
   screenshots: ScreenshotInput[],
   persona: UserPersona
 ): Promise<ScreenshotTestResult> {
-  const model = getGeminiClient().getGenerativeModel({ model: "gemini-3-flash-preview" });
+  const geminiClient = getGeminiClient();
+  const model = geminiClient.getGenerativeModel({ model: "gemini-3-flash-preview" });
+  const fallbackModel = geminiClient.getGenerativeModel({ model: "gemini-2.0-flash" });
   const analyses: ScreenshotAnalysis[] = [];
   const reflections: ScreenshotReflection[] = [];
   let previousContext = "";
@@ -339,7 +370,8 @@ export async function analyzeScreenshotSequence(
       screenshot,
       persona,
       [previousContext, latestReflection].filter(Boolean).join("\n\n"),
-      model
+      model,
+      fallbackModel
     );
 
     const fullAnalysis: ScreenshotAnalysis = {
@@ -357,7 +389,7 @@ export async function analyzeScreenshotSequence(
     if (shouldReflect) {
       const windowStart = Math.max(0, analyses.length - reflectionInterval);
       const recentAnalyses = analyses.slice(windowStart);
-      const reflection = await generateReflection(persona, recentAnalyses, latestReflection, model);
+      const reflection = await generateReflection(persona, recentAnalyses, latestReflection, model, fallbackModel);
       reflections.push({
         startOrder: recentAnalyses[0].screenshotOrder,
         endOrder: recentAnalyses[recentAnalyses.length - 1].screenshotOrder,

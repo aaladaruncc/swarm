@@ -25,6 +25,9 @@ export interface ScreenshotTestRun {
     userDescription: string | null;
     expectedTask: string | null;
     personaData: any;
+    generatedPersonas?: any[] | null;
+    selectedPersonaIndices?: number[] | null;
+    agentCount?: number | null;
     status: string; // pending | uploading | analyzing | completed | failed
     overallScore: number | null;
     summary: string | null;
@@ -60,6 +63,30 @@ export interface ScreenshotFlowImage {
 export interface ScreenshotTestResult {
     testRun: ScreenshotTestRun;
     screenshots: ScreenshotFlowImage[];
+    personaResults?: Array<{
+        personaIndex: number;
+        personaName: string;
+        analyses: Array<{
+            id: string;
+            screenshotTestRunId: string;
+            screenshotOrder: number;
+            s3Key: string;
+            s3Url: string;
+            personaIndex: number;
+            personaName: string | null;
+            observations: string[] | null;
+            positiveAspects: string[] | null;
+            issues: Array<{
+                severity: "low" | "medium" | "high" | "critical";
+                description: string;
+                recommendation: string;
+            }> | null;
+            accessibilityNotes: string[] | null;
+            thoughts: string | null;
+            comparisonWithPrevious: string | null;
+            createdAt: string;
+        }>;
+    }>;
     overallReport: {
         score: number | null;
         summary: string | null;
@@ -122,7 +149,10 @@ export async function createScreenshotTest(
     userDescription: string,
     expectedTask: string | undefined,
     screenshotSequence: UploadedScreenshot[],
-    personaData: any
+    personaData: any,
+    generatedPersonas?: any[],
+    selectedPersonaIndices?: number[],
+    agentCount?: number
 ): Promise<{
     screenshotTestRun: ScreenshotTestRun;
     message: string;
@@ -135,6 +165,9 @@ export async function createScreenshotTest(
             expectedTask,
             screenshotSequence,
             personaData,
+            generatedPersonas,
+            selectedPersonaIndices,
+            agentCount,
         }),
     });
 }

@@ -20,6 +20,7 @@ export default function NewTest() {
 
   // Modality selection: live (default) or screenshot
   const [modality, setModality] = useState<"live" | "screenshot">("live");
+  const isScreenshotMode = modality === "screenshot";
 
   // Step 1: URL and Description (for live mode)
   const [url, setUrl] = useState("");
@@ -30,7 +31,6 @@ export default function NewTest() {
   const [screenshots, setScreenshots] = useState<ScreenshotFile[]>([]);
   const [testName, setTestName] = useState("");
   const [expectedTask, setExpectedTask] = useState("");
-  const [screenshotPersona, setScreenshotPersona] = useState<GeneratedPersona | null>(null);
   const [generatingPersona, setGeneratingPersona] = useState(false);
 
   // Step 2: Generated Personas
@@ -145,6 +145,40 @@ export default function NewTest() {
     }
   };
 
+  const applyGeneratedPersonas = (result: { personas: GeneratedPersona[]; recommendedIndices?: number[] }) => {
+    const originalRecommendedIndices = result.recommendedIndices || [];
+
+    const personasWithOriginalIndex = result.personas.map((p, idx) => ({
+      persona: p,
+      originalIndex: idx,
+      isRecommended: originalRecommendedIndices.includes(idx),
+    }));
+
+    personasWithOriginalIndex.sort((a, b) => {
+      if (a.isRecommended && !b.isRecommended) return -1;
+      if (!a.isRecommended && b.isRecommended) return 1;
+      return (b.persona.relevanceScore || 0) - (a.persona.relevanceScore || 0);
+    });
+
+    const sortedPersonas = personasWithOriginalIndex.map(item => item.persona);
+    const newRecommendedIndices = personasWithOriginalIndex
+      .map((item, newIdx) => item.isRecommended ? newIdx : -1)
+      .filter(idx => idx !== -1);
+
+    setPersonas(sortedPersonas);
+    setRecommendedIndices(newRecommendedIndices);
+
+    let indicesToUse = newRecommendedIndices.slice(0, agentCount);
+    if (indicesToUse.length < agentCount && sortedPersonas.length > 0) {
+      const availableIndices = sortedPersonas.map((_, i) => i);
+      const remaining = availableIndices.filter((i) => !indicesToUse.includes(i));
+      indicesToUse = [...indicesToUse, ...remaining.slice(0, agentCount - indicesToUse.length)];
+    }
+
+    setSelectedIndices(indicesToUse);
+    setStep("select");
+  };
+
   const handleGeneratePersonas = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -152,41 +186,7 @@ export default function NewTest() {
 
     try {
       const result = await generatePersonas(url, userDescription, agentCount);
-      const originalRecommendedIndices = result.recommendedIndices || [];
-
-      // Sort personas so recommended ones come first
-      const personasWithOriginalIndex = result.personas.map((p, idx) => ({
-        persona: p,
-        originalIndex: idx,
-        isRecommended: originalRecommendedIndices.includes(idx),
-      }));
-
-      // Sort: recommended first, then by relevance score (descending)
-      personasWithOriginalIndex.sort((a, b) => {
-        if (a.isRecommended && !b.isRecommended) return -1;
-        if (!a.isRecommended && b.isRecommended) return 1;
-        return (b.persona.relevanceScore || 0) - (a.persona.relevanceScore || 0);
-      });
-
-      // Extract sorted personas and create new recommended indices
-      const sortedPersonas = personasWithOriginalIndex.map(item => item.persona);
-      const newRecommendedIndices = personasWithOriginalIndex
-        .map((item, newIdx) => item.isRecommended ? newIdx : -1)
-        .filter(idx => idx !== -1);
-
-      setPersonas(sortedPersonas);
-      setRecommendedIndices(newRecommendedIndices);
-
-      // Preselect recommended personas, then let the user review before starting.
-      let indicesToUse = newRecommendedIndices.slice(0, agentCount);
-      if (indicesToUse.length < agentCount && sortedPersonas.length > 0) {
-        const availableIndices = sortedPersonas.map((_, i) => i);
-        const remaining = availableIndices.filter((i) => !indicesToUse.includes(i));
-        indicesToUse = [...indicesToUse, ...remaining.slice(0, agentCount - indicesToUse.length)];
-      }
-
-      setSelectedIndices(indicesToUse);
-      setStep("select");
+      applyGeneratedPersonas(result);
     } catch (err) {
       console.error("Error generating/starting:", err);
       setError(err instanceof Error ? err.message : "Failed to generate personas");
@@ -219,7 +219,7 @@ export default function NewTest() {
   };
 
   // Screenshot mode handlers
-  const handleGenerateScreenshotPersona = async (e: React.FormEvent) => {
+  const handleGenerateScreenshotPersonas = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userDescription) {
       setError("Please provide a description of your target audience");
@@ -228,14 +228,14 @@ export default function NewTest() {
 
     setGeneratingPersona(true);
     setError("");
+    setStep("generating");
 
     try {
-      const result = await generatePersonas("", userDescription, 1);
-      if (result.personas && result.personas.length > 0) {
-        setScreenshotPersona(result.personas[0]);
-      }
+      const result = await generatePersonas("", userDescription, agentCount);
+      applyGeneratedPersonas(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate persona");
+      setError(err instanceof Error ? err.message : "Failed to generate personas");
+      setStep("describe");
     } finally {
       setGeneratingPersona(false);
     }
@@ -247,13 +247,14 @@ export default function NewTest() {
       return;
     }
 
-    if (!screenshotPersona) {
-      setError("Please generate a persona first");
+    if (selectedIndices.length === 0) {
+      setError("Please select at least one persona");
       return;
     }
 
     setLoading(true);
     setError("");
+    setStep("starting");
 
     try {
       // Convert screenshots to base64
@@ -281,12 +282,16 @@ export default function NewTest() {
         userDescription,
         expectedTask || undefined,
         uploadResult.uploadedScreenshots,
-        screenshotPersona
+        personas[selectedIndices[0]],
+        personas,
+        selectedIndices,
+        agentCount
       );
 
       router.push(`/dashboard/tests/screenshot/${testResult.screenshotTestRun.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start test");
+      setStep("select");
     } finally {
       setLoading(false);
     }
@@ -639,7 +644,7 @@ export default function NewTest() {
 
           {/* Screenshot Mode Form */}
           {modality === "screenshot" && (
-            <form onSubmit={handleGenerateScreenshotPersona} className="flex-1 flex flex-col min-h-0">
+            <form onSubmit={handleGenerateScreenshotPersonas} className="flex-1 flex flex-col min-h-0">
               {/* Top Row: Screenshot Upload & Audience */}
               <div className="grid grid-cols-2 gap-6 mb-6 items-stretch min-h-0">
                 {/* Left Module - Screenshot Uploader */}
@@ -700,6 +705,39 @@ export default function NewTest() {
                           required
                         />
                       </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className={`text-sm font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>Personas</p>
+                          <p className={`text-xs font-light ${isLight ? "text-neutral-500" : "text-neutral-500"}`}>
+                            Choose how many personas to analyze this flow
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setAgentCount(Math.max(1, agentCount - 1))}
+                            className={`w-9 h-9 border transition-colors flex items-center justify-center rounded-lg ${isLight
+                              ? "border-neutral-300 hover:border-neutral-500 hover:bg-neutral-100 text-neutral-900"
+                              : "border-white/10 hover:border-white/30 hover:bg-white/5 text-white"
+                              }`}
+                          >
+                            <Minus size={16} />
+                          </button>
+                          <div className={`w-8 text-center text-sm font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>
+                            {agentCount}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setAgentCount(Math.min(5, agentCount + 1))}
+                            className={`w-9 h-9 border transition-colors flex items-center justify-center rounded-lg ${isLight
+                              ? "border-neutral-300 hover:border-neutral-500 hover:bg-neutral-100 text-neutral-900"
+                              : "border-white/10 hover:border-white/30 hover:bg-white/5 text-white"
+                              }`}
+                          >
+                            <Plus size={16} />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -729,47 +767,23 @@ export default function NewTest() {
                     Cancel
                   </Link>
 
-                  {screenshotPersona ? (
-                    <button
-                      type="button"
-                      onClick={handleStartScreenshotTest}
-                      disabled={loading || screenshots.length === 0}
-                      className={`px-6 py-2.5 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg ${isLight
-                        ? "bg-neutral-900 text-white hover:bg-neutral-800"
-                        : "bg-white text-neutral-900 hover:bg-neutral-200"
-                        }`}
-                    >
-                      {loading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Starting Test...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>Start Analysis</span>
-                          <ArrowRight size={16} />
-                        </>
-                      )}
-                    </button>
-                  ) : (
-                    <button
-                      type="submit"
-                      disabled={generatingPersona || !userDescription}
-                      className={`px-6 py-2.5 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg ${isLight
-                        ? "bg-neutral-900 text-white hover:bg-neutral-800"
-                        : "bg-white text-neutral-900 hover:bg-neutral-200"
-                        }`}
-                    >
-                      {generatingPersona ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Generating Persona...</span>
-                        </>
-                      ) : (
-                        <span>Generate Persona & Continue</span>
-                      )}
-                    </button>
-                  )}
+                  <button
+                    type="submit"
+                    disabled={generatingPersona || !userDescription}
+                    className={`px-6 py-2.5 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg ${isLight
+                      ? "bg-neutral-900 text-white hover:bg-neutral-800"
+                      : "bg-white text-neutral-900 hover:bg-neutral-200"
+                      }`}
+                  >
+                    {generatingPersona ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Generating Personas...</span>
+                      </>
+                    ) : (
+                      <span>Generate Personas</span>
+                    )}
+                  </button>
                 </div>
               </div>
             </form>
@@ -805,7 +819,7 @@ export default function NewTest() {
                   : "text-neutral-400 hover:text-white"
                   }`}
               >
-                New Simulation
+                {isScreenshotMode ? "New Screenshot Test" : "New Simulation"}
               </button>
               <span className={isLight ? "text-neutral-400" : "text-neutral-600"}>/</span>
               <span className={isLight ? "text-neutral-900 font-medium" : "text-white font-medium"}>Select Personas</span>
@@ -973,7 +987,7 @@ export default function NewTest() {
               </button>
 
               <button
-                onClick={handleStartBatchTest}
+                onClick={isScreenshotMode ? handleStartScreenshotTest : handleStartBatchTest}
                 disabled={loading || selectedIndices.length !== agentCount}
                 className={`px-6 py-2 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg ${isLight
                   ? "bg-neutral-900 text-white hover:bg-neutral-800"
@@ -983,12 +997,12 @@ export default function NewTest() {
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Deploying...</span>
+                    <span>{isScreenshotMode ? "Starting..." : "Deploying..."}</span>
                   </>
                 ) : selectedIndices.length !== agentCount ? (
                   <span>Select {agentCount - selectedIndices.length} more</span>
                 ) : (
-                  <span>Start Simulation</span>
+                  <span>{isScreenshotMode ? "Start Analysis" : "Start Simulation"}</span>
                 )}
               </button>
             </div>
@@ -1019,15 +1033,20 @@ export default function NewTest() {
                   : "text-neutral-400 hover:text-white"
                   }`}
               >
-                New Simulation
+                {isScreenshotMode ? "New Screenshot Test" : "New Simulation"}
               </Link>
               <span className={isLight ? "text-neutral-400" : "text-neutral-600"}>/</span>
-              <span className={isLight ? "text-neutral-900 font-medium" : "text-white font-medium"}>Deploying Agents</span>
+              <span className={isLight ? "text-neutral-900 font-medium" : "text-white font-medium"}>
+                {isScreenshotMode ? "Starting Analysis" : "Deploying Agents"}
+              </span>
             </nav>
             <h1 className={`text-3xl font-light tracking-tight mb-2 ${isLight ? "text-neutral-900" : "text-white"
-              }`}>Deploying Agents</h1>
+              }`}>{isScreenshotMode ? "Starting Analysis" : "Deploying Agents"}</h1>
             <p className={`font-light ${isLight ? "text-neutral-500" : "text-neutral-400"
-              }`}>Launching {agentCount} concurrent agent{agentCount !== 1 ? 's' : ''} to test your environment.</p>
+              }`}>{isScreenshotMode
+                ? `Launching ${agentCount} persona${agentCount !== 1 ? "s" : ""} to analyze your screenshots.`
+                : `Launching ${agentCount} concurrent agent${agentCount !== 1 ? "s" : ""} to test your environment.`
+                }</p>
           </div>
           <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
             <Loader2 className={`w-16 h-16 animate-spin mb-6 ${isLight ? "text-neutral-500" : "text-neutral-500"
