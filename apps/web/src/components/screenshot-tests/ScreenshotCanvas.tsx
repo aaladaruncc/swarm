@@ -10,7 +10,7 @@ interface ScreenshotCanvasProps {
     signedUrl?: string;
     s3Url?: string;
     orderIndex: number;
-    description?: string;
+    description?: string | null;
   }>;
   isAnalyzing?: boolean;
   analyzingStep?: number;
