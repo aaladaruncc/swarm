@@ -94,6 +94,20 @@ export interface ScreenshotTestResult {
     } | null;
 }
 
+export interface ScreenshotAggregatedInsight {
+    id: string;
+    screenshotTestRunId: string;
+    category: 'issues' | 'observations' | 'accessibility' | 'positives';
+    severity: 'low' | 'medium' | 'high' | 'critical' | null;
+    title: string;
+    description: string;
+    recommendation: string | null;
+    personaName: string;
+    personaIndex: number;
+    screenshotOrder: number;
+    createdAt: string;
+}
+
 // ============================================================================
 // API FUNCTIONS
 // ============================================================================
@@ -237,3 +251,27 @@ export async function getScreenshotTestShareStatus(id: string): Promise<ShareSta
     return fetchWithAuth(`/api/screenshot-tests/${id}/share`);
 }
 
+// ============================================================================
+// AGGREGATED INSIGHTS
+// ============================================================================
+
+/**
+ * Generate aggregated insights for a screenshot test
+ */
+export async function generateScreenshotInsights(id: string): Promise<{
+    insights: ScreenshotAggregatedInsight[];
+    message: string;
+}> {
+    return fetchWithAuth(`/api/screenshot-tests/${id}/insights/generate`, {
+        method: "POST",
+    });
+}
+
+/**
+ * Get aggregated insights for a screenshot test
+ */
+export async function getScreenshotInsights(id: string): Promise<{
+    insights: ScreenshotAggregatedInsight[];
+}> {
+    return fetchWithAuth(`/api/screenshot-tests/${id}/insights`);
+}

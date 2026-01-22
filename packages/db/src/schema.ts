@@ -411,6 +411,30 @@ export const screenshotAnalysisResults = pgTable("screenshot_analysis_results", 
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Aggregated insights for screenshot test runs
+export const screenshotAggregatedInsights = pgTable("screenshot_aggregated_insights", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  screenshotTestRunId: uuid("screenshot_test_run_id")
+    .notNull()
+    .references(() => screenshotTestRuns.id, { onDelete: "cascade" }),
+
+  // Insight categorization
+  category: text("category").notNull(), // 'issues' | 'observations' | 'accessibility' | 'positives'
+  severity: text("severity"), // Only for issues: 'low' | 'medium' | 'high' | 'critical'
+
+  // Insight content
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  recommendation: text("recommendation"),
+
+  // Source tracking
+  personaName: text("persona_name").notNull(),
+  personaIndex: integer("persona_index").notNull(),
+  screenshotOrder: integer("screenshot_order").notNull(),
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // ============================================================================
 // TYPE EXPORTS
 // ============================================================================
@@ -467,3 +491,7 @@ export type NewScreenshotFlowImage = typeof screenshotFlowImages.$inferInsert;
 
 export type ScreenshotAnalysisResult = typeof screenshotAnalysisResults.$inferSelect;
 export type NewScreenshotAnalysisResult = typeof screenshotAnalysisResults.$inferInsert;
+
+export type ScreenshotAggregatedInsight = typeof screenshotAggregatedInsights.$inferSelect;
+export type NewScreenshotAggregatedInsight = typeof screenshotAggregatedInsights.$inferInsert;
+

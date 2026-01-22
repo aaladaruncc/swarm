@@ -5,9 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { getScreenshotTest, rerunScreenshotTest, enableScreenshotTestSharing, disableScreenshotTestSharing, getScreenshotTestShareStatus, type ScreenshotTestResult, type ShareStatus } from "@/lib/screenshot-api";
-import { Loader2, ArrowLeft, CheckCircle2, AlertCircle, Info, RefreshCw, Share2, Link as LinkIcon, Check, X } from "lucide-react";
+import { Loader2, ArrowLeft, CheckCircle2, AlertCircle, Info, RefreshCw, Share2, Link as LinkIcon, Check, X, LayoutGrid, List } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { ScreenshotCanvas } from "@/components/screenshot-tests/ScreenshotCanvas";
+import { AggregatedScreenshotInsights } from "@/components/screenshot-tests/AggregatedScreenshotInsights";
 
 export default function ScreenshotTestResults() {
     type PersonaAnalysis = NonNullable<ScreenshotTestResult["personaResults"]>[number]["analyses"][number];
@@ -23,6 +24,7 @@ export default function ScreenshotTestResults() {
     const [rerunning, setRerunning] = useState(false);
     const [rerunError, setRerunError] = useState("");
     const [activePersonaIndex, setActivePersonaIndex] = useState<number>(0);
+    const [viewMode, setViewMode] = useState<"per-screenshot" | "aggregated">("aggregated");
 
     // Share state
     const [shareStatus, setShareStatus] = useState<ShareStatus | null>(null);
@@ -51,7 +53,7 @@ export default function ScreenshotTestResults() {
     // Poll for updates if still analyzing - separate effect to avoid dependency issues
     useEffect(() => {
         if (!testId || !result) return;
-        
+
         // Only poll if status is analyzing
         if (result.testRun.status !== "analyzing") return;
 
@@ -412,161 +414,207 @@ export default function ScreenshotTestResults() {
 
             {/* Screenshots Analysis - Only show when completed */}
             {isCompleted && (
-            <div className="space-y-4 flex-1 overflow-y-auto min-h-0">
-                <h2 className={`text-xl font-medium ${isLight ? "text-neutral-900" : "text-white"
-                    }`}>
-                    Screenshot Analysis
-                </h2>
-                {screenshots.map((screenshot, index) => {
-                    const analysis = hasMultiplePersonas && activePersona
-                        ? activeAnalysesByOrder.get(screenshot.orderIndex)
-                        : screenshot;
-                    return (
-                        <div
-                            key={screenshot.id}
-                            className={`border rounded-xl p-6 ${isLight
-                                ? "border-neutral-200 bg-white"
-                                : "border-white/10 bg-[#1E1E1E]"
-                                }`}
-                        >
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                {/* Screenshot */}
-                                <div>
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <span className={`text-xs font-medium px-2 py-1 rounded ${isLight ? "bg-neutral-100 text-neutral-600" : "bg-[#252525] text-neutral-400"
-                                            }`}>
-                                            Step {index + 1}
-                                        </span>
-                                        {screenshot.description && (
-                                            <span className={`text-xs font-light ${isLight ? "text-neutral-500" : "text-neutral-500"
-                                                }`}>
-                                                {screenshot.description}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className={`rounded-lg overflow-hidden ${isLight ? "bg-neutral-100" : "bg-[#252525]"
-                                        }`}>
-                                        <img
-                                            src={screenshot.signedUrl || screenshot.s3Url}
-                                            alt={`Screenshot ${index + 1}`}
-                                            className="w-full h-auto"
-                                        />
-                                    </div>
-                                </div>
+                <div className="space-y-4 flex-1 overflow-y-auto min-h-0">
+                    {/* View Toggle Header */}
+                    <div className="flex items-center justify-between">
+                        <h2 className={`text-xl font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>
+                            {viewMode === "aggregated" ? "Aggregated Insights" : "Screenshot Analysis"}
+                        </h2>
+                        <div className={`flex items-center p-1 border rounded-lg ${isLight
+                            ? "bg-neutral-100 border-neutral-200"
+                            : "bg-[#252525] border-white/10"
+                            }`}>
+                            <button
+                                onClick={() => setViewMode("aggregated")}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors rounded-md ${viewMode === "aggregated"
+                                    ? isLight
+                                        ? "bg-white text-neutral-900 shadow-sm"
+                                        : "bg-[#1E1E1E] text-white"
+                                    : isLight
+                                        ? "text-neutral-600 hover:text-neutral-900"
+                                        : "text-neutral-400 hover:text-white"
+                                    }`}
+                            >
+                                <LayoutGrid size={14} />
+                                <span>Aggregated</span>
+                            </button>
+                            <button
+                                onClick={() => setViewMode("per-screenshot")}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors rounded-md ${viewMode === "per-screenshot"
+                                    ? isLight
+                                        ? "bg-white text-neutral-900 shadow-sm"
+                                        : "bg-[#1E1E1E] text-white"
+                                    : isLight
+                                        ? "text-neutral-600 hover:text-neutral-900"
+                                        : "text-neutral-400 hover:text-white"
+                                    }`}
+                            >
+                                <List size={14} />
+                                <span>Per Screenshot</span>
+                            </button>
+                        </div>
+                    </div>
 
-                                {/* Analysis */}
-                                <div className="lg:col-span-2 space-y-4">
-                                    {analysis?.thoughts && (
-                                        <div>
-                                            <h4 className={`text-sm font-medium mb-2 ${isLight ? "text-neutral-900" : "text-white"
-                                                }`}>
-                                                Thoughts
-                                            </h4>
-                                            <p className={`text-sm font-light ${isLight ? "text-neutral-600" : "text-neutral-400"
-                                                }`}>
-                                                {analysis.thoughts}
-                                            </p>
-                                        </div>
-                                    )}
+                    {/* Aggregated View */}
+                    {viewMode === "aggregated" && result && (
+                        <AggregatedScreenshotInsights result={result} />
+                    )}
 
-                                    {analysis?.observations && analysis.observations.length > 0 && (
-                                        <div>
-                                            <h4 className={`text-sm font-medium mb-2 ${isLight ? "text-neutral-900" : "text-white"
-                                                }`}>
-                                                Observations
-                                            </h4>
-                                            <ul className="space-y-1">
-                                                {analysis.observations.map((obs, i) => (
-                                                    <li key={i} className={`text-xs font-light flex items-start gap-2 ${isLight ? "text-neutral-600" : "text-neutral-400"
+                    {/* Per-Screenshot View */}
+                    {viewMode === "per-screenshot" && (
+                        <>
+                            {screenshots.map((screenshot, index) => {
+                                const analysis = hasMultiplePersonas && activePersona
+                                    ? activeAnalysesByOrder.get(screenshot.orderIndex)
+                                    : screenshot;
+                                return (
+                                    <div
+                                        key={screenshot.id}
+                                        className={`border rounded-xl p-6 ${isLight
+                                            ? "border-neutral-200 bg-white"
+                                            : "border-white/10 bg-[#1E1E1E]"
+                                            }`}
+                                    >
+                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                            {/* Screenshot */}
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <span className={`text-xs font-medium px-2 py-1 rounded ${isLight ? "bg-neutral-100 text-neutral-600" : "bg-[#252525] text-neutral-400"
                                                         }`}>
-                                                        <span>•</span>
-                                                        <span>{obs}</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    )}
-
-                                    {analysis?.positiveAspects && analysis.positiveAspects.length > 0 && (
-                                        <div>
-                                            <h4 className={`text-sm font-medium mb-2 flex items-center gap-2 ${isLight ? "text-green-700" : "text-green-400"
-                                                }`}>
-                                                <CheckCircle2 size={16} />
-                                                Positive Aspects
-                                            </h4>
-                                            <ul className="space-y-1">
-                                                {analysis.positiveAspects.map((aspect, i) => (
-                                                    <li key={i} className={`text-xs font-light flex items-start gap-2 ${isLight ? "text-green-600" : "text-green-400"
-                                                        }`}>
-                                                        <span>•</span>
-                                                        <span>{aspect}</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    )}
-
-                                    {analysis?.issues && analysis.issues.length > 0 && (
-                                        <div>
-                                            <h4 className={`text-sm font-medium mb-2 flex items-center gap-2 ${isLight ? "text-red-700" : "text-red-400"
-                                                }`}>
-                                                <AlertCircle size={16} />
-                                                Issues Found
-                                            </h4>
-                                            <div className="space-y-2">
-                                                {analysis.issues.map((issue, i) => (
-                                                    <div
-                                                        key={i}
-                                                        className={`p-3 border rounded-lg ${isLight
-                                                            ? "border-red-200 bg-red-50"
-                                                            : "border-red-500/20 bg-red-500/10"
-                                                            }`}
-                                                    >
-                                                        <div className="flex items-start gap-2 mb-1">
-                                                            <span className={`text-[10px] font-medium uppercase px-1.5 py-0.5 rounded ${issue.severity === "critical"
-                                                                ? isLight ? "bg-red-600 text-white" : "bg-red-500 text-white"
-                                                                : issue.severity === "high"
-                                                                    ? isLight ? "bg-orange-500 text-white" : "bg-orange-400 text-black"
-                                                                    : issue.severity === "medium"
-                                                                        ? isLight ? "bg-yellow-500 text-black" : "bg-yellow-400 text-black"
-                                                                        : isLight ? "bg-neutral-400 text-white" : "bg-neutral-500 text-black"
-                                                                }`}>
-                                                                {issue.severity}
-                                                            </span>
-                                                            <p className={`text-xs font-medium flex-1 ${isLight ? "text-red-900" : "text-red-300"
-                                                                }`}>
-                                                                {issue.description}
-                                                            </p>
-                                                        </div>
-                                                        <p className={`text-xs font-light ${isLight ? "text-red-700" : "text-red-400"
+                                                        Step {index + 1}
+                                                    </span>
+                                                    {screenshot.description && (
+                                                        <span className={`text-xs font-light ${isLight ? "text-neutral-500" : "text-neutral-500"
                                                             }`}>
-                                                            → {issue.recommendation}
+                                                            {screenshot.description}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className={`rounded-lg overflow-hidden ${isLight ? "bg-neutral-100" : "bg-[#252525]"
+                                                    }`}>
+                                                    <img
+                                                        src={screenshot.signedUrl || screenshot.s3Url}
+                                                        alt={`Screenshot ${index + 1}`}
+                                                        className="w-full h-auto"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Analysis */}
+                                            <div className="lg:col-span-2 space-y-4">
+                                                {analysis?.thoughts && (
+                                                    <div>
+                                                        <h4 className={`text-sm font-medium mb-2 ${isLight ? "text-neutral-900" : "text-white"
+                                                            }`}>
+                                                            Thoughts
+                                                        </h4>
+                                                        <p className={`text-sm font-light ${isLight ? "text-neutral-600" : "text-neutral-400"
+                                                            }`}>
+                                                            {analysis.thoughts}
                                                         </p>
                                                     </div>
-                                                ))}
+                                                )}
+
+                                                {analysis?.observations && analysis.observations.length > 0 && (
+                                                    <div>
+                                                        <h4 className={`text-sm font-medium mb-2 ${isLight ? "text-neutral-900" : "text-white"
+                                                            }`}>
+                                                            Observations
+                                                        </h4>
+                                                        <ul className="space-y-1">
+                                                            {analysis.observations.map((obs, i) => (
+                                                                <li key={i} className={`text-xs font-light flex items-start gap-2 ${isLight ? "text-neutral-600" : "text-neutral-400"
+                                                                    }`}>
+                                                                    <span>•</span>
+                                                                    <span>{obs}</span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+
+                                                {analysis?.positiveAspects && analysis.positiveAspects.length > 0 && (
+                                                    <div>
+                                                        <h4 className={`text-sm font-medium mb-2 flex items-center gap-2 ${isLight ? "text-green-700" : "text-green-400"
+                                                            }`}>
+                                                            <CheckCircle2 size={16} />
+                                                            Positive Aspects
+                                                        </h4>
+                                                        <ul className="space-y-1">
+                                                            {analysis.positiveAspects.map((aspect, i) => (
+                                                                <li key={i} className={`text-xs font-light flex items-start gap-2 ${isLight ? "text-green-600" : "text-green-400"
+                                                                    }`}>
+                                                                    <span>•</span>
+                                                                    <span>{aspect}</span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+
+                                                {analysis?.issues && analysis.issues.length > 0 && (
+                                                    <div>
+                                                        <h4 className={`text-sm font-medium mb-2 flex items-center gap-2 ${isLight ? "text-red-700" : "text-red-400"
+                                                            }`}>
+                                                            <AlertCircle size={16} />
+                                                            Issues Found
+                                                        </h4>
+                                                        <div className="space-y-2">
+                                                            {analysis.issues.map((issue, i) => (
+                                                                <div
+                                                                    key={i}
+                                                                    className={`p-3 border rounded-lg ${isLight
+                                                                        ? "border-red-200 bg-red-50"
+                                                                        : "border-red-500/20 bg-red-500/10"
+                                                                        }`}
+                                                                >
+                                                                    <div className="flex items-start gap-2 mb-1">
+                                                                        <span className={`text-[10px] font-medium uppercase px-1.5 py-0.5 rounded ${issue.severity === "critical"
+                                                                            ? isLight ? "bg-red-600 text-white" : "bg-red-500 text-white"
+                                                                            : issue.severity === "high"
+                                                                                ? isLight ? "bg-orange-500 text-white" : "bg-orange-400 text-black"
+                                                                                : issue.severity === "medium"
+                                                                                    ? isLight ? "bg-yellow-500 text-black" : "bg-yellow-400 text-black"
+                                                                                    : isLight ? "bg-neutral-400 text-white" : "bg-neutral-500 text-black"
+                                                                            }`}>
+                                                                            {issue.severity}
+                                                                        </span>
+                                                                        <p className={`text-xs font-medium flex-1 ${isLight ? "text-red-900" : "text-red-300"
+                                                                            }`}>
+                                                                            {issue.description}
+                                                                        </p>
+                                                                    </div>
+                                                                    <p className={`text-xs font-light ${isLight ? "text-red-700" : "text-red-400"
+                                                                        }`}>
+                                                                        → {issue.recommendation}
+                                                                    </p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {analysis?.comparisonWithPrevious && index > 0 && (
+                                                    <div>
+                                                        <h4 className={`text-sm font-medium mb-2 flex items-center gap-2 ${isLight ? "text-neutral-900" : "text-white"
+                                                            }`}>
+                                                            <Info size={16} />
+                                                            Comparison with Previous
+                                                        </h4>
+                                                        <p className={`text-xs font-light ${isLight ? "text-neutral-600" : "text-neutral-400"
+                                                            }`}>
+                                                            {analysis.comparisonWithPrevious}
+                                                        </p>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
-                                    )}
-
-                                    {analysis?.comparisonWithPrevious && index > 0 && (
-                                        <div>
-                                            <h4 className={`text-sm font-medium mb-2 flex items-center gap-2 ${isLight ? "text-neutral-900" : "text-white"
-                                                }`}>
-                                                <Info size={16} />
-                                                Comparison with Previous
-                                            </h4>
-                                            <p className={`text-xs font-light ${isLight ? "text-neutral-600" : "text-neutral-400"
-                                                }`}>
-                                                {analysis.comparisonWithPrevious}
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )
-                })}
-            </div>
+                                    </div>
+                                )
+                            })}
+                        </>
+                    )}
+                </div>
             )}
 
             {/* Back Button */}

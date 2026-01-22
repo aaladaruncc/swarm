@@ -553,6 +553,207 @@ screenshotTestsRoutes.get("/:id/share", async (c) => {
 });
 
 // ============================================================================
+// AGGREGATED INSIGHTS
+// ============================================================================
+
+/**
+ * POST /screenshot-tests/:id/insights/generate
+ * Generate and store aggregated insights from persona analyses
+ */
+screenshotTestsRoutes.post("/:id/insights/generate", async (c) => {
+    const user = c.get("user");
+    const testId = c.req.param("id");
+
+    try {
+        // Verify test ownership
+        const [testRun] = await db
+            .select()
+            .from(schema.screenshotTestRuns)
+            .where(eq(schema.screenshotTestRuns.id, testId));
+
+        if (!testRun) {
+            return c.json({ error: "Test not found" }, 404);
+        }
+
+        if (testRun.userId !== user.id) {
+            return c.json({ error: "Unauthorized" }, 403);
+        }
+
+        if (testRun.status !== "completed") {
+            return c.json({ error: "Test must be completed before generating insights" }, 400);
+        }
+
+        // Delete existing insights for this test
+        await db
+            .delete(schema.screenshotAggregatedInsights)
+            .where(eq(schema.screenshotAggregatedInsights.screenshotTestRunId, testId));
+
+        // Fetch all analysis results
+        const analysisResults = await db
+            .select()
+            .from(schema.screenshotAnalysisResults)
+            .where(eq(schema.screenshotAnalysisResults.screenshotTestRunId, testId));
+
+        if (analysisResults.length === 0) {
+            return c.json({ insights: [], message: "No analysis data available" });
+        }
+
+        // Extract and store insights
+        const insightsToInsert: Array<{
+            screenshotTestRunId: string;
+            category: string;
+            severity: string | null;
+            title: string;
+            description: string;
+            recommendation: string | null;
+            personaName: string;
+            personaIndex: number;
+            screenshotOrder: number;
+        }> = [];
+
+        for (const analysis of analysisResults) {
+            const personaName = analysis.personaName || `Persona ${analysis.personaIndex}`;
+
+            // Extract issues
+            if (analysis.issues && Array.isArray(analysis.issues)) {
+                for (const issue of analysis.issues) {
+                    insightsToInsert.push({
+                        screenshotTestRunId: testId,
+                        category: "issues",
+                        severity: issue.severity,
+                        title: issue.description.substring(0, 100),
+                        description: issue.description,
+                        recommendation: issue.recommendation,
+                        personaName,
+                        personaIndex: analysis.personaIndex,
+                        screenshotOrder: analysis.screenshotOrder,
+                    });
+                }
+            }
+
+            // Extract positive aspects
+            if (analysis.positiveAspects && Array.isArray(analysis.positiveAspects)) {
+                for (const positive of analysis.positiveAspects) {
+                    insightsToInsert.push({
+                        screenshotTestRunId: testId,
+                        category: "positives",
+                        severity: null,
+                        title: positive.substring(0, 100),
+                        description: positive,
+                        recommendation: null,
+                        personaName,
+                        personaIndex: analysis.personaIndex,
+                        screenshotOrder: analysis.screenshotOrder,
+                    });
+                }
+            }
+
+            // Extract accessibility notes
+            if (analysis.accessibilityNotes && Array.isArray(analysis.accessibilityNotes)) {
+                for (const note of analysis.accessibilityNotes) {
+                    insightsToInsert.push({
+                        screenshotTestRunId: testId,
+                        category: "accessibility",
+                        severity: null,
+                        title: note.substring(0, 100),
+                        description: note,
+                        recommendation: null,
+                        personaName,
+                        personaIndex: analysis.personaIndex,
+                        screenshotOrder: analysis.screenshotOrder,
+                    });
+                }
+            }
+
+            // Extract observations
+            if (analysis.observations && Array.isArray(analysis.observations)) {
+                for (const observation of analysis.observations) {
+                    insightsToInsert.push({
+                        screenshotTestRunId: testId,
+                        category: "observations",
+                        severity: null,
+                        title: observation.substring(0, 100),
+                        description: observation,
+                        recommendation: null,
+                        personaName,
+                        personaIndex: analysis.personaIndex,
+                        screenshotOrder: analysis.screenshotOrder,
+                    });
+                }
+            }
+        }
+
+        // Insert all insights
+        let insertedInsights: any[] = [];
+        if (insightsToInsert.length > 0) {
+            insertedInsights = await db
+                .insert(schema.screenshotAggregatedInsights)
+                .values(insightsToInsert)
+                .returning();
+        }
+
+        console.log(`[${testId}] Generated ${insertedInsights.length} aggregated insights`);
+
+        return c.json({
+            insights: insertedInsights,
+            message: `Generated ${insertedInsights.length} insights`,
+        });
+    } catch (error: any) {
+        console.error("[Insights Generate] Error:", error);
+        return c.json(
+            {
+                error: "insights_generation_failed",
+                message: error?.message || "Failed to generate insights",
+            },
+            500
+        );
+    }
+});
+
+/**
+ * GET /screenshot-tests/:id/insights
+ * Get stored aggregated insights for a screenshot test
+ */
+screenshotTestsRoutes.get("/:id/insights", async (c) => {
+    const user = c.get("user");
+    const testId = c.req.param("id");
+
+    try {
+        // Verify test ownership
+        const [testRun] = await db
+            .select()
+            .from(schema.screenshotTestRuns)
+            .where(eq(schema.screenshotTestRuns.id, testId));
+
+        if (!testRun) {
+            return c.json({ error: "Test not found" }, 404);
+        }
+
+        if (testRun.userId !== user.id) {
+            return c.json({ error: "Unauthorized" }, 403);
+        }
+
+        // Fetch insights
+        const insights = await db
+            .select()
+            .from(schema.screenshotAggregatedInsights)
+            .where(eq(schema.screenshotAggregatedInsights.screenshotTestRunId, testId))
+            .orderBy(schema.screenshotAggregatedInsights.createdAt);
+
+        return c.json({ insights });
+    } catch (error: any) {
+        console.error("[Insights Fetch] Error:", error);
+        return c.json(
+            {
+                error: "insights_fetch_failed",
+                message: error?.message || "Failed to fetch insights",
+            },
+            500
+        );
+    }
+});
+
+// ============================================================================
 // BACKGROUND PROCESSING
 // ============================================================================
 
