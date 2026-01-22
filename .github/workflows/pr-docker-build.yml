@@ -5,6 +5,31 @@ on:
     branches: [main, master]
 
 jobs:
+  build-web:
+    name: Build Web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build web
+        run: pnpm --filter @ux-testing/web build
+        env:
+          NEXT_PUBLIC_API_URL: https://api.example.com
+
   build-api:
     name: Build API
     runs-on: ubuntu-latest
