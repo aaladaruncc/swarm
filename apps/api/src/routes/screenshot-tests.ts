@@ -290,16 +290,52 @@ screenshotTestsRoutes.post("/:id/rerun", async (c) => {
             })
         );
 
-        const personasForRerun = Array.isArray(existingTest.generatedPersonas) && existingTest.generatedPersonas.length > 0
-            ? existingTest.generatedPersonas
-            : existingTest.personaData
-                ? [existingTest.personaData]
-                : [];
-        const personaIndicesForRerun = Array.isArray(existingTest.selectedPersonaIndices) && existingTest.selectedPersonaIndices.length > 0
-            ? existingTest.selectedPersonaIndices
-            : personasForRerun.length > 0
-                ? [0]
-                : [];
+        // Reconstruct personas for rerun - handle both single persona and multiple personas cases
+        let personasForRerun: any[] = [];
+        let personaIndicesForRerun: number[] = [];
+
+        // Check if we have multiple personas (from generatedPersonas)
+        const hasMultiplePersonas = Array.isArray(existingTest.generatedPersonas) && existingTest.generatedPersonas.length > 0
+            && Array.isArray(existingTest.selectedPersonaIndices) && existingTest.selectedPersonaIndices.length > 0;
+
+        console.log(`[Rerun ${testId}] Persona data check:`, {
+            hasMultiplePersonas,
+            hasGeneratedPersonas: Array.isArray(existingTest.generatedPersonas) && existingTest.generatedPersonas.length > 0,
+            hasSelectedIndices: Array.isArray(existingTest.selectedPersonaIndices) && existingTest.selectedPersonaIndices.length > 0,
+            hasPersonaData: !!existingTest.personaData,
+        });
+
+        if (hasMultiplePersonas) {
+            // Use the selected personas from the generated list
+            const selectedIndices = existingTest.selectedPersonaIndices || [];
+            personasForRerun = selectedIndices
+                .map((idx: number) => existingTest.generatedPersonas![idx])
+                .filter((persona: any) => persona != null);
+            personaIndicesForRerun = selectedIndices;
+            console.log(`[Rerun ${testId}] Using ${personasForRerun.length} selected personas from generated list`);
+        } else if (existingTest.personaData) {
+            // Single persona case
+            personasForRerun = [existingTest.personaData];
+            personaIndicesForRerun = [0];
+            console.log(`[Rerun ${testId}] Using single persona from personaData`);
+        } else if (Array.isArray(existingTest.generatedPersonas) && existingTest.generatedPersonas.length > 0) {
+            // Fallback: if generatedPersonas exists but no selectedPersonaIndices, use all personas
+            personasForRerun = existingTest.generatedPersonas;
+            personaIndicesForRerun = existingTest.generatedPersonas.map((_, idx) => idx);
+            console.log(`[Rerun ${testId}] Using all ${personasForRerun.length} generated personas (no selected indices found)`);
+        }
+
+        // Validate we have personas
+        if (personasForRerun.length === 0) {
+            console.error(`[Rerun ${testId}] No personas found. Test data:`, {
+                personaData: existingTest.personaData,
+                generatedPersonas: existingTest.generatedPersonas,
+                selectedPersonaIndices: existingTest.selectedPersonaIndices,
+            });
+            return c.json({ 
+                error: "No personas found for rerun. The original test may not have persona data saved." 
+            }, 400);
+        }
 
         runScreenshotAnalysisInBackground(
             newTestRun.id,
@@ -326,6 +362,66 @@ screenshotTestsRoutes.post("/:id/rerun", async (c) => {
             {
                 error: "rerun_failed",
                 message: error?.message || "Failed to rerun screenshot test",
+            },
+            500
+        );
+    }
+});
+
+/**
+ * POST /screenshot-tests/:id/terminate
+ * Terminate a running screenshot test analysis
+ */
+screenshotTestsRoutes.post("/:id/terminate", async (c) => {
+    const user = c.get("user");
+    const testId = c.req.param("id");
+
+    try {
+        const [testRun] = await db
+            .select()
+            .from(schema.screenshotTestRuns)
+            .where(eq(schema.screenshotTestRuns.id, testId));
+
+        if (!testRun) {
+            return c.json({ error: "Test not found" }, 404);
+        }
+
+        if (testRun.userId !== user.id) {
+            return c.json({ error: "Unauthorized" }, 403);
+        }
+
+        // Only allow termination if test is still analyzing
+        if (testRun.status !== "analyzing") {
+            return c.json({ error: "Test is not running" }, 400);
+        }
+
+        // Update test status to terminated
+        await db
+            .update(schema.screenshotTestRuns)
+            .set({
+                status: "terminated",
+                completedAt: new Date(),
+            })
+            .where(eq(schema.screenshotTestRuns.id, testId));
+
+        console.log(`[${testId}] Screenshot test terminated by user ${user.id}`);
+
+        // Get updated test run
+        const [updatedTestRun] = await db
+            .select()
+            .from(schema.screenshotTestRuns)
+            .where(eq(schema.screenshotTestRuns.id, testId));
+
+        return c.json({
+            message: "Screenshot test terminated successfully",
+            screenshotTestRun: updatedTestRun,
+        });
+    } catch (error: any) {
+        console.error("[Terminate Screenshot Test] Error:", error);
+        return c.json(
+            {
+                error: "Failed to terminate screenshot test",
+                details: error?.message || "Unknown error",
             },
             500
         );
@@ -490,7 +586,7 @@ screenshotTestsRoutes.post("/:id/share", async (c) => {
             .where(eq(schema.screenshotTestRuns.id, testId));
 
         const shareUrl = enableShare && shareToken
-            ? `${process.env.NEXT_PUBLIC_WEB_URL || 'https://useswarm.co'}/share/screenshot/${shareToken}`
+            ? `https://useswarm.co/share/screenshot/${shareToken}`
             : null;
 
         return c.json({
@@ -532,7 +628,7 @@ screenshotTestsRoutes.get("/:id/share", async (c) => {
         const shareEnabled = (testRun as any).shareEnabled || false;
         const shareToken = (testRun as any).shareToken;
         const shareUrl = shareEnabled && shareToken
-            ? `${process.env.NEXT_PUBLIC_WEB_URL || 'https://useswarm.co'}/share/screenshot/${shareToken}`
+            ? `https://useswarm.co/share/screenshot/${shareToken}`
             : null;
 
         return c.json({
@@ -598,18 +694,77 @@ screenshotTestsRoutes.post("/:id/insights/generate", async (c) => {
             return c.json({ insights: [], message: "No analysis data available" });
         }
 
-        // Extract and store insights
-        const insightsToInsert: Array<{
-            screenshotTestRunId: string;
+        // Helper function to clean markdown from text
+        const cleanMarkdown = (text: string): string => {
+            if (!text) return text;
+            let cleaned = text;
+            // Remove markdown blockquotes (lines starting with >)
+            cleaned = cleaned.replace(/^>\s+/gm, '');
+            // Remove HTML blockquote tags
+            cleaned = cleaned.replace(/<blockquote[^>]*>/gi, '');
+            cleaned = cleaned.replace(/<\/blockquote>/gi, '');
+            // Remove markdown bold (**text** or __text__)
+            cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, '$1');
+            cleaned = cleaned.replace(/__([^_]+)__/g, '$1');
+            // Remove markdown italic (*text* or _text_)
+            cleaned = cleaned.replace(/\*([^*]+)\*/g, '$1');
+            cleaned = cleaned.replace(/_([^_]+)_/g, '$1');
+            // Remove markdown code (`text`)
+            cleaned = cleaned.replace(/`([^`]+)`/g, '$1');
+            // Remove markdown links [text](url)
+            cleaned = cleaned.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1');
+            // Remove markdown strikethrough (~~text~~)
+            cleaned = cleaned.replace(/~~([^~]+)~~/g, '$1');
+            // Remove markdown headers (# ## ###)
+            cleaned = cleaned.replace(/^#{1,6}\s+/gm, '');
+            // Remove markdown horizontal rules (--- or ***)
+            cleaned = cleaned.replace(/^[-*]{3,}$/gm, '');
+            // Remove leading/trailing quotes if the entire text is wrapped
+            cleaned = cleaned.trim();
+            if ((cleaned.startsWith('"') && cleaned.endsWith('"')) || 
+                (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
+                cleaned = cleaned.slice(1, -1);
+            }
+            // Remove any remaining quote markers at the start/end
+            cleaned = cleaned.replace(/^["']+/, '');
+            cleaned = cleaned.replace(/["']+$/, '');
+            return cleaned.trim();
+        };
+
+        // Helper function to normalize text for similarity comparison
+        const normalizeText = (text: string): string => {
+            return text
+                .toLowerCase()
+                .replace(/[^\w\s]/g, ' ') // Remove punctuation
+                .replace(/\s+/g, ' ') // Normalize whitespace
+                .trim();
+        };
+
+        // Helper function to calculate text similarity (simple word overlap)
+        const calculateSimilarity = (text1: string, text2: string): number => {
+            const words1 = new Set(normalizeText(text1).split(' ').filter(w => w.length > 2));
+            const words2 = new Set(normalizeText(text2).split(' ').filter(w => w.length > 2));
+            
+            if (words1.size === 0 || words2.size === 0) return 0;
+            
+            const intersection = new Set([...words1].filter(w => words2.has(w)));
+            const union = new Set([...words1, ...words2]);
+            
+            return intersection.size / union.size; // Jaccard similarity
+        };
+
+        // Extract all raw insights first
+        interface RawInsight {
             category: string;
             severity: string | null;
-            title: string;
             description: string;
             recommendation: string | null;
             personaName: string;
             personaIndex: number;
             screenshotOrder: number;
-        }> = [];
+        }
+
+        const rawInsights: RawInsight[] = [];
 
         for (const analysis of analysisResults) {
             const personaName = analysis.personaName || `Persona ${analysis.personaIndex}`;
@@ -617,13 +772,11 @@ screenshotTestsRoutes.post("/:id/insights/generate", async (c) => {
             // Extract issues
             if (analysis.issues && Array.isArray(analysis.issues)) {
                 for (const issue of analysis.issues) {
-                    insightsToInsert.push({
-                        screenshotTestRunId: testId,
+                    rawInsights.push({
                         category: "issues",
                         severity: issue.severity,
-                        title: issue.description.substring(0, 100),
-                        description: issue.description,
-                        recommendation: issue.recommendation,
+                        description: cleanMarkdown(issue.description),
+                        recommendation: issue.recommendation ? cleanMarkdown(issue.recommendation) : null,
                         personaName,
                         personaIndex: analysis.personaIndex,
                         screenshotOrder: analysis.screenshotOrder,
@@ -634,12 +787,10 @@ screenshotTestsRoutes.post("/:id/insights/generate", async (c) => {
             // Extract positive aspects
             if (analysis.positiveAspects && Array.isArray(analysis.positiveAspects)) {
                 for (const positive of analysis.positiveAspects) {
-                    insightsToInsert.push({
-                        screenshotTestRunId: testId,
+                    rawInsights.push({
                         category: "positives",
                         severity: null,
-                        title: positive.substring(0, 100),
-                        description: positive,
+                        description: cleanMarkdown(positive),
                         recommendation: null,
                         personaName,
                         personaIndex: analysis.personaIndex,
@@ -651,12 +802,10 @@ screenshotTestsRoutes.post("/:id/insights/generate", async (c) => {
             // Extract accessibility notes
             if (analysis.accessibilityNotes && Array.isArray(analysis.accessibilityNotes)) {
                 for (const note of analysis.accessibilityNotes) {
-                    insightsToInsert.push({
-                        screenshotTestRunId: testId,
+                    rawInsights.push({
                         category: "accessibility",
                         severity: null,
-                        title: note.substring(0, 100),
-                        description: note,
+                        description: cleanMarkdown(note),
                         recommendation: null,
                         personaName,
                         personaIndex: analysis.personaIndex,
@@ -668,12 +817,10 @@ screenshotTestsRoutes.post("/:id/insights/generate", async (c) => {
             // Extract observations
             if (analysis.observations && Array.isArray(analysis.observations)) {
                 for (const observation of analysis.observations) {
-                    insightsToInsert.push({
-                        screenshotTestRunId: testId,
+                    rawInsights.push({
                         category: "observations",
                         severity: null,
-                        title: observation.substring(0, 100),
-                        description: observation,
+                        description: cleanMarkdown(observation),
                         recommendation: null,
                         personaName,
                         personaIndex: analysis.personaIndex,
@@ -681,6 +828,98 @@ screenshotTestsRoutes.post("/:id/insights/generate", async (c) => {
                     });
                 }
             }
+        }
+
+        // Group similar insights by category and severity
+        const groupedInsights = new Map<string, {
+            canonical: RawInsight;
+            evidence: Array<{ personaName: string; personaIndex: number; screenshotOrder: number }>;
+            allDescriptions: string[];
+        }>();
+
+        const SIMILARITY_THRESHOLD = 0.4; // 40% word overlap to consider similar
+
+        for (const insight of rawInsights) {
+            const key = `${insight.category}:${insight.severity || 'none'}`;
+            let foundGroup = false;
+
+            // Try to find a similar existing group
+            for (const [groupKey, group] of groupedInsights.entries()) {
+                if (groupKey.startsWith(key)) {
+                    const similarity = calculateSimilarity(
+                        group.canonical.description,
+                        insight.description
+                    );
+
+                    if (similarity >= SIMILARITY_THRESHOLD) {
+                        // Add to existing group
+                        group.evidence.push({
+                            personaName: insight.personaName,
+                            personaIndex: insight.personaIndex,
+                            screenshotOrder: insight.screenshotOrder,
+                        });
+                        group.allDescriptions.push(insight.description);
+                        // Use the longest/most detailed description as canonical
+                        if (insight.description.length > group.canonical.description.length) {
+                            group.canonical.description = insight.description;
+                            if (insight.recommendation) {
+                                group.canonical.recommendation = insight.recommendation;
+                            }
+                        }
+                        foundGroup = true;
+                        break;
+                    }
+                }
+            }
+
+            // Create new group if no similar one found
+            if (!foundGroup) {
+                const groupId = `${key}:${insight.description.substring(0, 50)}`;
+                groupedInsights.set(groupId, {
+                    canonical: { ...insight },
+                    evidence: [{
+                        personaName: insight.personaName,
+                        personaIndex: insight.personaIndex,
+                        screenshotOrder: insight.screenshotOrder,
+                    }],
+                    allDescriptions: [insight.description],
+                });
+            }
+        }
+
+        // Convert grouped insights to insert format
+        const insightsToInsert: Array<{
+            screenshotTestRunId: string;
+            category: string;
+            severity: string | null;
+            title: string;
+            description: string;
+            recommendation: string | null;
+            personaName: string;
+            personaIndex: number;
+            screenshotOrder: number;
+            evidence: Array<{ personaName: string; personaIndex: number; screenshotOrder: number }> | null;
+        }> = [];
+
+        for (const group of groupedInsights.values()) {
+            const evidence = group.evidence.length > 1 ? group.evidence : null;
+            const uniquePersonas = new Set(group.evidence.map(e => e.personaName));
+            const uniqueScreens = new Set(group.evidence.map(e => e.screenshotOrder));
+
+            // Use the first evidence source for personaName/personaIndex/screenshotOrder (for backward compatibility)
+            // But store all evidence in the evidence field
+            insightsToInsert.push({
+                screenshotTestRunId: testId,
+                category: group.canonical.category,
+                severity: group.canonical.severity,
+                title: group.canonical.description.substring(0, 100),
+                description: group.canonical.description,
+                recommendation: group.canonical.recommendation,
+                personaName: group.canonical.personaName,
+                personaIndex: group.canonical.personaIndex,
+                screenshotOrder: group.canonical.screenshotOrder,
+                evidence: evidence,
+            });
         }
 
         // Insert all insights
@@ -802,8 +1041,23 @@ async function runScreenshotAnalysisInBackground(
             })
         );
 
+        // Helper function to check if test was terminated
+        const checkTerminated = async (): Promise<boolean> => {
+            const [testRun] = await db
+                .select()
+                .from(schema.screenshotTestRuns)
+                .where(eq(schema.screenshotTestRuns.id, testRunId));
+            return testRun?.status === "terminated";
+        };
+
         const personaResults = await Promise.all(
             personasData.map(async (personaData, index) => {
+                // Check if terminated before starting
+                if (await checkTerminated()) {
+                    console.log(`[${testRunId}] Test terminated, skipping persona ${index}`);
+                    return null;
+                }
+
                 const personaIndex = personaIndices[index] ?? index;
                 const persona: UserPersona = {
                     name: personaData?.name || "Test User",
@@ -818,6 +1072,12 @@ async function runScreenshotAnalysisInBackground(
                 };
 
                 console.log(`[${testRunId}] Analyzing ${screenshots.length} screenshots as ${persona.name}...`);
+
+                // Check again before analysis
+                if (await checkTerminated()) {
+                    console.log(`[${testRunId}] Test terminated during persona setup`);
+                    return null;
+                }
 
                 const result = await analyzeScreenshotSequence(screenshots, persona);
 
@@ -835,8 +1095,17 @@ async function runScreenshotAnalysisInBackground(
                         accessibilityNotes: analysis.accessibilityNotes,
                         thoughts: analysis.thoughts,
                         comparisonWithPrevious: analysis.comparisonWithPrevious,
+                        userObservation: analysis.userObservation,
+                        missionContext: analysis.missionContext,
+                        expectedOutcome: analysis.expectedOutcome,
                     }))
                 );
+
+                // Check if terminated after analysis
+                if (await checkTerminated()) {
+                    console.log(`[${testRunId}] Test terminated after analysis for ${persona.name}`);
+                    return null;
+                }
 
                 console.log(`[${testRunId}] Analysis complete for ${persona.name}. Score: ${result.overallScore}`);
 
@@ -848,10 +1117,32 @@ async function runScreenshotAnalysisInBackground(
             })
         );
 
+        // Filter out null results (terminated personas)
+        const validPersonaResults = personaResults.filter((r): r is NonNullable<typeof r> => r !== null);
+
+        // If all personas were terminated, update status and return
+        if (validPersonaResults.length === 0) {
+            console.log(`[${testRunId}] All personas terminated, marking test as terminated`);
+            await db
+                .update(schema.screenshotTestRuns)
+                .set({
+                    status: "terminated",
+                    completedAt: new Date(),
+                })
+                .where(eq(schema.screenshotTestRuns.id, testRunId));
+            return;
+        }
+
         const averageScore = Math.round(
-            personaResults.reduce((sum, entry) => sum + entry.result.overallScore, 0) / Math.max(personaResults.length, 1)
+            validPersonaResults.reduce((sum, entry) => sum + entry.result.overallScore, 0) / Math.max(validPersonaResults.length, 1)
         );
-        const overallSummary = `Analyzed ${screenshots.length} screenshots across ${personaResults.length} persona${personaResults.length !== 1 ? "s" : ""}. Overall experience: ${averageScore >= 70 ? "positive" : averageScore >= 50 ? "mixed" : "needs improvement"}.`;
+        const overallSummary = `Analyzed ${screenshots.length} screenshots across ${validPersonaResults.length} persona${validPersonaResults.length !== 1 ? "s" : ""}. Overall experience: ${averageScore >= 70 ? "positive" : averageScore >= 50 ? "mixed" : "needs improvement"}.`;
+
+        // Check if terminated before final update
+        if (await checkTerminated()) {
+            console.log(`[${testRunId}] Test terminated before final update`);
+            return;
+        }
 
         // Update test run with overall results
         await db
@@ -861,7 +1152,7 @@ async function runScreenshotAnalysisInBackground(
                 overallScore: averageScore,
                 summary: overallSummary,
                 fullReport: {
-                    personaResults: personaResults.map((entry) => ({
+                    personaResults: validPersonaResults.map((entry) => ({
                         personaIndex: entry.personaIndex,
                         personaName: entry.personaName,
                         ...entry.result,

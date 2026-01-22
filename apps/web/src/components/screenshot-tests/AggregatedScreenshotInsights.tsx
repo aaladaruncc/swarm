@@ -16,6 +16,7 @@ import {
 import { useTheme } from "@/contexts/theme-context";
 import type { ScreenshotTestResult, ScreenshotAggregatedInsight } from "@/lib/screenshot-api";
 import { getScreenshotInsights, generateScreenshotInsights } from "@/lib/screenshot-api";
+import { cleanMarkdown } from "@/lib/utils";
 
 interface AggregatedScreenshotInsightsProps {
     result: ScreenshotTestResult;
@@ -388,22 +389,48 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
                                                 className={`p-4 border-l-4 ${isLight ? "bg-white" : "bg-[#1E1E1E]"} ${severityBorderColors[issue.severity || "low"]}`}
                                             >
                                                 <div className="flex items-start justify-between gap-4 mb-2">
-                                                    <p className={`text-sm font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>
-                                                        {issue.description}
-                                                    </p>
-                                                    <div className="flex items-center gap-2 shrink-0">
-                                                        <span className={`text-xs px-2 py-0.5 border rounded-lg ${isLight
-                                                            ? "bg-neutral-100 border-neutral-300 text-neutral-700"
-                                                            : "bg-[#252525] border-white/10 text-neutral-300"
-                                                            }`}>
-                                                            {issue.personaName}
-                                                        </span>
-                                                        <span className={`text-xs px-2 py-0.5 border rounded-lg ${isLight
-                                                            ? "bg-neutral-100 border-neutral-300 text-neutral-600"
-                                                            : "bg-[#252525] border-white/10 text-neutral-400"
-                                                            }`}>
-                                                            Screen {issue.screenshotOrder + 1}
-                                                        </span>
+                                                    <div className="flex-1">
+                                                        <p className={`text-sm font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>
+                                                            {cleanMarkdown(issue.description)}
+                                                        </p>
+                                                        {issue.evidence && issue.evidence.length > 1 && (
+                                                            <p className={`text-xs mt-1 font-light ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
+                                                                Found by {issue.evidence.length} {issue.evidence.length === 1 ? 'persona' : 'personas'}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex flex-col items-end gap-2 shrink-0">
+                                                        {issue.evidence && issue.evidence.length > 1 ? (
+                                                            <div className="flex flex-wrap gap-1 justify-end max-w-[200px]">
+                                                                {issue.evidence.map((ev, idx) => (
+                                                                    <span
+                                                                        key={idx}
+                                                                        className={`text-xs px-2 py-0.5 border rounded-lg ${isLight
+                                                                            ? "bg-neutral-100 border-neutral-300 text-neutral-600"
+                                                                            : "bg-[#252525] border-white/10 text-neutral-400"
+                                                                            }`}
+                                                                        title={`${ev.personaName} - Screen ${ev.screenshotOrder + 1}`}
+                                                                    >
+                                                                        {ev.personaName} • S{ev.screenshotOrder + 1}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <span className={`text-xs px-2 py-0.5 border rounded-lg ${isLight
+                                                                    ? "bg-neutral-100 border-neutral-300 text-neutral-700"
+                                                                    : "bg-[#252525] border-white/10 text-neutral-300"
+                                                                    }`}>
+                                                                    {issue.personaName}
+                                                                </span>
+                                                                <span className={`text-xs px-2 py-0.5 border rounded-lg ${isLight
+                                                                    ? "bg-neutral-100 border-neutral-300 text-neutral-600"
+                                                                    : "bg-[#252525] border-white/10 text-neutral-400"
+                                                                    }`}>
+                                                                    Screen {issue.screenshotOrder + 1}
+                                                                </span>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 {issue.recommendation && (
@@ -415,7 +442,7 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
                                                             Recommendation
                                                         </p>
                                                         <p className={`text-sm font-light ${isLight ? "text-neutral-700" : "text-neutral-300"}`}>
-                                                            {issue.recommendation}
+                                                            {cleanMarkdown(issue.recommendation)}
                                                         </p>
                                                     </div>
                                                 )}
@@ -449,15 +476,39 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
                     <div className={`divide-y ${isLight ? "divide-neutral-100" : "divide-white/5"}`}>
                         {positives.slice(0, 10).map((item) => (
                             <div key={item.id} className="p-4 flex items-start justify-between gap-4">
-                                <p className={`text-sm font-light ${isLight ? "text-neutral-700" : "text-neutral-300"}`}>
-                                    {item.description}
-                                </p>
-                                <span className={`text-xs px-2 py-0.5 border rounded-lg shrink-0 ${isLight
-                                    ? "bg-neutral-100 border-neutral-300 text-neutral-600"
-                                    : "bg-[#252525] border-white/10 text-neutral-400"
-                                    }`}>
-                                    {item.personaName} • Screen {item.screenshotOrder + 1}
-                                </span>
+                                <div className="flex-1">
+                                    <p className={`text-sm font-light ${isLight ? "text-neutral-700" : "text-neutral-300"}`}>
+                                        {cleanMarkdown(item.description)}
+                                    </p>
+                                    {item.evidence && item.evidence.length > 1 && (
+                                        <p className={`text-xs mt-1 font-light ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
+                                            Found by {item.evidence.length} {item.evidence.length === 1 ? 'persona' : 'personas'}
+                                        </p>
+                                    )}
+                                </div>
+                                {item.evidence && item.evidence.length > 1 ? (
+                                    <div className="flex flex-wrap gap-1 justify-end max-w-[200px]">
+                                        {item.evidence.map((ev, idx) => (
+                                            <span
+                                                key={idx}
+                                                className={`text-xs px-2 py-0.5 border rounded-lg shrink-0 ${isLight
+                                                    ? "bg-neutral-100 border-neutral-300 text-neutral-600"
+                                                    : "bg-[#252525] border-white/10 text-neutral-400"
+                                                    }`}
+                                                title={`${ev.personaName} - Screen ${ev.screenshotOrder + 1}`}
+                                            >
+                                                {ev.personaName} • S{ev.screenshotOrder + 1}
+                                            </span>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <span className={`text-xs px-2 py-0.5 border rounded-lg shrink-0 ${isLight
+                                        ? "bg-neutral-100 border-neutral-300 text-neutral-600"
+                                        : "bg-[#252525] border-white/10 text-neutral-400"
+                                        }`}>
+                                        {item.personaName} • Screen {item.screenshotOrder + 1}
+                                    </span>
+                                )}
                             </div>
                         ))}
                         {positives.length > 10 && (
@@ -489,15 +540,39 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
                     <div className={`divide-y ${isLight ? "divide-neutral-100" : "divide-white/5"}`}>
                         {accessibility.slice(0, 8).map((item) => (
                             <div key={item.id} className="p-4 flex items-start justify-between gap-4">
-                                <p className={`text-sm font-light ${isLight ? "text-neutral-700" : "text-neutral-300"}`}>
-                                    {item.description}
-                                </p>
-                                <span className={`text-xs px-2 py-0.5 border rounded-lg shrink-0 ${isLight
-                                    ? "bg-neutral-100 border-neutral-300 text-neutral-600"
-                                    : "bg-[#252525] border-white/10 text-neutral-400"
-                                    }`}>
-                                    {item.personaName} • Screen {item.screenshotOrder + 1}
-                                </span>
+                                <div className="flex-1">
+                                    <p className={`text-sm font-light ${isLight ? "text-neutral-700" : "text-neutral-300"}`}>
+                                        {cleanMarkdown(item.description)}
+                                    </p>
+                                    {item.evidence && item.evidence.length > 1 && (
+                                        <p className={`text-xs mt-1 font-light ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
+                                            Found by {item.evidence.length} {item.evidence.length === 1 ? 'persona' : 'personas'}
+                                        </p>
+                                    )}
+                                </div>
+                                {item.evidence && item.evidence.length > 1 ? (
+                                    <div className="flex flex-wrap gap-1 justify-end max-w-[200px]">
+                                        {item.evidence.map((ev, idx) => (
+                                            <span
+                                                key={idx}
+                                                className={`text-xs px-2 py-0.5 border rounded-lg shrink-0 ${isLight
+                                                    ? "bg-neutral-100 border-neutral-300 text-neutral-600"
+                                                    : "bg-[#252525] border-white/10 text-neutral-400"
+                                                    }`}
+                                                title={`${ev.personaName} - Screen ${ev.screenshotOrder + 1}`}
+                                            >
+                                                {ev.personaName} • S{ev.screenshotOrder + 1}
+                                            </span>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <span className={`text-xs px-2 py-0.5 border rounded-lg shrink-0 ${isLight
+                                        ? "bg-neutral-100 border-neutral-300 text-neutral-600"
+                                        : "bg-[#252525] border-white/10 text-neutral-400"
+                                        }`}>
+                                        {item.personaName} • Screen {item.screenshotOrder + 1}
+                                    </span>
+                                )}
                             </div>
                         ))}
                         {accessibility.length > 8 && (

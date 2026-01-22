@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { getBatchTests, getBatchTest, deleteBatchTests, type BatchTestRun } from "@/lib/batch-api";
-import { getScreenshotTests, type ScreenshotTestRun } from "@/lib/screenshot-api";
+import { getScreenshotTests, deleteScreenshotTests, type ScreenshotTestRun } from "@/lib/screenshot-api";
 import { Plus, Loader2, Trash2, CheckSquare, FileText, Download, Check, ChevronUp, ChevronDown, Image, Activity } from "lucide-react";
 import { pdf } from '@react-pdf/renderer';
 import { AggregatedReportPDF } from '@/components/pdf/AggregatedReportPDF';
@@ -35,6 +35,10 @@ export default function Dashboard() {
   // Screenshot tests state
   const [screenshotTests, setScreenshotTests] = useState<ScreenshotTestRun[]>([]);
   const [screenshotLoading, setScreenshotLoading] = useState(true);
+  const [selectedScreenshotTests, setSelectedScreenshotTests] = useState<string[]>([]);
+  const [isScreenshotSelectionMode, setIsScreenshotSelectionMode] = useState(false);
+  const [isArchivingScreenshots, setIsArchivingScreenshots] = useState(false);
+  const [showScreenshotArchiveConfirm, setShowScreenshotArchiveConfirm] = useState(false);
 
   const isLight = theme === "light";
 
@@ -173,6 +177,51 @@ export default function Dashboard() {
       setError(err instanceof Error ? err.message : "Failed to archive tests");
     } finally {
       setIsArchiving(false);
+    }
+  };
+
+  // Screenshot test selection handlers
+  const toggleScreenshotSelectAll = () => {
+    if (selectedScreenshotTests.length === screenshotTests.length) {
+      setSelectedScreenshotTests([]);
+    } else {
+      setSelectedScreenshotTests(screenshotTests.map(t => t.id));
+    }
+  };
+
+  const toggleScreenshotSelectionMode = () => {
+    setIsScreenshotSelectionMode(!isScreenshotSelectionMode);
+    setSelectedScreenshotTests([]);
+  };
+
+  const toggleScreenshotSelect = (id: string) => {
+    if (selectedScreenshotTests.includes(id)) {
+      setSelectedScreenshotTests(prev => prev.filter(tid => tid !== id));
+    } else {
+      setSelectedScreenshotTests(prev => [...prev, id]);
+    }
+  };
+
+  const handleScreenshotArchiveClick = () => {
+    if (selectedScreenshotTests.length === 0) return;
+    setShowScreenshotArchiveConfirm(true);
+  };
+
+  const handleScreenshotArchive = async () => {
+    if (selectedScreenshotTests.length === 0) return;
+
+    setIsArchivingScreenshots(true);
+    setShowScreenshotArchiveConfirm(false);
+    try {
+      await deleteScreenshotTests(selectedScreenshotTests);
+      // Remove locally
+      setScreenshotTests(prev => prev.filter(t => !selectedScreenshotTests.includes(t.id)));
+      setSelectedScreenshotTests([]);
+      setIsScreenshotSelectionMode(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to archive tests");
+    } finally {
+      setIsArchivingScreenshots(false);
     }
   };
 
@@ -420,10 +469,10 @@ export default function Dashboard() {
               </button>
             </div>
             <>
-              {isSelectionMode && activeTestType === "runtime" ? (
+              {(isSelectionMode && activeTestType === "runtime") || (isScreenshotSelectionMode && activeTestType === "static") ? (
                 <>
                   <button
-                    onClick={toggleSelectionMode}
+                    onClick={activeTestType === "runtime" ? toggleSelectionMode : toggleScreenshotSelectionMode}
                     className={`text-xs transition-colors font-medium px-2 uppercase tracking-wide ${isLight
                       ? "text-neutral-600 hover:text-neutral-900"
                       : "text-neutral-400 hover:text-white"
@@ -431,37 +480,39 @@ export default function Dashboard() {
                   >
                     Cancel
                   </button>
-                  {selectedTests.length > 0 && (
+                  {((activeTestType === "runtime" && selectedTests.length > 0) || (activeTestType === "static" && selectedScreenshotTests.length > 0)) && (
                     <>
+                      {activeTestType === "runtime" && (
+                        <button
+                          onClick={handleExportPDF}
+                          disabled={exportingPDF}
+                          className={`flex items-center justify-center gap-2 transition-all text-xs font-medium uppercase tracking-wide disabled:opacity-50 ${isLight
+                            ? "text-neutral-600 hover:text-neutral-900"
+                            : "text-neutral-400 hover:text-white"
+                            }`}
+                        >
+                          {exportingPDF ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                          <span>Export PDF ({selectedTests.length})</span>
+                        </button>
+                      )}
                       <button
-                        onClick={handleExportPDF}
-                        disabled={exportingPDF}
-                        className={`flex items-center justify-center gap-2 transition-all text-xs font-medium uppercase tracking-wide disabled:opacity-50 ${isLight
-                          ? "text-neutral-600 hover:text-neutral-900"
-                          : "text-neutral-400 hover:text-white"
-                          }`}
-                      >
-                        {exportingPDF ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-                        <span>Export PDF ({selectedTests.length})</span>
-                      </button>
-                      <button
-                        onClick={handleArchiveClick}
-                        disabled={isArchiving}
+                        onClick={activeTestType === "runtime" ? handleArchiveClick : handleScreenshotArchiveClick}
+                        disabled={activeTestType === "runtime" ? isArchiving : isArchivingScreenshots}
                         className={`flex items-center justify-center gap-2 transition-all text-xs font-medium uppercase tracking-wide ${isLight
                           ? "text-red-600 hover:text-red-700"
                           : "text-red-400 hover:text-red-300"
                           }`}
                       >
-                        {isArchiving ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                        <span>Archive ({selectedTests.length})</span>
+                        {(activeTestType === "runtime" ? isArchiving : isArchivingScreenshots) ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                        <span>Archive ({activeTestType === "runtime" ? selectedTests.length : selectedScreenshotTests.length})</span>
                       </button>
                     </>
                   )}
                 </>
               ) : (
                 <button
-                  onClick={toggleSelectionMode}
-                  disabled={activeTestType === "static" || (activeTestType === "runtime" && batchTests.length === 0)}
+                  onClick={activeTestType === "runtime" ? toggleSelectionMode : toggleScreenshotSelectionMode}
+                  disabled={(activeTestType === "runtime" && batchTests.length === 0) || (activeTestType === "static" && screenshotTests.length === 0)}
                   className={`flex items-center gap-1.5 text-xs transition-colors font-medium uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed ${isLight
                     ? "text-neutral-600 hover:text-neutral-900"
                     : "text-neutral-400 hover:text-white"
@@ -613,25 +664,40 @@ export default function Dashboard() {
                   ? "border-neutral-200"
                   : "border-white/5"
                   }`}>
+                  {isScreenshotSelectionMode && (
+                    <th className={`px-6 py-4 w-12 ${isLight ? "bg-neutral-100" : "bg-[#252525]"
+                      }`}>
+                      <CustomCheckbox
+                        checked={screenshotTests.length > 0 && selectedScreenshotTests.length === screenshotTests.length}
+                        onChange={() => {
+                          if (selectedScreenshotTests.length === screenshotTests.length) {
+                            setSelectedScreenshotTests([]);
+                          } else {
+                            setSelectedScreenshotTests(screenshotTests.map(t => t.id));
+                          }
+                        }}
+                      />
+                    </th>
+                  )}
                   <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs w-1/3 ${isLight
-                    ? "text-neutral-600"
-                    : "text-neutral-400"
+                    ? "bg-neutral-100 text-neutral-600"
+                    : "bg-[#252525] text-neutral-400"
                     }`}>Test Name</th>
                   <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs ${isLight
-                    ? "text-neutral-600"
-                    : "text-neutral-400"
+                    ? "bg-neutral-100 text-neutral-600"
+                    : "bg-[#252525] text-neutral-400"
                     }`}>Score</th>
                   <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs ${isLight
-                    ? "text-neutral-600"
-                    : "text-neutral-400"
+                    ? "bg-neutral-100 text-neutral-600"
+                    : "bg-[#252525] text-neutral-400"
                     }`}>Status</th>
                   <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs ${isLight
-                    ? "text-neutral-600"
-                    : "text-neutral-400"
+                    ? "bg-neutral-100 text-neutral-600"
+                    : "bg-[#252525] text-neutral-400"
                     }`}>Date</th>
                   <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs text-right ${isLight
-                    ? "text-neutral-600"
-                    : "text-neutral-400"
+                    ? "bg-neutral-100 text-neutral-600"
+                    : "bg-[#252525] text-neutral-400"
                     }`}>Action</th>
                 </tr>
               </thead>
@@ -641,7 +707,7 @@ export default function Dashboard() {
                 }`}>
                 {screenshotLoading ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center">
+                    <td colSpan={isScreenshotSelectionMode ? 6 : 5} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center justify-center gap-3">
                         <Loader2 className={`animate-spin w-6 h-6 ${isLight ? "text-neutral-500" : "text-neutral-400"
                           }`} />
@@ -652,7 +718,7 @@ export default function Dashboard() {
                   </tr>
                 ) : screenshotTests.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center">
+                    <td colSpan={isScreenshotSelectionMode ? 6 : 5} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center justify-center gap-3">
                         <Image size={32} className={`${isLight ? "text-neutral-300" : "text-neutral-600"}`} />
                         <h3 className={`text-base font-medium ${isLight ? "text-neutral-900" : "text-white"
@@ -666,10 +732,22 @@ export default function Dashboard() {
                   </tr>
                 ) : (
                   screenshotTests.map((test) => (
-                    <tr key={test.id} className={`group transition-colors ${isLight
-                      ? "hover:bg-neutral-50"
-                      : "hover:bg-white/5"
+                    <tr key={test.id} className={`group transition-colors ${selectedScreenshotTests.includes(test.id)
+                      ? isLight
+                        ? "bg-neutral-50"
+                        : "bg-white/5"
+                      : isLight
+                        ? "hover:bg-neutral-50"
+                        : "hover:bg-white/5"
                       }`}>
+                      {isScreenshotSelectionMode && (
+                        <td className="px-6 py-5">
+                          <CustomCheckbox
+                            checked={selectedScreenshotTests.includes(test.id)}
+                            onChange={() => toggleScreenshotSelect(test.id)}
+                          />
+                        </td>
+                      )}
                       <td className={`px-6 py-5 font-light ${isLight ? "text-neutral-900" : "text-white"
                         }`}>
                         <div className="flex items-center gap-3">

@@ -407,6 +407,10 @@ export const screenshotAnalysisResults = pgTable("screenshot_analysis_results", 
   accessibilityNotes: jsonb("accessibility_notes").$type<string[]>(),
   thoughts: text("thoughts"),
   comparisonWithPrevious: text("comparison_with_previous"),
+  // New concise format fields
+  userObservation: text("user_observation"), // Action-oriented quoted feedback
+  missionContext: text("mission_context"), // Why this action makes sense, what it tests
+  expectedOutcome: text("expected_outcome"), // What happens next
 
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -427,10 +431,18 @@ export const screenshotAggregatedInsights = pgTable("screenshot_aggregated_insig
   description: text("description").notNull(),
   recommendation: text("recommendation"),
 
-  // Source tracking
+  // Source tracking (for individual insights)
   personaName: text("persona_name").notNull(),
   personaIndex: integer("persona_index").notNull(),
   screenshotOrder: integer("screenshot_order").notNull(),
+
+  // Grouped insight tracking (for patterns across multiple personas)
+  groupedInsightId: uuid("grouped_insight_id"), // Links to the grouped insight this belongs to
+  evidence: jsonb("evidence").$type<Array<{
+    personaName: string;
+    personaIndex: number;
+    screenshotOrder: number;
+  }>>(), // Evidence sources for grouped insights
 
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

@@ -186,6 +186,7 @@ CRITICAL REMINDERS:
 - If a page claims 404/4xx, refresh once and try again; if it works, note it as a warning, otherwise record as an issue with evidence.
 - Only treat the site as "slow" when the page/app is slow; do not confuse your own thinking time with user impatience.
 - Attach evidence to each issue: what you attempted, the element text/section, any latency noticed, and a concrete fix.
+- IMPORTANT: Pre-filled form data, existing user input, or populated fields are NORMAL and expected - do NOT flag these as errors or platform issues. Only flag actual functional problems, broken features, or genuine UX issues.
 `;
 }
 

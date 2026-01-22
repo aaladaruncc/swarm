@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { Loader2, CheckCircle2, AlertCircle, Share2, Users, Target, Brain, ChevronDown, ChevronUp, Eye, MousePointer, Image as ImageIcon, User, Clock, LayoutDashboard, Lightbulb, Navigation, Accessibility, Gauge, FileText } from "lucide-react";
+import { useTheme } from "@/contexts/theme-context";
 
 interface UXAgentScreenshot {
     id: string;
@@ -149,15 +150,15 @@ const severityBorderColors: Record<string, string> = {
 };
 
 // Insights Tab Content Component
-function InsightsTabContent({ insights }: { insights: UXAgentInsight[] }) {
+function InsightsTabContent({ insights, isLight = false }: { insights: UXAgentInsight[]; isLight?: boolean }) {
     if (insights.length === 0) {
         return (
-            <div className="border p-8 text-center rounded-xl border-white/10 bg-[#1E1E1E]">
-                <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center border bg-[#252525] border-white/10">
-                    <Lightbulb size={32} className="text-neutral-400" />
+            <div className={`border p-8 text-center rounded-xl ${isLight ? "border-neutral-200 bg-white" : "border-white/10 bg-[#1E1E1E]"}`}>
+                <div className={`w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center border ${isLight ? "bg-neutral-100 border-neutral-200" : "bg-[#252525] border-white/10"}`}>
+                    <Lightbulb size={32} className={isLight ? "text-neutral-500" : "text-neutral-400"} />
                 </div>
-                <h3 className="font-medium mb-2 text-lg">No Insights Generated</h3>
-                <p className="font-light text-sm max-w-md mx-auto text-neutral-400">
+                <h3 className={`font-medium mb-2 text-lg ${isLight ? "text-neutral-900" : "text-white"}`}>No Insights Generated</h3>
+                <p className={`font-light text-sm max-w-md mx-auto ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
                     No AI insights have been generated for this agent run yet.
                 </p>
             </div>
@@ -182,46 +183,46 @@ function InsightsTabContent({ insights }: { insights: UXAgentInsight[] }) {
         <div className="space-y-6">
             {/* Summary Header */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                <div className="p-4 border rounded-lg bg-[#252525] text-white border-white/10">
+                <div className={`p-4 border rounded-lg ${isLight ? "bg-neutral-100 border-neutral-200 text-neutral-900" : "bg-[#252525] text-white border-white/10"}`}>
                     <p className="text-3xl font-light">{insights.length}</p>
-                    <p className="text-xs uppercase tracking-wide font-light text-neutral-400">Total Insights</p>
+                    <p className={`text-xs uppercase tracking-wide font-light ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>Total Insights</p>
                 </div>
                 {['critical', 'high', 'medium', 'low'].map(severity => (
                     <div key={severity} className={`p-4 border rounded-lg ${severityColors[severity]}`}>
                         <p className="text-2xl font-light">{severityCounts[severity] || 0}</p>
-                        <p className="text-xs uppercase tracking-wide capitalize font-light text-neutral-400">{severity}</p>
+                        <p className={`text-xs uppercase tracking-wide capitalize font-light ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>{severity}</p>
                     </div>
                 ))}
             </div>
 
             {/* Insights by Category */}
             {Object.entries(byCategory).map(([category, categoryInsights]) => (
-                <div key={category} className="border rounded-xl overflow-hidden border-white/10 bg-[#1E1E1E]">
-                    <div className={`p-4 border-b flex items-center gap-3 ${categoryColors[category] || "bg-[#252525] border-white/10"}`}>
+                <div key={category} className={`border rounded-xl overflow-hidden ${isLight ? "border-neutral-200 bg-white" : "border-white/10 bg-[#1E1E1E]"}`}>
+                    <div className={`p-4 border-b flex items-center gap-3 ${categoryColors[category] || (isLight ? "bg-neutral-100 border-neutral-200" : "bg-[#252525] border-white/10")}`}>
                         {categoryIcons[category] || <Lightbulb size={16} />}
                         <h3 className="font-medium capitalize">{category}</h3>
-                        <span className="ml-auto text-sm opacity-70">{categoryInsights.length} issue{categoryInsights.length !== 1 ? 's' : ''}</span>
+                        <span className={`ml-auto text-sm opacity-70 ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>{categoryInsights.length} issue{categoryInsights.length !== 1 ? 's' : ''}</span>
                     </div>
-                    <div className="divide-y divide-white/5">
+                    <div className={isLight ? "divide-y divide-neutral-200" : "divide-y divide-white/5"}>
                         {categoryInsights.map((insight) => (
                             <div
                                 key={insight.id}
-                                className={`p-5 border-l-4 bg-[#1E1E1E] ${severityBorderColors[insight.severity] || 'border-l-neutral-400'}`}
+                                className={`p-5 border-l-4 ${isLight ? "bg-white" : "bg-[#1E1E1E]"} ${severityBorderColors[insight.severity] || 'border-l-neutral-400'}`}
                             >
                                 <div className="flex items-start justify-between gap-4 mb-3">
-                                    <h4 className="font-medium">{insight.title}</h4>
+                                    <h4 className={`font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>{insight.title}</h4>
                                     <span className={`shrink-0 text-[10px] px-2 py-1 uppercase font-bold tracking-wider rounded ${severityColors[insight.severity]}`}>
                                         {insight.severity}
                                     </span>
                                 </div>
-                                <p className="text-sm font-light mb-4 text-neutral-300">
+                                <p className={`text-sm font-light mb-4 ${isLight ? "text-neutral-700" : "text-neutral-300"}`}>
                                     {insight.description}
                                 </p>
-                                <div className="flex gap-2 items-start border p-3 rounded-lg bg-emerald-500/10 border-emerald-500/20">
-                                    <CheckCircle2 size={16} className="shrink-0 mt-0.5 text-emerald-400" />
+                                <div className={`flex gap-2 items-start border p-3 rounded-lg ${isLight ? "bg-emerald-50 border-emerald-200" : "bg-emerald-500/10 border-emerald-500/20"}`}>
+                                    <CheckCircle2 size={16} className={`shrink-0 mt-0.5 ${isLight ? "text-emerald-600" : "text-emerald-400"}`} />
                                     <div>
-                                        <span className="text-xs font-medium uppercase tracking-wide block mb-1 text-emerald-400">Recommendation</span>
-                                        <p className="text-sm font-light text-emerald-300">{insight.recommendation}</p>
+                                        <span className={`text-xs font-medium uppercase tracking-wide block mb-1 ${isLight ? "text-emerald-700" : "text-emerald-400"}`}>Recommendation</span>
+                                        <p className={`text-sm font-light ${isLight ? "text-emerald-800" : "text-emerald-300"}`}>{insight.recommendation}</p>
                                     </div>
                                 </div>
                             </div>
@@ -250,7 +251,7 @@ const categoryLabels: Record<string, string> = {
 };
 
 // Aggregate Insights Component for Shared View
-function AggregateInsightsShared({ uxagentRuns }: { uxagentRuns: UXAgentRun[] }) {
+function AggregateInsightsShared({ uxagentRuns, isLight = false }: { uxagentRuns: UXAgentRun[]; isLight?: boolean }) {
     const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(["usability", "accessibility"]));
 
     // Combine insights from all runs
@@ -297,10 +298,10 @@ function AggregateInsightsShared({ uxagentRuns }: { uxagentRuns: UXAgentRun[] })
 
     if (totalInsights === 0) {
         return (
-            <div className="border p-6 text-center rounded-xl border-white/10 bg-[#1E1E1E]">
-                <Lightbulb className="w-12 h-12 mx-auto mb-4 text-neutral-400" />
-                <h3 className="text-lg font-medium mb-2">No Insights Available</h3>
-                <p className="font-light text-sm text-neutral-400">
+            <div className={`border p-6 text-center rounded-xl ${isLight ? "border-neutral-200 bg-white" : "border-white/10 bg-[#1E1E1E]"}`}>
+                <Lightbulb className={`w-12 h-12 mx-auto mb-4 ${isLight ? "text-neutral-500" : "text-neutral-400"}`} />
+                <h3 className={`text-lg font-medium mb-2 ${isLight ? "text-neutral-900" : "text-white"}`}>No Insights Available</h3>
+                <p className={`font-light text-sm ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
                     No AI insights have been generated for these agent runs yet.
                 </p>
             </div>
@@ -311,50 +312,50 @@ function AggregateInsightsShared({ uxagentRuns }: { uxagentRuns: UXAgentRun[] })
         <div className="space-y-6">
             {/* Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="border p-4 rounded-xl border-white/10 bg-[#1E1E1E]">
+                <div className={`border p-4 rounded-xl ${isLight ? "border-neutral-200 bg-white" : "border-white/10 bg-[#1E1E1E]"}`}>
                     <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 border flex items-center justify-center rounded-lg bg-[#252525] border-white/10">
-                            <Users size={20} className="text-neutral-400" />
+                        <div className={`w-10 h-10 border flex items-center justify-center rounded-lg ${isLight ? "bg-neutral-100 border-neutral-200" : "bg-[#252525] border-white/10"}`}>
+                            <Users size={20} className={isLight ? "text-neutral-600" : "text-neutral-400"} />
                         </div>
                         <div>
-                            <p className="text-2xl font-light">{completedRuns}/{uxagentRuns.length}</p>
-                            <p className="text-xs uppercase tracking-wide font-light text-neutral-400">Agents Completed</p>
+                            <p className={`text-2xl font-light ${isLight ? "text-neutral-900" : "text-white"}`}>{completedRuns}/{uxagentRuns.length}</p>
+                            <p className={`text-xs uppercase tracking-wide font-light ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>Agents Completed</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="border p-4 rounded-xl border-white/10 bg-[#1E1E1E]">
+                <div className={`border p-4 rounded-xl ${isLight ? "border-neutral-200 bg-white" : "border-white/10 bg-[#1E1E1E]"}`}>
                     <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 border flex items-center justify-center rounded-lg bg-[#252525] border-white/10">
-                            <Target size={20} className="text-neutral-400" />
+                        <div className={`w-10 h-10 border flex items-center justify-center rounded-lg ${isLight ? "bg-neutral-100 border-neutral-200" : "bg-[#252525] border-white/10"}`}>
+                            <Target size={20} className={isLight ? "text-neutral-600" : "text-neutral-400"} />
                         </div>
                         <div>
-                            <p className="text-2xl font-light">{avgScore}<span className="text-sm text-neutral-400">/10</span></p>
-                            <p className="text-xs uppercase tracking-wide font-light text-neutral-400">Avg Score</p>
+                            <p className={`text-2xl font-light ${isLight ? "text-neutral-900" : "text-white"}`}>{avgScore}<span className={`text-sm ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>/10</span></p>
+                            <p className={`text-xs uppercase tracking-wide font-light ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>Avg Score</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="border p-4 rounded-xl border-white/10 bg-[#1E1E1E]">
+                <div className={`border p-4 rounded-xl ${isLight ? "border-neutral-200 bg-white" : "border-white/10 bg-[#1E1E1E]"}`}>
                     <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 border flex items-center justify-center rounded-lg bg-[#252525] border-white/10">
-                            <Lightbulb size={20} className="text-neutral-400" />
+                        <div className={`w-10 h-10 border flex items-center justify-center rounded-lg ${isLight ? "bg-neutral-100 border-neutral-200" : "bg-[#252525] border-white/10"}`}>
+                            <Lightbulb size={20} className={isLight ? "text-neutral-600" : "text-neutral-400"} />
                         </div>
                         <div>
-                            <p className="text-2xl font-light">{totalInsights}</p>
-                            <p className="text-xs uppercase tracking-wide font-light text-neutral-400">Total Insights</p>
+                            <p className={`text-2xl font-light ${isLight ? "text-neutral-900" : "text-white"}`}>{totalInsights}</p>
+                            <p className={`text-xs uppercase tracking-wide font-light ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>Total Insights</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="border p-4 rounded-xl border-white/10 bg-[#1E1E1E]">
+                <div className={`border p-4 rounded-xl ${isLight ? "border-neutral-200 bg-white" : "border-white/10 bg-[#1E1E1E]"}`}>
                     <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 border flex items-center justify-center rounded-lg bg-red-500/10 border-red-500/20">
-                            <AlertCircle size={20} className="text-red-400" />
+                        <div className={`w-10 h-10 border flex items-center justify-center rounded-lg ${isLight ? "bg-red-50 border-red-200" : "bg-red-500/10 border-red-500/20"}`}>
+                            <AlertCircle size={20} className={isLight ? "text-red-600" : "text-red-400"} />
                         </div>
                         <div>
-                            <p className="text-2xl font-light text-red-400">{criticalCount + highCount}</p>
-                            <p className="text-xs uppercase tracking-wide font-light text-neutral-400">Critical Issues</p>
+                            <p className={`text-2xl font-light ${isLight ? "text-red-700" : "text-red-400"}`}>{criticalCount + highCount}</p>
+                            <p className={`text-xs uppercase tracking-wide font-light ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>Critical Issues</p>
                         </div>
                     </div>
                 </div>
@@ -362,54 +363,54 @@ function AggregateInsightsShared({ uxagentRuns }: { uxagentRuns: UXAgentRun[] })
 
             {/* Insights by Category */}
             <div className="space-y-4">
-                <h3 className="text-lg font-medium">Insights Across All Agents</h3>
+                <h3 className={`text-lg font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>Insights Across All Agents</h3>
 
                 {Object.entries(insightsByCategory)
                     .sort(([a], [b]) => a.localeCompare(b))
                     .map(([category, insights]) => (
-                        <div key={category} className="border rounded-xl overflow-hidden border-white/10 bg-[#1E1E1E]">
+                        <div key={category} className={`border rounded-xl overflow-hidden ${isLight ? "border-neutral-200 bg-white" : "border-white/10 bg-[#1E1E1E]"}`}>
                             <button
                                 onClick={() => toggleCategory(category)}
-                                className="w-full flex items-center justify-between p-4 transition-colors hover:bg-white/5"
+                                className={`w-full flex items-center justify-between p-4 transition-colors ${isLight ? "hover:bg-neutral-50" : "hover:bg-white/5"}`}
                             >
                                 <div className="flex items-center gap-3">
-                                    <span className="font-medium capitalize">{categoryLabels[category] || category}</span>
-                                    <span className="text-xs px-2 py-0.5 border rounded-lg bg-[#252525] border-white/10 text-neutral-300">
+                                    <span className={`font-medium capitalize ${isLight ? "text-neutral-900" : "text-white"}`}>{categoryLabels[category] || category}</span>
+                                    <span className={`text-xs px-2 py-0.5 border rounded-lg ${isLight ? "bg-neutral-100 border-neutral-200 text-neutral-700" : "bg-[#252525] border-white/10 text-neutral-300"}`}>
                                         {insights.length} issue{insights.length !== 1 ? 's' : ''}
                                     </span>
                                 </div>
                                 {expandedCategories.has(category) ? (
-                                    <ChevronUp size={16} className="text-neutral-400" />
+                                    <ChevronUp size={16} className={isLight ? "text-neutral-600" : "text-neutral-400"} />
                                 ) : (
-                                    <ChevronDown size={16} className="text-neutral-400" />
+                                    <ChevronDown size={16} className={isLight ? "text-neutral-600" : "text-neutral-400"} />
                                 )}
                             </button>
 
                             {expandedCategories.has(category) && (
-                                <div className="border-t divide-y border-white/10 divide-white/5">
+                                <div className={`border-t ${isLight ? "divide-y divide-neutral-200 border-neutral-200" : "divide-y border-white/10 divide-white/5"}`}>
                                     {insights.map((item, idx) => (
                                         <div
                                             key={`${item.runId}-${idx}`}
-                                            className={`p-4 border-l-4 bg-[#1E1E1E] ${severityBorderColors[item.insight.severity]}`}
+                                            className={`p-4 border-l-4 ${isLight ? "bg-white" : "bg-[#1E1E1E]"} ${severityBorderColors[item.insight.severity]}`}
                                         >
                                             <div className="flex items-start justify-between gap-4 mb-2">
-                                                <h4 className="font-medium text-sm">{item.insight.title}</h4>
+                                                <h4 className={`font-medium text-sm ${isLight ? "text-neutral-900" : "text-white"}`}>{item.insight.title}</h4>
                                                 <div className="flex items-center gap-2 shrink-0">
                                                     <span className={`px-2 py-0.5 text-xs font-medium border rounded ${severityColors[item.insight.severity]}`}>
                                                         {item.insight.severity}
                                                     </span>
-                                                    <span className="text-xs px-2 py-0.5 border rounded-lg bg-[#252525] border-white/10 text-neutral-300">
+                                                    <span className={`text-xs px-2 py-0.5 border rounded-lg ${isLight ? "bg-neutral-100 border-neutral-200 text-neutral-700" : "bg-[#252525] border-white/10 text-neutral-300"}`}>
                                                         {item.agentName}
                                                     </span>
                                                 </div>
                                             </div>
-                                            <p className="text-sm font-light mb-2 text-neutral-300">
+                                            <p className={`text-sm font-light mb-2 ${isLight ? "text-neutral-700" : "text-neutral-300"}`}>
                                                 {item.insight.description}
                                             </p>
                                             {item.insight.recommendation && (
-                                                <div className="border p-3 mt-2 rounded-lg bg-[#252525] border-white/10">
-                                                    <p className="text-xs uppercase tracking-wide mb-1 font-light text-neutral-400">Recommendation</p>
-                                                    <p className="text-sm font-light text-neutral-300">{item.insight.recommendation}</p>
+                                                <div className={`border p-3 mt-2 rounded-lg ${isLight ? "bg-neutral-50 border-neutral-200" : "bg-[#252525] border-white/10"}`}>
+                                                    <p className={`text-xs uppercase tracking-wide mb-1 font-light ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>Recommendation</p>
+                                                    <p className={`text-sm font-light ${isLight ? "text-neutral-700" : "text-neutral-300"}`}>{item.insight.recommendation}</p>
                                                 </div>
                                             )}
                                         </div>
@@ -426,6 +427,8 @@ function AggregateInsightsShared({ uxagentRuns }: { uxagentRuns: UXAgentRun[] })
 export default function SharedBatchTestPage() {
     const params = useParams();
     const token = params.token as string;
+    const { theme } = useTheme();
+    const isLight = theme === "light";
 
     const [result, setResult] = useState<SharedBatchTest | null>(null);
     const [loading, setLoading] = useState(true);
@@ -511,19 +514,19 @@ export default function SharedBatchTestPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-neutral-950">
-                <Loader2 className="animate-spin w-8 h-8 text-neutral-400" />
+            <div className={`min-h-screen flex items-center justify-center ${isLight ? "bg-neutral-50" : "bg-neutral-950"}`}>
+                <Loader2 className={`animate-spin w-8 h-8 ${isLight ? "text-neutral-500" : "text-neutral-400"}`} />
             </div>
         );
     }
 
     if (error || !result) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-neutral-950">
-                <div className="text-center max-w-md text-white">
-                    <AlertCircle size={48} className="mx-auto mb-4 text-red-400" />
+            <div className={`min-h-screen flex flex-col items-center justify-center p-8 ${isLight ? "bg-neutral-50" : "bg-neutral-950"}`}>
+                <div className={`text-center max-w-md ${isLight ? "text-neutral-900" : "text-white"}`}>
+                    <AlertCircle size={48} className={`mx-auto mb-4 ${isLight ? "text-red-600" : "text-red-400"}`} />
                     <h1 className="text-2xl font-light mb-4">Report Not Available</h1>
-                    <p className="mb-6 text-neutral-400">
+                    <p className={`mb-6 ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
                         {error || "This report doesn't exist or is no longer shared."}
                     </p>
                 </div>
@@ -535,15 +538,15 @@ export default function SharedBatchTestPage() {
     const isCompleted = batchTestRun.status === "completed";
 
     return (
-        <div className="min-h-screen bg-neutral-950 text-white">
+        <div className={`min-h-screen ${isLight ? "bg-neutral-50" : "bg-neutral-950"} ${isLight ? "text-neutral-900" : "text-white"}`}>
             {/* Shared Badge */}
-            <div className="bg-blue-500/10 border-b border-blue-500/20">
+            <div className={isLight ? "bg-blue-50 border-b border-blue-200" : "bg-blue-500/10 border-b border-blue-500/20"}>
                 <div className="max-w-7xl mx-auto px-8 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm text-blue-300">
+                    <div className={`flex items-center gap-2 text-sm ${isLight ? "text-blue-700" : "text-blue-300"}`}>
                         <Share2 size={16} />
                         <span>Shared Report</span>
                     </div>
-                    <span className="text-xs text-neutral-500">
+                    <span className={`text-xs ${isLight ? "text-neutral-600" : "text-neutral-500"}`}>
                         Created {new Date(batchTestRun.createdAt).toLocaleDateString()}
                     </span>
                 </div>
@@ -552,14 +555,14 @@ export default function SharedBatchTestPage() {
             <div className="max-w-7xl mx-auto p-8">
                 {/* Header */}
                 <div className="mb-8">
-                    <h1 className="text-3xl font-light tracking-tight mb-2">
+                    <h1 className={`text-3xl font-light tracking-tight mb-2 ${isLight ? "text-neutral-900" : "text-white"}`}>
                         UX Test Results
                     </h1>
-                    <p className="font-light text-neutral-400">
+                    <p className={`font-light ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
                         {batchTestRun.targetUrl}
                     </p>
                     {batchTestRun.userDescription && (
-                        <p className="mt-2 text-sm text-neutral-500">
+                        <p className={`mt-2 text-sm ${isLight ? "text-neutral-600" : "text-neutral-500"}`}>
                             {batchTestRun.userDescription}
                         </p>
                     )}
@@ -569,44 +572,44 @@ export default function SharedBatchTestPage() {
                 {isCompleted && isUXAgentTest && uxAgentStats && (
                     <div className="space-y-6">
                         {/* Score Card */}
-                        <div className="p-8 border rounded-2xl border-white/10 bg-[#1E1E1E]">
+                        <div className={`p-8 border rounded-2xl ${isLight ? "border-neutral-200 bg-white" : "border-white/10 bg-[#1E1E1E]"}`}>
                             <div className="flex items-center gap-2 mb-6">
-                                <Brain size={20} className="text-purple-400" />
-                                <span className="text-sm text-purple-400 font-medium">AI Agent Testing</span>
+                                <Brain size={20} className={isLight ? "text-purple-600" : "text-purple-400"} />
+                                <span className={`text-sm font-medium ${isLight ? "text-purple-700" : "text-purple-400"}`}>AI Agent Testing</span>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                                 <div className="text-center md:text-left">
-                                    <p className="text-sm text-neutral-400 mb-2">Average Score</p>
-                                    <div className="text-6xl font-light text-white">
+                                    <p className={`text-sm mb-2 ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>Average Score</p>
+                                    <div className={`text-6xl font-light ${isLight ? "text-neutral-900" : "text-white"}`}>
                                         {uxAgentStats.avgScore}
-                                        <span className="text-xl text-neutral-400">/10</span>
+                                        <span className={`text-xl ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>/10</span>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-[#252525] flex items-center justify-center">
-                                        <Users size={20} className="text-neutral-400" />
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isLight ? "bg-neutral-100" : "bg-[#252525]"}`}>
+                                        <Users size={20} className={isLight ? "text-neutral-600" : "text-neutral-400"} />
                                     </div>
                                     <div>
-                                        <p className="text-2xl font-light">{uxAgentStats.totalAgents}</p>
-                                        <p className="text-xs text-neutral-500">AI Agents</p>
+                                        <p className={`text-2xl font-light ${isLight ? "text-neutral-900" : "text-white"}`}>{uxAgentStats.totalAgents}</p>
+                                        <p className={`text-xs ${isLight ? "text-neutral-600" : "text-neutral-500"}`}>AI Agents</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-[#252525] flex items-center justify-center">
-                                        <CheckCircle2 size={20} className="text-neutral-400" />
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isLight ? "bg-neutral-100" : "bg-[#252525]"}`}>
+                                        <CheckCircle2 size={20} className={isLight ? "text-neutral-600" : "text-neutral-400"} />
                                     </div>
                                     <div>
-                                        <p className="text-2xl font-light">{uxAgentStats.completedAgents}</p>
-                                        <p className="text-xs text-neutral-500">Completed</p>
+                                        <p className={`text-2xl font-light ${isLight ? "text-neutral-900" : "text-white"}`}>{uxAgentStats.completedAgents}</p>
+                                        <p className={`text-xs ${isLight ? "text-neutral-600" : "text-neutral-500"}`}>Completed</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-[#252525] flex items-center justify-center">
-                                        <Target size={20} className="text-neutral-400" />
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isLight ? "bg-neutral-100" : "bg-[#252525]"}`}>
+                                        <Target size={20} className={isLight ? "text-neutral-600" : "text-neutral-400"} />
                                     </div>
                                     <div>
-                                        <p className="text-2xl font-light">{uxAgentStats.totalSteps}</p>
-                                        <p className="text-xs text-neutral-500">Total Steps</p>
+                                        <p className={`text-2xl font-light ${isLight ? "text-neutral-900" : "text-white"}`}>{uxAgentStats.totalSteps}</p>
+                                        <p className={`text-xs ${isLight ? "text-neutral-600" : "text-neutral-500"}`}>Total Steps</p>
                                     </div>
                                 </div>
                             </div>
@@ -614,11 +617,15 @@ export default function SharedBatchTestPage() {
 
                         {/* View Mode Toggle */}
                         {uxagentRuns.length > 1 && (
-                            <div className="flex items-center gap-2 border-b border-white/10 pb-4">
+                            <div className={`flex items-center gap-2 border-b ${isLight ? "border-neutral-200" : "border-white/10"} pb-4`}>
                                 <button
                                     onClick={() => setViewMode("aggregate")}
                                     className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all rounded-lg ${viewMode === "aggregate"
-                                        ? "bg-[#252525] text-white border border-white/10"
+                                        ? isLight
+                                            ? "bg-neutral-900 text-white border border-neutral-300"
+                                            : "bg-[#252525] text-white border border-white/10"
+                                        : isLight
+                                            ? "bg-white border border-neutral-200 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
                                         : "bg-[#1E1E1E] border border-white/10 text-neutral-400 hover:text-white hover:bg-[#252525]"
                                         }`}
                                 >
@@ -628,7 +635,11 @@ export default function SharedBatchTestPage() {
                                 <button
                                     onClick={() => setViewMode("individual")}
                                     className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all rounded-lg ${viewMode === "individual"
-                                        ? "bg-[#252525] text-white border border-white/10"
+                                        ? isLight
+                                            ? "bg-neutral-900 text-white border border-neutral-300"
+                                            : "bg-[#252525] text-white border border-white/10"
+                                        : isLight
+                                            ? "bg-white border border-neutral-200 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
                                         : "bg-[#1E1E1E] border border-white/10 text-neutral-400 hover:text-white hover:bg-[#252525]"
                                         }`}
                                 >
@@ -655,29 +666,32 @@ export default function SharedBatchTestPage() {
                                                     setSelectedIndex(idx);
                                                     setViewMode("individual");
                                                 }}
-                                                className="p-4 border rounded-xl border-white/10 bg-[#1E1E1E] hover:border-white/20 cursor-pointer transition-all"
+                                                className={`p-4 border rounded-xl cursor-pointer transition-all ${isLight
+                                                    ? "border-neutral-200 bg-white hover:border-neutral-300"
+                                                    : "border-white/10 bg-[#1E1E1E] hover:border-white/20"
+                                                    }`}
                                             >
                                                 <div className="flex items-start justify-between mb-3">
                                                     <div className="flex items-center gap-2">
-                                                        <div className="w-8 h-8 rounded-full bg-[#252525] flex items-center justify-center">
-                                                            <User size={16} className="text-neutral-400" />
+                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isLight ? "bg-neutral-100" : "bg-[#252525]"}`}>
+                                                            <User size={16} className={isLight ? "text-neutral-600" : "text-neutral-400"} />
                                                         </div>
                                                         <div>
-                                                            <h4 className="font-medium text-sm">{name}</h4>
+                                                            <h4 className={`font-medium text-sm ${isLight ? "text-neutral-900" : "text-white"}`}>{name}</h4>
                                                             <div className="flex items-center gap-1.5 mt-0.5">
                                                                 {getStatusIcon(run.status)}
-                                                                <span className="text-xs text-neutral-500 capitalize">{run.status}</span>
+                                                                <span className={`text-xs capitalize ${isLight ? "text-neutral-600" : "text-neutral-500"}`}>{run.status}</span>
                                                             </div>
                                                         </div>
                                                     </div>
                                                     {run.score !== null && (
                                                         <div className="text-right">
-                                                            <span className="text-lg font-light">{run.score}</span>
-                                                            <span className="text-xs text-neutral-400">/10</span>
+                                                            <span className={`text-lg font-light ${isLight ? "text-neutral-900" : "text-white"}`}>{run.score}</span>
+                                                            <span className={`text-xs ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>/10</span>
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div className="flex items-center gap-4 text-xs text-neutral-500 pt-2 border-t border-white/5">
+                                                <div className={`flex items-center gap-4 text-xs pt-2 border-t ${isLight ? "text-neutral-600 border-neutral-200" : "text-neutral-500 border-white/5"}`}>
                                                     <span>{run.stepsTaken || 0} steps</span>
                                                     <span>{run.screenshots?.length || 0} screenshots</span>
                                                     {duration && <span>{duration}s</span>}
@@ -688,7 +702,7 @@ export default function SharedBatchTestPage() {
                                 </div>
 
                                 {/* Aggregate Insights */}
-                                <AggregateInsightsShared uxagentRuns={uxagentRuns} />
+                                <AggregateInsightsShared uxagentRuns={uxagentRuns} isLight={isLight} />
                             </>
                         )}
 
@@ -697,8 +711,8 @@ export default function SharedBatchTestPage() {
                             <div className="space-y-6">
                                 {/* Agent Selector */}
                                 {uxagentRuns.length > 1 && (
-                                    <div className="border p-4 rounded-xl bg-[#1E1E1E] border-white/10">
-                                        <h3 className="text-sm font-medium uppercase tracking-wide text-neutral-400 mb-3">
+                                    <div className={`border p-4 rounded-xl ${isLight ? "bg-white border-neutral-200" : "bg-[#1E1E1E] border-white/10"}`}>
+                                        <h3 className={`text-sm font-medium uppercase tracking-wide mb-3 ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
                                             Agent Runs ({uxagentRuns.length})
                                         </h3>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -711,34 +725,48 @@ export default function SharedBatchTestPage() {
                                                         key={run.id}
                                                         onClick={() => setSelectedIndex(idx)}
                                                         className={`group relative p-4 text-left transition-all duration-200 rounded-lg ${isSelected
-                                                            ? "bg-[#252525] text-white border-2 border-white/20 shadow-lg"
+                                                            ? isLight
+                                                                ? "bg-neutral-900 text-white border-2 border-neutral-700 shadow-lg"
+                                                                : "bg-[#252525] text-white border-2 border-white/20 shadow-lg"
+                                                            : isLight
+                                                                ? "bg-white border border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50"
                                                             : "bg-[#1E1E1E] border border-white/10 hover:border-white/20 hover:bg-[#252525]"
                                                             }`}
                                                     >
                                                         <div className="flex items-start justify-between mb-2">
                                                             <div className="flex items-center gap-2">
-                                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isSelected ? "bg-white/10" : "bg-white/5"
+                                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isSelected
+                                                                    ? isLight ? "bg-white/20" : "bg-white/10"
+                                                                    : isLight ? "bg-neutral-100" : "bg-white/5"
                                                                     }`}>
-                                                                    <User size={16} className="text-neutral-400" />
+                                                                    <User size={16} className={isLight && !isSelected ? "text-neutral-600" : "text-neutral-400"} />
                                                                 </div>
                                                                 <div>
-                                                                    <h4 className={`font-medium text-sm ${isSelected ? "text-white" : "text-neutral-300"}`}>
+                                                                    <h4 className={`font-medium text-sm ${isSelected
+                                                                        ? "text-white"
+                                                                        : isLight ? "text-neutral-900" : "text-neutral-300"
+                                                                        }`}>
                                                                         {personaName}
                                                                     </h4>
                                                                     <div className="flex items-center gap-1.5 mt-0.5">
                                                                         {getStatusIcon(run.status)}
-                                                                        <span className="text-xs text-neutral-500 capitalize">{run.status}</span>
+                                                                        <span className={`text-xs capitalize ${isLight && !isSelected ? "text-neutral-600" : "text-neutral-500"}`}>{run.status}</span>
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                             {run.score !== null && (
                                                                 <div className="text-right">
-                                                                    <span className="text-lg font-light">{run.score}</span>
-                                                                    <span className="text-xs text-neutral-400">/10</span>
+                                                                    <span className={`text-lg font-light ${isSelected ? "text-white" : isLight ? "text-neutral-900" : "text-white"}`}>{run.score}</span>
+                                                                    <span className={`text-xs ${isSelected ? "text-neutral-300" : isLight ? "text-neutral-600" : "text-neutral-400"}`}>/10</span>
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <div className="flex items-center gap-4 text-xs text-neutral-500 pt-2 border-t border-white/10">
+                                                        <div className={`flex items-center gap-4 text-xs pt-2 border-t ${isLight && !isSelected
+                                                            ? "text-neutral-600 border-neutral-200"
+                                                            : isSelected
+                                                                ? "text-neutral-300 border-white/10"
+                                                                : "text-neutral-500 border-white/10"
+                                                            }`}>
                                                             <span>{run.stepsTaken || 0} steps</span>
                                                             <span>{run.screenshots?.length || 0} screenshots</span>
                                                         </div>
@@ -750,11 +778,11 @@ export default function SharedBatchTestPage() {
                                 )}
 
                                 {/* Run Header */}
-                                <div className="border p-6 rounded-xl border-white/10 bg-[#1E1E1E]">
+                                <div className={`border p-6 rounded-xl ${isLight ? "border-neutral-200 bg-white" : "border-white/10 bg-[#1E1E1E]"}`}>
                                     <div className="flex items-start justify-between mb-4">
                                         <div>
-                                            <h2 className="text-xl font-light mb-1">{selectedRun.intent}</h2>
-                                            <p className="text-sm font-light text-neutral-400">{selectedRun.startUrl}</p>
+                                            <h2 className={`text-xl font-light mb-1 ${isLight ? "text-neutral-900" : "text-white"}`}>{selectedRun.intent}</h2>
+                                            <p className={`text-sm font-light ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>{selectedRun.startUrl}</p>
                                         </div>
                                         <div className="flex items-center gap-4">
                                             <span className={`px-3 py-1 text-xs font-medium border rounded-lg ${getStatusColor(selectedRun.status)}`}>
@@ -762,24 +790,24 @@ export default function SharedBatchTestPage() {
                                             </span>
                                             {selectedRun.score !== null && (
                                                 <div className="text-right">
-                                                    <span className="text-3xl font-light">{selectedRun.score}</span>
-                                                    <span className="text-sm text-neutral-400">/10</span>
+                                                    <span className={`text-3xl font-light ${isLight ? "text-neutral-900" : "text-white"}`}>{selectedRun.score}</span>
+                                                    <span className={`text-sm ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>/10</span>
                                                 </div>
                                             )}
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-3 gap-6 text-sm">
                                         <div>
-                                            <p className="text-xs uppercase tracking-wide mb-1 font-light text-neutral-400">Steps Taken</p>
-                                            <p className="font-light">{selectedRun.stepsTaken || 0} steps</p>
+                                            <p className={`text-xs uppercase tracking-wide mb-1 font-light ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>Steps Taken</p>
+                                            <p className={`font-light ${isLight ? "text-neutral-900" : "text-white"}`}>{selectedRun.stepsTaken || 0} steps</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs uppercase tracking-wide mb-1 font-light text-neutral-400">Screenshots</p>
-                                            <p className="font-light">{selectedRun.screenshots?.length || 0} captured</p>
+                                            <p className={`text-xs uppercase tracking-wide mb-1 font-light ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>Screenshots</p>
+                                            <p className={`font-light ${isLight ? "text-neutral-900" : "text-white"}`}>{selectedRun.screenshots?.length || 0} captured</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs uppercase tracking-wide mb-1 font-light text-neutral-400">Duration</p>
-                                            <p className="font-light">
+                                            <p className={`text-xs uppercase tracking-wide mb-1 font-light ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>Duration</p>
+                                            <p className={`font-light ${isLight ? "text-neutral-900" : "text-white"}`}>
                                                 {selectedRun.startedAt && selectedRun.completedAt
                                                     ? `${Math.round((new Date(selectedRun.completedAt).getTime() - new Date(selectedRun.startedAt).getTime()) / 1000)}s`
                                                     : "N/A"
@@ -790,7 +818,7 @@ export default function SharedBatchTestPage() {
                                 </div>
 
                                 {/* Tabs */}
-                                <div className="border-b border-white/10">
+                                <div className={`border-b ${isLight ? "border-neutral-200" : "border-white/10"}`}>
                                     <div className="flex gap-1 overflow-x-auto">
                                         {[
                                             { key: "overview", label: "Overview", icon: Eye },
@@ -802,7 +830,11 @@ export default function SharedBatchTestPage() {
                                                 key={key}
                                                 onClick={() => setActiveTab(key as any)}
                                                 className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === key
-                                                    ? "border-b-2 border-white text-white"
+                                                    ? isLight
+                                                        ? "border-b-2 border-neutral-900 text-neutral-900"
+                                                        : "border-b-2 border-white text-white"
+                                                    : isLight
+                                                        ? "text-neutral-600 hover:text-neutral-900"
                                                     : "text-neutral-500 hover:text-neutral-300"
                                                     }`}
                                             >
@@ -819,49 +851,49 @@ export default function SharedBatchTestPage() {
                                     {activeTab === "overview" && (
                                         <div className="space-y-6">
                                             {selectedRun.errorMessage && (
-                                                <div className="border-l-4 p-4 rounded-lg border-red-500 bg-red-500/10">
-                                                    <div className="flex items-center gap-2 font-medium mb-1 text-red-400">
+                                                <div className={`border-l-4 p-4 rounded-lg ${isLight ? "border-red-500 bg-red-50" : "border-red-500 bg-red-500/10"}`}>
+                                                    <div className={`flex items-center gap-2 font-medium mb-1 ${isLight ? "text-red-700" : "text-red-400"}`}>
                                                         <AlertCircle size={16} />
                                                         Error
                                                     </div>
-                                                    <p className="text-sm font-light text-red-300">{selectedRun.errorMessage}</p>
+                                                    <p className={`text-sm font-light ${isLight ? "text-red-800" : "text-red-300"}`}>{selectedRun.errorMessage}</p>
                                                 </div>
                                             )}
 
                                             {/* Persona Info */}
                                             {selectedRun.personaData && (
-                                                <div className="border p-6 rounded-xl border-white/10 bg-[#1E1E1E]">
-                                                    <h3 className="text-lg font-medium mb-4">Agent Persona</h3>
+                                                <div className={`border p-6 rounded-xl ${isLight ? "border-neutral-200 bg-white" : "border-white/10 bg-[#1E1E1E]"}`}>
+                                                    <h3 className={`text-lg font-medium mb-4 ${isLight ? "text-neutral-900" : "text-white"}`}>Agent Persona</h3>
                                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                                         {selectedRun.personaData.name && (
                                                             <div>
-                                                                <p className="text-xs text-neutral-500 mb-1">Name</p>
-                                                                <p className="text-sm">{selectedRun.personaData.name}</p>
+                                                                <p className={`text-xs mb-1 ${isLight ? "text-neutral-600" : "text-neutral-500"}`}>Name</p>
+                                                                <p className={`text-sm ${isLight ? "text-neutral-900" : "text-white"}`}>{selectedRun.personaData.name}</p>
                                                             </div>
                                                         )}
                                                         {selectedRun.personaData.age && (
                                                             <div>
-                                                                <p className="text-xs text-neutral-500 mb-1">Age</p>
-                                                                <p className="text-sm">{selectedRun.personaData.age}</p>
+                                                                <p className={`text-xs mb-1 ${isLight ? "text-neutral-600" : "text-neutral-500"}`}>Age</p>
+                                                                <p className={`text-sm ${isLight ? "text-neutral-900" : "text-white"}`}>{selectedRun.personaData.age}</p>
                                                             </div>
                                                         )}
                                                         {selectedRun.personaData.occupation && (
                                                             <div>
-                                                                <p className="text-xs text-neutral-500 mb-1">Occupation</p>
-                                                                <p className="text-sm">{selectedRun.personaData.occupation}</p>
+                                                                <p className={`text-xs mb-1 ${isLight ? "text-neutral-600" : "text-neutral-500"}`}>Occupation</p>
+                                                                <p className={`text-sm ${isLight ? "text-neutral-900" : "text-white"}`}>{selectedRun.personaData.occupation}</p>
                                                             </div>
                                                         )}
                                                         {selectedRun.personaData.techSavviness && (
                                                             <div>
-                                                                <p className="text-xs text-neutral-500 mb-1">Tech Savviness</p>
-                                                                <p className="text-sm capitalize">{selectedRun.personaData.techSavviness}</p>
+                                                                <p className={`text-xs mb-1 ${isLight ? "text-neutral-600" : "text-neutral-500"}`}>Tech Savviness</p>
+                                                                <p className={`text-sm capitalize ${isLight ? "text-neutral-900" : "text-white"}`}>{selectedRun.personaData.techSavviness}</p>
                                                             </div>
                                                         )}
                                                     </div>
                                                     {selectedRun.personaData.primaryGoal && (
-                                                        <div className="mt-4 pt-4 border-t border-white/5">
-                                                            <p className="text-xs text-neutral-500 mb-1">Primary Goal</p>
-                                                            <p className="text-sm text-neutral-300">{selectedRun.personaData.primaryGoal}</p>
+                                                        <div className={`mt-4 pt-4 border-t ${isLight ? "border-neutral-200" : "border-white/5"}`}>
+                                                            <p className={`text-xs mb-1 ${isLight ? "text-neutral-600" : "text-neutral-500"}`}>Primary Goal</p>
+                                                            <p className={`text-sm ${isLight ? "text-neutral-700" : "text-neutral-300"}`}>{selectedRun.personaData.primaryGoal}</p>
                                                         </div>
                                                     )}
                                                 </div>
@@ -869,22 +901,22 @@ export default function SharedBatchTestPage() {
 
                                             {/* Journey Summary */}
                                             {selectedRun.observationTrace && selectedRun.observationTrace.length > 0 && (
-                                                <div className="border p-6 rounded-xl border-white/10 bg-[#1E1E1E]">
-                                                    <h3 className="text-lg font-medium mb-4">Agent Journey</h3>
+                                                <div className={`border p-6 rounded-xl ${isLight ? "border-neutral-200 bg-white" : "border-white/10 bg-[#1E1E1E]"}`}>
+                                                    <h3 className={`text-lg font-medium mb-4 ${isLight ? "text-neutral-900" : "text-white"}`}>Agent Journey</h3>
                                                     <div className="space-y-4">
                                                         {selectedRun.observationTrace.slice(0, 5).map((obs: any, idx: number) => (
                                                             <div key={idx} className="flex gap-4">
                                                                 <div className="flex flex-col items-center">
-                                                                    <div className="w-8 h-8 rounded-full border bg-[#252525] border-white/10 flex items-center justify-center text-sm font-medium text-white">
+                                                                    <div className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm font-medium ${isLight ? "bg-neutral-900 border-neutral-300 text-white" : "bg-[#252525] border-white/10 text-white"}`}>
                                                                         {idx + 1}
                                                                     </div>
                                                                     {idx < selectedRun.observationTrace.length - 1 && (
-                                                                        <div className="w-0.5 h-full my-1 bg-white/10" />
+                                                                        <div className={`w-0.5 h-full my-1 ${isLight ? "bg-neutral-200" : "bg-white/10"}`} />
                                                                     )}
                                                                 </div>
                                                                 <div className="flex-1 pb-4">
-                                                                    <p className="text-sm font-medium mb-1">{obs.url || "Page Visit"}</p>
-                                                                    <p className="text-xs font-light text-neutral-400">
+                                                                    <p className={`text-sm font-medium mb-1 ${isLight ? "text-neutral-900" : "text-white"}`}>{obs.url || "Page Visit"}</p>
+                                                                    <p className={`text-xs font-light ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
                                                                         HTML Length: {obs.html_length?.toLocaleString() || 0} chars
                                                                     </p>
                                                                 </div>
@@ -898,16 +930,16 @@ export default function SharedBatchTestPage() {
 
                                     {/* Actions Tab */}
                                     {activeTab === "actions" && (
-                                        <div className="border rounded-xl overflow-hidden border-white/10 bg-[#1E1E1E]">
-                                            <div className="p-4 border-b bg-[#252525] border-white/10">
-                                                <h3 className="font-medium">Action Timeline</h3>
-                                                <p className="text-sm font-light text-neutral-400">{selectedRun.actionTrace?.length || 0} actions recorded</p>
+                                        <div className={`border rounded-xl overflow-hidden ${isLight ? "border-neutral-200 bg-white" : "border-white/10 bg-[#1E1E1E]"}`}>
+                                            <div className={`p-4 border-b ${isLight ? "bg-neutral-50 border-neutral-200" : "bg-[#252525] border-white/10"}`}>
+                                                <h3 className={`font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>Action Timeline</h3>
+                                                <p className={`text-sm font-light ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>{selectedRun.actionTrace?.length || 0} actions recorded</p>
                                             </div>
-                                            <div className="divide-y divide-white/5 max-h-[500px] overflow-y-auto">
+                                            <div className={`${isLight ? "divide-y divide-neutral-200" : "divide-y divide-white/5"} max-h-[500px] overflow-y-auto`}>
                                                 {(selectedRun.actionTrace || []).map((action: any, idx: number) => (
-                                                    <div key={idx} className="p-4 hover:bg-white/5 transition-colors">
+                                                    <div key={idx} className={`p-4 transition-colors ${isLight ? "hover:bg-neutral-50" : "hover:bg-white/5"}`}>
                                                         <div className="flex items-start gap-4">
-                                                            <div className="w-8 h-8 rounded-full border bg-[#252525] border-white/10 flex items-center justify-center text-sm font-medium text-white shrink-0">
+                                                            <div className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm font-medium shrink-0 ${isLight ? "bg-neutral-900 border-neutral-300 text-white" : "bg-[#252525] border-white/10 text-white"}`}>
                                                                 {idx + 1}
                                                             </div>
                                                             <div className="flex-1 min-w-0">
@@ -916,12 +948,12 @@ export default function SharedBatchTestPage() {
                                                                         {action.action}
                                                                     </span>
                                                                     {action.target && (
-                                                                        <span className="text-xs truncate font-light text-neutral-400">
+                                                                        <span className={`text-xs truncate font-light ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
                                                                             Target: {action.target}
                                                                         </span>
                                                                     )}
                                                                 </div>
-                                                                <p className="text-sm font-light text-neutral-300">
+                                                                <p className={`text-sm font-light ${isLight ? "text-neutral-700" : "text-neutral-300"}`}>
                                                                     {action.description || JSON.stringify(action)}
                                                                 </p>
                                                             </div>
@@ -929,7 +961,7 @@ export default function SharedBatchTestPage() {
                                                     </div>
                                                 ))}
                                                 {(!selectedRun.actionTrace || selectedRun.actionTrace.length === 0) && (
-                                                    <div className="p-8 text-center font-light text-neutral-400">
+                                                    <div className={`p-8 text-center font-light ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
                                                         No actions recorded
                                                     </div>
                                                 )}
@@ -944,19 +976,19 @@ export default function SharedBatchTestPage() {
                                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                                     {selectedRun.screenshots.map((s, i) => (
                                                         <div key={s.id} className="group relative">
-                                                            <div className="aspect-video rounded-lg overflow-hidden bg-[#252525] border border-white/10">
+                                                            <div className={`aspect-video rounded-lg overflow-hidden border ${isLight ? "bg-neutral-100 border-neutral-200" : "bg-[#252525] border-white/10"}`}>
                                                                 <img
                                                                     src={s.signedUrl || s.s3Url}
                                                                     alt={`Step ${s.stepNumber}`}
                                                                     className="w-full h-full object-cover"
                                                                 />
                                                             </div>
-                                                            <p className="text-xs text-neutral-500 mt-2">Step {s.stepNumber}</p>
+                                                            <p className={`text-xs mt-2 ${isLight ? "text-neutral-600" : "text-neutral-500"}`}>Step {s.stepNumber}</p>
                                                         </div>
                                                     ))}
                                                 </div>
                                             ) : (
-                                                <div className="p-8 text-center font-light text-neutral-400 border rounded-xl border-white/10 bg-[#1E1E1E]">
+                                                <div className={`p-8 text-center font-light border rounded-xl ${isLight ? "text-neutral-600 border-neutral-200 bg-white" : "text-neutral-400 border-white/10 bg-[#1E1E1E]"}`}>
                                                     No screenshots captured
                                                 </div>
                                             )}
@@ -965,7 +997,7 @@ export default function SharedBatchTestPage() {
 
                                     {/* Insights Tab */}
                                     {activeTab === "insights" && (
-                                        <InsightsTabContent insights={selectedRun.insights || []} />
+                                        <InsightsTabContent insights={selectedRun.insights || []} isLight={isLight} />
                                     )}
                                 </div>
                             </div>
@@ -976,46 +1008,46 @@ export default function SharedBatchTestPage() {
                 {/* Traditional Aggregated Report View */}
                 {isCompleted && aggregatedReport && !isUXAgentTest && (
                     <div className="space-y-6">
-                        <div className="p-8 border rounded-xl border-white/10 bg-[#1E1E1E]">
+                        <div className={`p-8 border rounded-xl ${isLight ? "border-neutral-200 bg-white" : "border-white/10 bg-[#1E1E1E]"}`}>
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                                 <div className="text-center md:text-left">
-                                    <p className="text-sm text-neutral-400 mb-2">Overall Score</p>
-                                    <div className="text-6xl font-light">
+                                    <p className={`text-sm mb-2 ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>Overall Score</p>
+                                    <div className={`text-6xl font-light ${isLight ? "text-neutral-900" : "text-white"}`}>
                                         {aggregatedReport.overallScore || 0}
                                     </div>
-                                    <p className="text-xs text-neutral-500 mt-1">out of 100</p>
+                                    <p className={`text-xs mt-1 ${isLight ? "text-neutral-600" : "text-neutral-500"}`}>out of 100</p>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-[#252525] flex items-center justify-center">
-                                        <Users size={20} className="text-neutral-400" />
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isLight ? "bg-neutral-100" : "bg-[#252525]"}`}>
+                                        <Users size={20} className={isLight ? "text-neutral-600" : "text-neutral-400"} />
                                     </div>
                                     <div>
-                                        <p className="text-2xl font-light">{testRuns.length}</p>
-                                        <p className="text-xs text-neutral-500">Personas Tested</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-[#252525] flex items-center justify-center">
-                                        <AlertCircle size={20} className="text-neutral-400" />
-                                    </div>
-                                    <div>
-                                        <p className="text-2xl font-light">{aggregatedReport.commonIssues?.length || 0}</p>
-                                        <p className="text-xs text-neutral-500">Common Issues</p>
+                                        <p className={`text-2xl font-light ${isLight ? "text-neutral-900" : "text-white"}`}>{testRuns.length}</p>
+                                        <p className={`text-xs ${isLight ? "text-neutral-600" : "text-neutral-500"}`}>Personas Tested</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-[#252525] flex items-center justify-center">
-                                        <CheckCircle2 size={20} className="text-neutral-400" />
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isLight ? "bg-neutral-100" : "bg-[#252525]"}`}>
+                                        <AlertCircle size={20} className={isLight ? "text-neutral-600" : "text-neutral-400"} />
                                     </div>
                                     <div>
-                                        <p className="text-2xl font-light">{aggregatedReport.strengthsAcrossPersonas?.length || 0}</p>
-                                        <p className="text-xs text-neutral-500">Strengths Found</p>
+                                        <p className={`text-2xl font-light ${isLight ? "text-neutral-900" : "text-white"}`}>{aggregatedReport.commonIssues?.length || 0}</p>
+                                        <p className={`text-xs ${isLight ? "text-neutral-600" : "text-neutral-500"}`}>Common Issues</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isLight ? "bg-neutral-100" : "bg-[#252525]"}`}>
+                                        <CheckCircle2 size={20} className={isLight ? "text-neutral-600" : "text-neutral-400"} />
+                                    </div>
+                                    <div>
+                                        <p className={`text-2xl font-light ${isLight ? "text-neutral-900" : "text-white"}`}>{aggregatedReport.strengthsAcrossPersonas?.length || 0}</p>
+                                        <p className={`text-xs ${isLight ? "text-neutral-600" : "text-neutral-500"}`}>Strengths Found</p>
                                     </div>
                                 </div>
                             </div>
                             {aggregatedReport.executiveSummary && (
-                                <div className="mt-6 pt-6 border-t border-white/10">
-                                    <p className="text-sm font-light text-neutral-300 leading-relaxed">
+                                <div className={`mt-6 pt-6 border-t ${isLight ? "border-neutral-200" : "border-white/10"}`}>
+                                    <p className={`text-sm font-light leading-relaxed ${isLight ? "text-neutral-700" : "text-neutral-300"}`}>
                                         {aggregatedReport.executiveSummary}
                                     </p>
                                 </div>
@@ -1024,15 +1056,15 @@ export default function SharedBatchTestPage() {
 
                         {/* Strengths */}
                         {aggregatedReport.strengthsAcrossPersonas && aggregatedReport.strengthsAcrossPersonas.length > 0 && (
-                            <div className="p-6 border rounded-xl border-green-500/20 bg-green-500/5">
-                                <h3 className="text-lg font-medium mb-4 flex items-center gap-2 text-green-400">
+                            <div className={`p-6 border rounded-xl ${isLight ? "border-green-200 bg-green-50" : "border-green-500/20 bg-green-500/5"}`}>
+                                <h3 className={`text-lg font-medium mb-4 flex items-center gap-2 ${isLight ? "text-green-700" : "text-green-400"}`}>
                                     <CheckCircle2 size={20} />
                                     Strengths Across All Personas
                                 </h3>
                                 <ul className="space-y-2">
                                     {aggregatedReport.strengthsAcrossPersonas.map((strength, i) => (
-                                        <li key={i} className="text-sm text-neutral-300 flex items-start gap-2">
-                                            <span className="text-green-400">✓</span>
+                                        <li key={i} className={`text-sm flex items-start gap-2 ${isLight ? "text-neutral-700" : "text-neutral-300"}`}>
+                                            <span className={isLight ? "text-green-600" : "text-green-400"}>✓</span>
                                             {strength}
                                         </li>
                                     ))}
@@ -1043,22 +1075,22 @@ export default function SharedBatchTestPage() {
                         {/* Common Issues */}
                         {aggregatedReport.commonIssues && aggregatedReport.commonIssues.length > 0 && (
                             <div className="space-y-4">
-                                <h3 className="text-lg font-medium flex items-center gap-2">
+                                <h3 className={`text-lg font-medium flex items-center gap-2 ${isLight ? "text-neutral-900" : "text-white"}`}>
                                     <AlertCircle size={20} />
                                     Common Issues
                                 </h3>
                                 {aggregatedReport.commonIssues.map((issue, i) => (
-                                    <div key={i} className="p-6 border rounded-xl border-white/10 bg-[#1E1E1E]">
+                                    <div key={i} className={`p-6 border rounded-xl ${isLight ? "border-neutral-200 bg-white" : "border-white/10 bg-[#1E1E1E]"}`}>
                                         <div className="flex items-start gap-3">
                                             <span className={`text-xs font-medium px-2 py-1 rounded ${getSeverityColor(issue.severity)}`}>
                                                 {issue.severity}
                                             </span>
                                             <div className="flex-1">
-                                                <p className="text-sm font-medium text-neutral-200 mb-2">{issue.issue}</p>
-                                                <p className="text-xs text-neutral-400 mb-3">→ {issue.recommendation}</p>
+                                                <p className={`text-sm font-medium mb-2 ${isLight ? "text-neutral-900" : "text-neutral-200"}`}>{issue.issue}</p>
+                                                <p className={`text-xs mb-3 ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>→ {issue.recommendation}</p>
                                                 <div className="flex flex-wrap gap-1">
                                                     {issue.affectedPersonas.map((persona, j) => (
-                                                        <span key={j} className="text-xs px-2 py-0.5 rounded bg-[#252525] text-neutral-400">
+                                                        <span key={j} className={`text-xs px-2 py-0.5 rounded ${isLight ? "bg-neutral-100 text-neutral-700" : "bg-[#252525] text-neutral-400"}`}>
                                                             {persona}
                                                         </span>
                                                     ))}
@@ -1072,8 +1104,8 @@ export default function SharedBatchTestPage() {
 
                         {/* Recommendations */}
                         {aggregatedReport.recommendations && aggregatedReport.recommendations.length > 0 && (
-                            <div className="p-6 border rounded-xl border-white/10 bg-[#1E1E1E]">
-                                <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                            <div className={`p-6 border rounded-xl ${isLight ? "border-neutral-200 bg-white" : "border-white/10 bg-[#1E1E1E]"}`}>
+                                <h3 className={`text-lg font-medium mb-4 flex items-center gap-2 ${isLight ? "text-neutral-900" : "text-white"}`}>
                                     <Target size={20} />
                                     Recommendations
                                 </h3>
@@ -1087,8 +1119,8 @@ export default function SharedBatchTestPage() {
                                                 {rec.priority}
                                             </span>
                                             <div>
-                                                <p className="text-sm text-neutral-200">{rec.recommendation}</p>
-                                                <p className="text-xs text-neutral-500 mt-1">{rec.impact}</p>
+                                                <p className={`text-sm ${isLight ? "text-neutral-900" : "text-neutral-200"}`}>{rec.recommendation}</p>
+                                                <p className={`text-xs mt-1 ${isLight ? "text-neutral-600" : "text-neutral-500"}`}>{rec.impact}</p>
                                             </div>
                                         </div>
                                     ))}
@@ -1099,8 +1131,8 @@ export default function SharedBatchTestPage() {
                 )}
 
                 {/* Footer */}
-                <div className="mt-12 pt-8 border-t border-white/10 text-center">
-                    <p className="text-sm text-neutral-500">
+                <div className={`mt-12 pt-8 border-t ${isLight ? "border-neutral-200" : "border-white/10"} text-center`}>
+                    <p className={`text-sm ${isLight ? "text-neutral-500" : "text-neutral-500"}`}>
                         Report generated by UX Testing Agent
                     </p>
                 </div>

@@ -84,6 +84,9 @@ export interface ScreenshotTestResult {
             accessibilityNotes: string[] | null;
             thoughts: string | null;
             comparisonWithPrevious: string | null;
+            userObservation: string | null;
+            missionContext: string | null;
+            expectedOutcome: string | null;
             createdAt: string;
         }>;
     }>;
@@ -97,14 +100,15 @@ export interface ScreenshotTestResult {
 export interface ScreenshotAggregatedInsight {
     id: string;
     screenshotTestRunId: string;
-    category: 'issues' | 'observations' | 'accessibility' | 'positives';
-    severity: 'low' | 'medium' | 'high' | 'critical' | null;
+    category: "issues" | "observations" | "accessibility" | "positives";
+    severity: "low" | "medium" | "high" | "critical" | null;
     title: string;
     description: string;
     recommendation: string | null;
     personaName: string;
     personaIndex: number;
     screenshotOrder: number;
+    evidence?: Array<{ personaName: string; personaIndex: number; screenshotOrder: number }> | null;
     createdAt: string;
 }
 
@@ -199,6 +203,18 @@ export async function rerunScreenshotTest(id: string): Promise<{
 }
 
 /**
+ * Terminate a running screenshot test
+ */
+export async function terminateScreenshotTest(id: string): Promise<{
+    screenshotTestRun: ScreenshotTestRun;
+    message: string;
+}> {
+    return fetchWithAuth(`/api/screenshot-tests/${id}/terminate`, {
+        method: "POST",
+    });
+}
+
+/**
  * Get screenshot test results
  */
 export async function getScreenshotTest(id: string): Promise<ScreenshotTestResult> {
@@ -251,9 +267,28 @@ export async function getScreenshotTestShareStatus(id: string): Promise<ShareSta
     return fetchWithAuth(`/api/screenshot-tests/${id}/share`);
 }
 
+/**
+ * Delete/Archive multiple screenshot tests
+ */
+export async function deleteScreenshotTests(ids: string[]): Promise<{ message: string }> {
+    return fetchWithAuth("/api/screenshot-tests", {
+        method: "DELETE",
+        body: JSON.stringify({ ids }),
+    });
+}
+
 // ============================================================================
 // AGGREGATED INSIGHTS
 // ============================================================================
+
+/**
+ * Get aggregated insights for a screenshot test
+ */
+export async function getScreenshotInsights(id: string): Promise<{
+    insights: ScreenshotAggregatedInsight[];
+}> {
+    return fetchWithAuth(`/api/screenshot-tests/${id}/insights`);
+}
 
 /**
  * Generate aggregated insights for a screenshot test
@@ -265,13 +300,4 @@ export async function generateScreenshotInsights(id: string): Promise<{
     return fetchWithAuth(`/api/screenshot-tests/${id}/insights/generate`, {
         method: "POST",
     });
-}
-
-/**
- * Get aggregated insights for a screenshot test
- */
-export async function getScreenshotInsights(id: string): Promise<{
-    insights: ScreenshotAggregatedInsight[];
-}> {
-    return fetchWithAuth(`/api/screenshot-tests/${id}/insights`);
 }
