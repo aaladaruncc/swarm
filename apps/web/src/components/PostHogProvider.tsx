@@ -8,10 +8,15 @@ import { usePathname, useSearchParams } from "next/navigation";
 // Initialize PostHog
 if (typeof window !== "undefined") {
     posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
-        api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
+        api_host: "/ingest",
+        ui_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
         person_profiles: "identified_only",
         capture_pageview: false, // We capture manually below
         capture_pageleave: true,
+        // Enables capturing unhandled exceptions via Error Tracking
+        capture_exceptions: true,
+        // Enable debug mode in development
+        debug: process.env.NODE_ENV === "development",
     });
 }
 

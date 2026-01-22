@@ -15,6 +15,7 @@ import { AggregatedReportPDF } from '@/components/pdf/AggregatedReportPDF';
 import { PersonaReportPDF } from '@/components/pdf/PersonaReportPDF';
 import { UXAgentReportView } from "@/components/UXAgentReportView";
 import { useTheme } from "@/contexts/theme-context";
+import posthog from "posthog-js";
 
 export default function TestDetails() {
   const router = useRouter();
@@ -67,6 +68,14 @@ export default function TestDetails() {
       link.download = `aggregated-report-${new Date().toISOString().split('T')[0]}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
+
+      // Capture report exported event
+      posthog.capture("report_exported", {
+        test_id: testId,
+        report_type: "aggregated",
+        target_url: batchTestRun?.targetUrl,
+        agent_count: testRuns.length,
+      });
     } catch (err) {
       console.error('Failed to generate PDF:', err);
       setError('Failed to export PDF');
@@ -165,6 +174,12 @@ export default function TestDetails() {
       } else {
         const result = await enableBatchTestSharing(testId);
         setShareStatus(result);
+
+        // Capture test shared event when enabling
+        posthog.capture("test_shared", {
+          test_id: testId,
+          target_url: batchTestRun?.targetUrl,
+        });
       }
     } catch (err) {
       console.error("Failed to toggle sharing:", err);
@@ -179,6 +194,12 @@ export default function TestDetails() {
       await navigator.clipboard.writeText(shareStatus.shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+
+      // Capture share link copied event
+      posthog.capture("share_link_copied", {
+        test_id: testId,
+        target_url: batchTestRun?.targetUrl,
+      });
     } catch (err) {
       console.error("Failed to copy:", err);
     }
@@ -202,6 +223,14 @@ export default function TestDetails() {
     setIsTerminating(true);
     try {
       await terminateBatchTest(testId);
+
+      // Capture test terminated event
+      posthog.capture("test_terminated", {
+        test_id: testId,
+        target_url: batchTestRun?.targetUrl,
+        previous_status: batchTestRun?.status,
+      });
+
       // Reload the test to get updated status
       await loadTest();
       setShowTerminateConfirm(false);

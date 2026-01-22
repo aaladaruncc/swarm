@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import Link from "next/link";
+import posthog from "posthog-js";
 
 const PLANS = [
   {
@@ -100,10 +101,15 @@ export function Pricing() {
               
               <Link
                 href={plan.price === "Custom" ? "/login" : "/login"}
+                onClick={() => posthog.capture("pricing_plan_clicked", {
+                  plan_name: plan.name,
+                  plan_price: plan.price,
+                  cta_text: plan.price === "Custom" ? "Book Demo" : "Get Started",
+                })}
                 className="block w-full py-3 text-center text-sm font-sans font-light transition-all text-white hover:opacity-90 rounded-lg"
                 style={{
-                  backgroundColor: plan.price === "Custom" 
-                    ? "rgba(255, 255, 255, 0.1)" 
+                  backgroundColor: plan.price === "Custom"
+                    ? "rgba(255, 255, 255, 0.1)"
                     : "rgba(255, 255, 255, 0.15)",
                   border: "1px solid rgba(255, 255, 255, 0.2)",
                 }}

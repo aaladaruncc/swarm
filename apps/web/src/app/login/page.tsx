@@ -8,6 +8,7 @@ import Link from "next/link";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedGradientCurtain } from "@/components/ui/animated-gradient-curtain";
+import posthog from "posthog-js";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -50,6 +51,14 @@ export default function LoginPage() {
 
         setLoginSuccess(true);
 
+        // Identify user in PostHog and capture sign-in event
+        posthog.identify(email, {
+          email: email,
+        });
+        posthog.capture("user_signed_in", {
+          email: email,
+        });
+
         // Wait a moment for cookies to be set, then use window.location for full page reload
         await new Promise(resolve => setTimeout(resolve, 300));
 
@@ -62,6 +71,17 @@ export default function LoginPage() {
           setLoading(false);
           return;
         }
+
+        // Identify user in PostHog and capture sign-up event
+        posthog.identify(email, {
+          email: email,
+          name: name,
+        });
+        posthog.capture("user_signed_up", {
+          email: email,
+          name: name,
+        });
+
         setSuccess("Account created successfully! Redirecting to login...");
         setTimeout(() => {
           setEmail("");

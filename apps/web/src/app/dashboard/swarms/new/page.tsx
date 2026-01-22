@@ -5,14 +5,15 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { generatePersonas, createSwarm, type GeneratedPersona } from "@/lib/batch-api";
 import { GeneratingPersonasLoader } from "@/components/ui/generating-personas-loader";
-import { 
-  Plus, 
-  Loader2, 
-  Minus, 
+import {
+  Plus,
+  Loader2,
+  Minus,
   Check,
   Info
 } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
+import posthog from "posthog-js";
 
 export default function CreateSwarmPage() {
   const router = useRouter();
@@ -104,7 +105,14 @@ export default function CreateSwarmPage() {
         selectedPersonas,
         selectedIndices.length
       );
-      
+
+      // Capture swarm created event
+      posthog.capture("swarm_created", {
+        swarm_name: swarmName,
+        personas_count: selectedIndices.length,
+        has_reference_url: Boolean(url),
+      });
+
       router.push("/dashboard/swarms");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create swarm");
