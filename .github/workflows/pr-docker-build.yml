@@ -1,0 +1,44 @@
+name: PR Docker Build Check
+
+on:
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build-api:
+    name: Build API
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build API Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-uxagent:
+    name: Build UXAgent
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build UXAgent Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/UXAgent-master
+          file: apps/UXAgent-master/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

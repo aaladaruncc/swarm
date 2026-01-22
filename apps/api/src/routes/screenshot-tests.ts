@@ -490,7 +490,7 @@ screenshotTestsRoutes.post("/:id/share", async (c) => {
             .where(eq(schema.screenshotTestRuns.id, testId));
 
         const shareUrl = enableShare && shareToken
-            ? `${process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000'}/share/screenshot/${shareToken}`
+            ? `${process.env.NEXT_PUBLIC_WEB_URL || 'https://useswarm.co'}/share/screenshot/${shareToken}`
             : null;
 
         return c.json({
@@ -532,7 +532,7 @@ screenshotTestsRoutes.get("/:id/share", async (c) => {
         const shareEnabled = (testRun as any).shareEnabled || false;
         const shareToken = (testRun as any).shareToken;
         const shareUrl = shareEnabled && shareToken
-            ? `${process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000'}/share/screenshot/${shareToken}`
+            ? `${process.env.NEXT_PUBLIC_WEB_URL || 'https://useswarm.co'}/share/screenshot/${shareToken}`
             : null;
 
         return c.json({

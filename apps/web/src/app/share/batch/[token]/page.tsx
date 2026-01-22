@@ -1,10 +1,47 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
-import { Loader2, CheckCircle2, AlertCircle, Share2, TrendingUp, Users, Target } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, Share2, Users, Target, Brain, ChevronDown, ChevronUp, Eye, MousePointer, Image as ImageIcon, User, Clock, LayoutDashboard, Lightbulb, Navigation, Accessibility, Gauge, FileText } from "lucide-react";
 
-// Type definitions for shared batch test
+interface UXAgentScreenshot {
+    id: string;
+    stepNumber: number;
+    signedUrl?: string;
+    s3Url?: string;
+}
+
+interface UXAgentInsight {
+    id: string;
+    uxagentRunId: string;
+    category: 'usability' | 'accessibility' | 'performance' | 'content' | 'navigation';
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    title: string;
+    description: string;
+    recommendation: string;
+    createdAt: string;
+}
+
+interface UXAgentRun {
+    id: string;
+    personaData: any;
+    basicInfo: any;
+    status: string;
+    score: number | null;
+    intent: string;
+    startUrl: string;
+    stepsTaken: number | null;
+    actionTrace: any[];
+    memoryTrace: any[];
+    observationTrace: any[];
+    logContent: string | null;
+    errorMessage: string | null;
+    startedAt: string | null;
+    completedAt: string | null;
+    screenshots: UXAgentScreenshot[];
+    insights?: UXAgentInsight[];
+}
+
 interface SharedBatchTest {
     batchTestRun: {
         id: string;
@@ -52,8 +89,338 @@ interface SharedBatchTest {
         }> | null;
         strengthsAcrossPersonas: string[] | null;
     } | null;
-    uxagentRuns: any[];
+    uxagentRuns: UXAgentRun[];
     isSharedView: boolean;
+}
+
+// Helper to extract persona name
+function getPersonaName(run: UXAgentRun, index: number): string {
+    const personaData = run.personaData as any;
+    if (personaData?.name) return personaData.name;
+    const basicInfo = run.basicInfo as any;
+    if (basicInfo?.persona) {
+        const match = basicInfo.persona.match(/(?:name[:\s]+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
+        if (match) return match[1];
+    }
+    return `Agent ${index + 1}`;
+}
+
+// Helper to get status icon
+function getStatusIcon(status: string) {
+    switch (status) {
+        case "completed": return <CheckCircle2 size={14} className="text-emerald-400" />;
+        case "failed": return <AlertCircle size={14} className="text-red-400" />;
+        case "running": return <Loader2 size={14} className="animate-spin text-blue-400" />;
+        default: return <Clock size={14} className="text-neutral-400" />;
+    }
+}
+
+// Category icons for insights
+const categoryIcons: Record<string, React.ReactNode> = {
+    usability: <AlertCircle size={16} />,
+    accessibility: <Accessibility size={16} />,
+    performance: <Gauge size={16} />,
+    content: <FileText size={16} />,
+    navigation: <Navigation size={16} />,
+};
+
+// Category colors
+const categoryColors: Record<string, string> = {
+    usability: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    accessibility: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+    performance: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+    content: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    navigation: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
+};
+
+// Severity colors
+const severityColors: Record<string, string> = {
+    critical: "bg-red-500/10 text-red-400 border-red-500/20",
+    high: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+    medium: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+    low: "bg-neutral-500/10 text-neutral-400 border-neutral-500/20",
+};
+
+const severityBorderColors: Record<string, string> = {
+    critical: "border-l-red-500",
+    high: "border-l-orange-500",
+    medium: "border-l-yellow-500",
+    low: "border-l-neutral-400",
+};
+
+// Insights Tab Content Component
+function InsightsTabContent({ insights }: { insights: UXAgentInsight[] }) {
+    if (insights.length === 0) {
+        return (
+            <div className="border p-8 text-center rounded-xl border-white/10 bg-[#1E1E1E]">
+                <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center border bg-[#252525] border-white/10">
+                    <Lightbulb size={32} className="text-neutral-400" />
+                </div>
+                <h3 className="font-medium mb-2 text-lg">No Insights Generated</h3>
+                <p className="font-light text-sm max-w-md mx-auto text-neutral-400">
+                    No AI insights have been generated for this agent run yet.
+                </p>
+            </div>
+        );
+    }
+
+    // Group insights by category
+    const byCategory = insights.reduce((acc, insight) => {
+        const cat = insight.category || 'usability';
+        if (!acc[cat]) acc[cat] = [];
+        acc[cat].push(insight);
+        return acc;
+    }, {} as Record<string, UXAgentInsight[]>);
+
+    // Count by severity
+    const severityCounts = insights.reduce((acc, i) => {
+        acc[i.severity] = (acc[i.severity] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    return (
+        <div className="space-y-6">
+            {/* Summary Header */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="p-4 border rounded-lg bg-[#252525] text-white border-white/10">
+                    <p className="text-3xl font-light">{insights.length}</p>
+                    <p className="text-xs uppercase tracking-wide font-light text-neutral-400">Total Insights</p>
+                </div>
+                {['critical', 'high', 'medium', 'low'].map(severity => (
+                    <div key={severity} className={`p-4 border rounded-lg ${severityColors[severity]}`}>
+                        <p className="text-2xl font-light">{severityCounts[severity] || 0}</p>
+                        <p className="text-xs uppercase tracking-wide capitalize font-light text-neutral-400">{severity}</p>
+                    </div>
+                ))}
+            </div>
+
+            {/* Insights by Category */}
+            {Object.entries(byCategory).map(([category, categoryInsights]) => (
+                <div key={category} className="border rounded-xl overflow-hidden border-white/10 bg-[#1E1E1E]">
+                    <div className={`p-4 border-b flex items-center gap-3 ${categoryColors[category] || "bg-[#252525] border-white/10"}`}>
+                        {categoryIcons[category] || <Lightbulb size={16} />}
+                        <h3 className="font-medium capitalize">{category}</h3>
+                        <span className="ml-auto text-sm opacity-70">{categoryInsights.length} issue{categoryInsights.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="divide-y divide-white/5">
+                        {categoryInsights.map((insight) => (
+                            <div
+                                key={insight.id}
+                                className={`p-5 border-l-4 bg-[#1E1E1E] ${severityBorderColors[insight.severity] || 'border-l-neutral-400'}`}
+                            >
+                                <div className="flex items-start justify-between gap-4 mb-3">
+                                    <h4 className="font-medium">{insight.title}</h4>
+                                    <span className={`shrink-0 text-[10px] px-2 py-1 uppercase font-bold tracking-wider rounded ${severityColors[insight.severity]}`}>
+                                        {insight.severity}
+                                    </span>
+                                </div>
+                                <p className="text-sm font-light mb-4 text-neutral-300">
+                                    {insight.description}
+                                </p>
+                                <div className="flex gap-2 items-start border p-3 rounded-lg bg-emerald-500/10 border-emerald-500/20">
+                                    <CheckCircle2 size={16} className="shrink-0 mt-0.5 text-emerald-400" />
+                                    <div>
+                                        <span className="text-xs font-medium uppercase tracking-wide block mb-1 text-emerald-400">Recommendation</span>
+                                        <p className="text-sm font-light text-emerald-300">{insight.recommendation}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+// Combined Insight interface for aggregate view
+interface CombinedInsight {
+    insight: UXAgentInsight;
+    agentName: string;
+    runId: string;
+}
+
+// Category labels
+const categoryLabels: Record<string, string> = {
+    usability: "Usability",
+    accessibility: "Accessibility",
+    performance: "Performance",
+    content: "Content",
+    navigation: "Navigation",
+};
+
+// Aggregate Insights Component for Shared View
+function AggregateInsightsShared({ uxagentRuns }: { uxagentRuns: UXAgentRun[] }) {
+    const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(["usability", "accessibility"]));
+
+    // Combine insights from all runs
+    const allInsights: CombinedInsight[] = [];
+    uxagentRuns.forEach((run, idx) => {
+        const agentName = getPersonaName(run, idx);
+        (run.insights || []).forEach(insight => {
+            allInsights.push({ insight, agentName, runId: run.id });
+        });
+    });
+
+    // Sort by severity
+    const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+    allInsights.sort((a, b) =>
+        (severityOrder[a.insight.severity] || 3) - (severityOrder[b.insight.severity] || 3)
+    );
+
+    const toggleCategory = (category: string) => {
+        const newSet = new Set(expandedCategories);
+        if (newSet.has(category)) {
+            newSet.delete(category);
+        } else {
+            newSet.add(category);
+        }
+        setExpandedCategories(newSet);
+    };
+
+    // Group insights by category
+    const insightsByCategory = allInsights.reduce((acc, item) => {
+        const cat = item.insight.category || "other";
+        if (!acc[cat]) acc[cat] = [];
+        acc[cat].push(item);
+        return acc;
+    }, {} as Record<string, CombinedInsight[]>);
+
+    // Calculate stats
+    const totalInsights = allInsights.length;
+    const criticalCount = allInsights.filter(i => i.insight.severity === "critical").length;
+    const highCount = allInsights.filter(i => i.insight.severity === "high").length;
+    const completedRuns = uxagentRuns.filter(r => r.status === "completed").length;
+    const avgScore = uxagentRuns.filter(r => r.score !== null).length > 0
+        ? Math.round(uxagentRuns.filter(r => r.score !== null).reduce((sum, r) => sum + (r.score || 0), 0) / uxagentRuns.filter(r => r.score !== null).length * 10) / 10
+        : 0;
+
+    if (totalInsights === 0) {
+        return (
+            <div className="border p-6 text-center rounded-xl border-white/10 bg-[#1E1E1E]">
+                <Lightbulb className="w-12 h-12 mx-auto mb-4 text-neutral-400" />
+                <h3 className="text-lg font-medium mb-2">No Insights Available</h3>
+                <p className="font-light text-sm text-neutral-400">
+                    No AI insights have been generated for these agent runs yet.
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="border p-4 rounded-xl border-white/10 bg-[#1E1E1E]">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 border flex items-center justify-center rounded-lg bg-[#252525] border-white/10">
+                            <Users size={20} className="text-neutral-400" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-light">{completedRuns}/{uxagentRuns.length}</p>
+                            <p className="text-xs uppercase tracking-wide font-light text-neutral-400">Agents Completed</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="border p-4 rounded-xl border-white/10 bg-[#1E1E1E]">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 border flex items-center justify-center rounded-lg bg-[#252525] border-white/10">
+                            <Target size={20} className="text-neutral-400" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-light">{avgScore}<span className="text-sm text-neutral-400">/10</span></p>
+                            <p className="text-xs uppercase tracking-wide font-light text-neutral-400">Avg Score</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="border p-4 rounded-xl border-white/10 bg-[#1E1E1E]">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 border flex items-center justify-center rounded-lg bg-[#252525] border-white/10">
+                            <Lightbulb size={20} className="text-neutral-400" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-light">{totalInsights}</p>
+                            <p className="text-xs uppercase tracking-wide font-light text-neutral-400">Total Insights</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="border p-4 rounded-xl border-white/10 bg-[#1E1E1E]">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 border flex items-center justify-center rounded-lg bg-red-500/10 border-red-500/20">
+                            <AlertCircle size={20} className="text-red-400" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-light text-red-400">{criticalCount + highCount}</p>
+                            <p className="text-xs uppercase tracking-wide font-light text-neutral-400">Critical Issues</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Insights by Category */}
+            <div className="space-y-4">
+                <h3 className="text-lg font-medium">Insights Across All Agents</h3>
+
+                {Object.entries(insightsByCategory)
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([category, insights]) => (
+                        <div key={category} className="border rounded-xl overflow-hidden border-white/10 bg-[#1E1E1E]">
+                            <button
+                                onClick={() => toggleCategory(category)}
+                                className="w-full flex items-center justify-between p-4 transition-colors hover:bg-white/5"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className="font-medium capitalize">{categoryLabels[category] || category}</span>
+                                    <span className="text-xs px-2 py-0.5 border rounded-lg bg-[#252525] border-white/10 text-neutral-300">
+                                        {insights.length} issue{insights.length !== 1 ? 's' : ''}
+                                    </span>
+                                </div>
+                                {expandedCategories.has(category) ? (
+                                    <ChevronUp size={16} className="text-neutral-400" />
+                                ) : (
+                                    <ChevronDown size={16} className="text-neutral-400" />
+                                )}
+                            </button>
+
+                            {expandedCategories.has(category) && (
+                                <div className="border-t divide-y border-white/10 divide-white/5">
+                                    {insights.map((item, idx) => (
+                                        <div
+                                            key={`${item.runId}-${idx}`}
+                                            className={`p-4 border-l-4 bg-[#1E1E1E] ${severityBorderColors[item.insight.severity]}`}
+                                        >
+                                            <div className="flex items-start justify-between gap-4 mb-2">
+                                                <h4 className="font-medium text-sm">{item.insight.title}</h4>
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <span className={`px-2 py-0.5 text-xs font-medium border rounded ${severityColors[item.insight.severity]}`}>
+                                                        {item.insight.severity}
+                                                    </span>
+                                                    <span className="text-xs px-2 py-0.5 border rounded-lg bg-[#252525] border-white/10 text-neutral-300">
+                                                        {item.agentName}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <p className="text-sm font-light mb-2 text-neutral-300">
+                                                {item.insight.description}
+                                            </p>
+                                            {item.insight.recommendation && (
+                                                <div className="border p-3 mt-2 rounded-lg bg-[#252525] border-white/10">
+                                                    <p className="text-xs uppercase tracking-wide mb-1 font-light text-neutral-400">Recommendation</p>
+                                                    <p className="text-sm font-light text-neutral-300">{item.insight.recommendation}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ))}
+            </div>
+        </div>
+    );
 }
 
 export default function SharedBatchTestPage() {
@@ -63,7 +430,9 @@ export default function SharedBatchTestPage() {
     const [result, setResult] = useState<SharedBatchTest | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [activeTab, setActiveTab] = useState<"overview" | "personas" | "issues">("overview");
+    const [viewMode, setViewMode] = useState<"aggregate" | "individual">("aggregate");
+    const [selectedIndex, setSelectedIndex] = useState(0);
+    const [activeTab, setActiveTab] = useState<"overview" | "actions" | "screenshots" | "insights">("overview");
 
     useEffect(() => {
         if (!token) return;
@@ -90,6 +459,56 @@ export default function SharedBatchTestPage() {
         fetchResults();
     }, [token]);
 
+    // Calculate aggregate data from UXAgent runs
+    const uxAgentStats = useMemo(() => {
+        if (!result?.uxagentRuns?.length) return null;
+
+        const completedRuns = result.uxagentRuns.filter(r => r.status === "completed" && r.score != null);
+        if (completedRuns.length === 0) return null;
+
+        const avgScore = Math.round(
+            completedRuns.reduce((sum, r) => sum + (r.score || 0), 0) / completedRuns.length
+        );
+
+        const totalSteps = completedRuns.reduce((sum, r) => sum + (r.stepsTaken || 0), 0);
+
+        return {
+            avgScore,
+            totalAgents: result.uxagentRuns.length,
+            completedAgents: completedRuns.length,
+            totalSteps,
+        };
+    }, [result?.uxagentRuns]);
+
+    const isUXAgentTest = result?.uxagentRuns && result.uxagentRuns.length > 0;
+    const selectedRun = isUXAgentTest ? result.uxagentRuns[selectedIndex] : null;
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case "completed": return "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
+            case "failed": return "text-red-400 bg-red-500/10 border-red-500/20";
+            case "running": return "text-blue-400 bg-blue-500/10 border-blue-500/20";
+            default: return "text-neutral-400 bg-neutral-500/10 border-neutral-500/20";
+        }
+    };
+
+    const getActionColor = (action: string) => {
+        if (action === "click") return "bg-blue-500/10 text-blue-400 border-blue-500/20";
+        if (action === "type") return "bg-purple-500/10 text-purple-400 border-purple-500/20";
+        if (action === "goto_url") return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+        if (action === "terminate") return "bg-red-500/10 text-red-400 border-red-500/20";
+        return "bg-neutral-500/10 text-neutral-400 border-neutral-500/20";
+    };
+
+    const getSeverityColor = (severity: string) => {
+        switch (severity) {
+            case "critical": return "bg-red-500 text-white";
+            case "high": return "bg-orange-400 text-black";
+            case "medium": return "bg-yellow-400 text-black";
+            default: return "bg-neutral-500 text-black";
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-neutral-950">
@@ -112,24 +531,8 @@ export default function SharedBatchTestPage() {
         );
     }
 
-    const { batchTestRun, testRuns, aggregatedReport } = result;
+    const { batchTestRun, testRuns, aggregatedReport, uxagentRuns } = result;
     const isCompleted = batchTestRun.status === "completed";
-
-    const getScoreColor = (score: number) => {
-        if (score >= 80) return "text-green-400";
-        if (score >= 60) return "text-yellow-400";
-        if (score >= 40) return "text-orange-400";
-        return "text-red-400";
-    };
-
-    const getSeverityColor = (severity: string) => {
-        switch (severity) {
-            case "critical": return "bg-red-500 text-white";
-            case "high": return "bg-orange-400 text-black";
-            case "medium": return "bg-yellow-400 text-black";
-            default: return "bg-neutral-500 text-black";
-        }
-    };
 
     return (
         <div className="min-h-screen bg-neutral-950 text-white">
@@ -162,80 +565,463 @@ export default function SharedBatchTestPage() {
                     )}
                 </div>
 
-                {/* Overall Score Card */}
-                {isCompleted && aggregatedReport && (
-                    <div className="mb-8 p-8 border rounded-2xl border-white/10 bg-[#1E1E1E]">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                            {/* Score */}
-                            <div className="text-center md:text-left">
-                                <p className="text-sm text-neutral-400 mb-2">Overall Score</p>
-                                <div className={`text-6xl font-light ${getScoreColor(aggregatedReport.overallScore || 0)}`}>
-                                    {aggregatedReport.overallScore || 0}
-                                </div>
-                                <p className="text-xs text-neutral-500 mt-1">out of 100</p>
+                {/* UXAgent View */}
+                {isCompleted && isUXAgentTest && uxAgentStats && (
+                    <div className="space-y-6">
+                        {/* Score Card */}
+                        <div className="p-8 border rounded-2xl border-white/10 bg-[#1E1E1E]">
+                            <div className="flex items-center gap-2 mb-6">
+                                <Brain size={20} className="text-purple-400" />
+                                <span className="text-sm text-purple-400 font-medium">AI Agent Testing</span>
                             </div>
-
-                            {/* Stats */}
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-lg bg-[#252525] flex items-center justify-center">
-                                    <Users size={20} className="text-neutral-400" />
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                                <div className="text-center md:text-left">
+                                    <p className="text-sm text-neutral-400 mb-2">Average Score</p>
+                                    <div className="text-6xl font-light text-white">
+                                        {uxAgentStats.avgScore}
+                                        <span className="text-xl text-neutral-400">/10</span>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-2xl font-light">{testRuns.length}</p>
-                                    <p className="text-xs text-neutral-500">Personas Tested</p>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-[#252525] flex items-center justify-center">
+                                        <Users size={20} className="text-neutral-400" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-light">{uxAgentStats.totalAgents}</p>
+                                        <p className="text-xs text-neutral-500">AI Agents</p>
+                                    </div>
                                 </div>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-lg bg-[#252525] flex items-center justify-center">
-                                    <AlertCircle size={20} className="text-neutral-400" />
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-[#252525] flex items-center justify-center">
+                                        <CheckCircle2 size={20} className="text-neutral-400" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-light">{uxAgentStats.completedAgents}</p>
+                                        <p className="text-xs text-neutral-500">Completed</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-2xl font-light">{aggregatedReport.commonIssues?.length || 0}</p>
-                                    <p className="text-xs text-neutral-500">Common Issues</p>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-lg bg-[#252525] flex items-center justify-center">
-                                    <CheckCircle2 size={20} className="text-neutral-400" />
-                                </div>
-                                <div>
-                                    <p className="text-2xl font-light">{aggregatedReport.strengthsAcrossPersonas?.length || 0}</p>
-                                    <p className="text-xs text-neutral-500">Strengths Found</p>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-[#252525] flex items-center justify-center">
+                                        <Target size={20} className="text-neutral-400" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-light">{uxAgentStats.totalSteps}</p>
+                                        <p className="text-xs text-neutral-500">Total Steps</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        {aggregatedReport.executiveSummary && (
-                            <div className="mt-6 pt-6 border-t border-white/10">
-                                <p className="text-sm font-light text-neutral-300 leading-relaxed">
-                                    {aggregatedReport.executiveSummary}
-                                </p>
+                        {/* View Mode Toggle */}
+                        {uxagentRuns.length > 1 && (
+                            <div className="flex items-center gap-2 border-b border-white/10 pb-4">
+                                <button
+                                    onClick={() => setViewMode("aggregate")}
+                                    className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all rounded-lg ${viewMode === "aggregate"
+                                        ? "bg-[#252525] text-white border border-white/10"
+                                        : "bg-[#1E1E1E] border border-white/10 text-neutral-400 hover:text-white hover:bg-[#252525]"
+                                        }`}
+                                >
+                                    <LayoutDashboard size={16} />
+                                    Aggregate View
+                                </button>
+                                <button
+                                    onClick={() => setViewMode("individual")}
+                                    className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all rounded-lg ${viewMode === "individual"
+                                        ? "bg-[#252525] text-white border border-white/10"
+                                        : "bg-[#1E1E1E] border border-white/10 text-neutral-400 hover:text-white hover:bg-[#252525]"
+                                        }`}
+                                >
+                                    <User size={16} />
+                                    Individual Agents
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Aggregate View */}
+                        {viewMode === "aggregate" && (
+                            <>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {uxagentRuns.map((run, idx) => {
+                                        const name = getPersonaName(run, idx);
+                                        const duration = run.startedAt && run.completedAt
+                                            ? Math.round((new Date(run.completedAt).getTime() - new Date(run.startedAt).getTime()) / 1000)
+                                            : null;
+
+                                        return (
+                                            <div
+                                                key={run.id}
+                                                onClick={() => {
+                                                    setSelectedIndex(idx);
+                                                    setViewMode("individual");
+                                                }}
+                                                className="p-4 border rounded-xl border-white/10 bg-[#1E1E1E] hover:border-white/20 cursor-pointer transition-all"
+                                            >
+                                                <div className="flex items-start justify-between mb-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-8 h-8 rounded-full bg-[#252525] flex items-center justify-center">
+                                                            <User size={16} className="text-neutral-400" />
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-medium text-sm">{name}</h4>
+                                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                                                {getStatusIcon(run.status)}
+                                                                <span className="text-xs text-neutral-500 capitalize">{run.status}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    {run.score !== null && (
+                                                        <div className="text-right">
+                                                            <span className="text-lg font-light">{run.score}</span>
+                                                            <span className="text-xs text-neutral-400">/10</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-4 text-xs text-neutral-500 pt-2 border-t border-white/5">
+                                                    <span>{run.stepsTaken || 0} steps</span>
+                                                    <span>{run.screenshots?.length || 0} screenshots</span>
+                                                    {duration && <span>{duration}s</span>}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Aggregate Insights */}
+                                <AggregateInsightsShared uxagentRuns={uxagentRuns} />
+                            </>
+                        )}
+
+                        {/* Individual View */}
+                        {(viewMode === "individual" || uxagentRuns.length === 1) && selectedRun && (
+                            <div className="space-y-6">
+                                {/* Agent Selector */}
+                                {uxagentRuns.length > 1 && (
+                                    <div className="border p-4 rounded-xl bg-[#1E1E1E] border-white/10">
+                                        <h3 className="text-sm font-medium uppercase tracking-wide text-neutral-400 mb-3">
+                                            Agent Runs ({uxagentRuns.length})
+                                        </h3>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                                            {uxagentRuns.map((run, idx) => {
+                                                const isSelected = idx === selectedIndex;
+                                                const personaName = getPersonaName(run, idx);
+
+                                                return (
+                                                    <button
+                                                        key={run.id}
+                                                        onClick={() => setSelectedIndex(idx)}
+                                                        className={`group relative p-4 text-left transition-all duration-200 rounded-lg ${isSelected
+                                                            ? "bg-[#252525] text-white border-2 border-white/20 shadow-lg"
+                                                            : "bg-[#1E1E1E] border border-white/10 hover:border-white/20 hover:bg-[#252525]"
+                                                            }`}
+                                                    >
+                                                        <div className="flex items-start justify-between mb-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isSelected ? "bg-white/10" : "bg-white/5"
+                                                                    }`}>
+                                                                    <User size={16} className="text-neutral-400" />
+                                                                </div>
+                                                                <div>
+                                                                    <h4 className={`font-medium text-sm ${isSelected ? "text-white" : "text-neutral-300"}`}>
+                                                                        {personaName}
+                                                                    </h4>
+                                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                                        {getStatusIcon(run.status)}
+                                                                        <span className="text-xs text-neutral-500 capitalize">{run.status}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            {run.score !== null && (
+                                                                <div className="text-right">
+                                                                    <span className="text-lg font-light">{run.score}</span>
+                                                                    <span className="text-xs text-neutral-400">/10</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-4 text-xs text-neutral-500 pt-2 border-t border-white/10">
+                                                            <span>{run.stepsTaken || 0} steps</span>
+                                                            <span>{run.screenshots?.length || 0} screenshots</span>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Run Header */}
+                                <div className="border p-6 rounded-xl border-white/10 bg-[#1E1E1E]">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div>
+                                            <h2 className="text-xl font-light mb-1">{selectedRun.intent}</h2>
+                                            <p className="text-sm font-light text-neutral-400">{selectedRun.startUrl}</p>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <span className={`px-3 py-1 text-xs font-medium border rounded-lg ${getStatusColor(selectedRun.status)}`}>
+                                                {selectedRun.status}
+                                            </span>
+                                            {selectedRun.score !== null && (
+                                                <div className="text-right">
+                                                    <span className="text-3xl font-light">{selectedRun.score}</span>
+                                                    <span className="text-sm text-neutral-400">/10</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-6 text-sm">
+                                        <div>
+                                            <p className="text-xs uppercase tracking-wide mb-1 font-light text-neutral-400">Steps Taken</p>
+                                            <p className="font-light">{selectedRun.stepsTaken || 0} steps</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs uppercase tracking-wide mb-1 font-light text-neutral-400">Screenshots</p>
+                                            <p className="font-light">{selectedRun.screenshots?.length || 0} captured</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs uppercase tracking-wide mb-1 font-light text-neutral-400">Duration</p>
+                                            <p className="font-light">
+                                                {selectedRun.startedAt && selectedRun.completedAt
+                                                    ? `${Math.round((new Date(selectedRun.completedAt).getTime() - new Date(selectedRun.startedAt).getTime()) / 1000)}s`
+                                                    : "N/A"
+                                                }
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Tabs */}
+                                <div className="border-b border-white/10">
+                                    <div className="flex gap-1 overflow-x-auto">
+                                        {[
+                                            { key: "overview", label: "Overview", icon: Eye },
+                                            { key: "actions", label: "Actions", icon: MousePointer },
+                                            { key: "screenshots", label: "Screenshots", icon: ImageIcon },
+                                            { key: "insights", label: "Insights", icon: Lightbulb },
+                                        ].map(({ key, label, icon: Icon }) => (
+                                            <button
+                                                key={key}
+                                                onClick={() => setActiveTab(key as any)}
+                                                className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === key
+                                                    ? "border-b-2 border-white text-white"
+                                                    : "text-neutral-500 hover:text-neutral-300"
+                                                    }`}
+                                            >
+                                                <Icon size={16} />
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Tab Content */}
+                                <div className="min-h-[400px]">
+                                    {/* Overview Tab */}
+                                    {activeTab === "overview" && (
+                                        <div className="space-y-6">
+                                            {selectedRun.errorMessage && (
+                                                <div className="border-l-4 p-4 rounded-lg border-red-500 bg-red-500/10">
+                                                    <div className="flex items-center gap-2 font-medium mb-1 text-red-400">
+                                                        <AlertCircle size={16} />
+                                                        Error
+                                                    </div>
+                                                    <p className="text-sm font-light text-red-300">{selectedRun.errorMessage}</p>
+                                                </div>
+                                            )}
+
+                                            {/* Persona Info */}
+                                            {selectedRun.personaData && (
+                                                <div className="border p-6 rounded-xl border-white/10 bg-[#1E1E1E]">
+                                                    <h3 className="text-lg font-medium mb-4">Agent Persona</h3>
+                                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                        {selectedRun.personaData.name && (
+                                                            <div>
+                                                                <p className="text-xs text-neutral-500 mb-1">Name</p>
+                                                                <p className="text-sm">{selectedRun.personaData.name}</p>
+                                                            </div>
+                                                        )}
+                                                        {selectedRun.personaData.age && (
+                                                            <div>
+                                                                <p className="text-xs text-neutral-500 mb-1">Age</p>
+                                                                <p className="text-sm">{selectedRun.personaData.age}</p>
+                                                            </div>
+                                                        )}
+                                                        {selectedRun.personaData.occupation && (
+                                                            <div>
+                                                                <p className="text-xs text-neutral-500 mb-1">Occupation</p>
+                                                                <p className="text-sm">{selectedRun.personaData.occupation}</p>
+                                                            </div>
+                                                        )}
+                                                        {selectedRun.personaData.techSavviness && (
+                                                            <div>
+                                                                <p className="text-xs text-neutral-500 mb-1">Tech Savviness</p>
+                                                                <p className="text-sm capitalize">{selectedRun.personaData.techSavviness}</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {selectedRun.personaData.primaryGoal && (
+                                                        <div className="mt-4 pt-4 border-t border-white/5">
+                                                            <p className="text-xs text-neutral-500 mb-1">Primary Goal</p>
+                                                            <p className="text-sm text-neutral-300">{selectedRun.personaData.primaryGoal}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Journey Summary */}
+                                            {selectedRun.observationTrace && selectedRun.observationTrace.length > 0 && (
+                                                <div className="border p-6 rounded-xl border-white/10 bg-[#1E1E1E]">
+                                                    <h3 className="text-lg font-medium mb-4">Agent Journey</h3>
+                                                    <div className="space-y-4">
+                                                        {selectedRun.observationTrace.slice(0, 5).map((obs: any, idx: number) => (
+                                                            <div key={idx} className="flex gap-4">
+                                                                <div className="flex flex-col items-center">
+                                                                    <div className="w-8 h-8 rounded-full border bg-[#252525] border-white/10 flex items-center justify-center text-sm font-medium text-white">
+                                                                        {idx + 1}
+                                                                    </div>
+                                                                    {idx < selectedRun.observationTrace.length - 1 && (
+                                                                        <div className="w-0.5 h-full my-1 bg-white/10" />
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex-1 pb-4">
+                                                                    <p className="text-sm font-medium mb-1">{obs.url || "Page Visit"}</p>
+                                                                    <p className="text-xs font-light text-neutral-400">
+                                                                        HTML Length: {obs.html_length?.toLocaleString() || 0} chars
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Actions Tab */}
+                                    {activeTab === "actions" && (
+                                        <div className="border rounded-xl overflow-hidden border-white/10 bg-[#1E1E1E]">
+                                            <div className="p-4 border-b bg-[#252525] border-white/10">
+                                                <h3 className="font-medium">Action Timeline</h3>
+                                                <p className="text-sm font-light text-neutral-400">{selectedRun.actionTrace?.length || 0} actions recorded</p>
+                                            </div>
+                                            <div className="divide-y divide-white/5 max-h-[500px] overflow-y-auto">
+                                                {(selectedRun.actionTrace || []).map((action: any, idx: number) => (
+                                                    <div key={idx} className="p-4 hover:bg-white/5 transition-colors">
+                                                        <div className="flex items-start gap-4">
+                                                            <div className="w-8 h-8 rounded-full border bg-[#252525] border-white/10 flex items-center justify-center text-sm font-medium text-white shrink-0">
+                                                                {idx + 1}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <span className={`px-2 py-0.5 text-xs font-medium border rounded ${getActionColor(action.action)}`}>
+                                                                        {action.action}
+                                                                    </span>
+                                                                    {action.target && (
+                                                                        <span className="text-xs truncate font-light text-neutral-400">
+                                                                            Target: {action.target}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <p className="text-sm font-light text-neutral-300">
+                                                                    {action.description || JSON.stringify(action)}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {(!selectedRun.actionTrace || selectedRun.actionTrace.length === 0) && (
+                                                    <div className="p-8 text-center font-light text-neutral-400">
+                                                        No actions recorded
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Screenshots Tab */}
+                                    {activeTab === "screenshots" && (
+                                        <div className="space-y-4">
+                                            {selectedRun.screenshots && selectedRun.screenshots.length > 0 ? (
+                                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                                    {selectedRun.screenshots.map((s, i) => (
+                                                        <div key={s.id} className="group relative">
+                                                            <div className="aspect-video rounded-lg overflow-hidden bg-[#252525] border border-white/10">
+                                                                <img
+                                                                    src={s.signedUrl || s.s3Url}
+                                                                    alt={`Step ${s.stepNumber}`}
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                            </div>
+                                                            <p className="text-xs text-neutral-500 mt-2">Step {s.stepNumber}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="p-8 text-center font-light text-neutral-400 border rounded-xl border-white/10 bg-[#1E1E1E]">
+                                                    No screenshots captured
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Insights Tab */}
+                                    {activeTab === "insights" && (
+                                        <InsightsTabContent insights={selectedRun.insights || []} />
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>
                 )}
 
-                {/* Tab Navigation */}
-                <div className="mb-6 flex gap-2 border-b border-white/10 pb-4">
-                    {["overview", "personas", "issues"].map((tab) => (
-                        <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab as any)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab
-                                ? "bg-white text-neutral-900"
-                                : "bg-[#252525] text-neutral-400 hover:text-white"
-                                }`}
-                        >
-                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Overview Tab */}
-                {activeTab === "overview" && aggregatedReport && (
+                {/* Traditional Aggregated Report View */}
+                {isCompleted && aggregatedReport && !isUXAgentTest && (
                     <div className="space-y-6">
+                        <div className="p-8 border rounded-xl border-white/10 bg-[#1E1E1E]">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                                <div className="text-center md:text-left">
+                                    <p className="text-sm text-neutral-400 mb-2">Overall Score</p>
+                                    <div className="text-6xl font-light">
+                                        {aggregatedReport.overallScore || 0}
+                                    </div>
+                                    <p className="text-xs text-neutral-500 mt-1">out of 100</p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-[#252525] flex items-center justify-center">
+                                        <Users size={20} className="text-neutral-400" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-light">{testRuns.length}</p>
+                                        <p className="text-xs text-neutral-500">Personas Tested</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-[#252525] flex items-center justify-center">
+                                        <AlertCircle size={20} className="text-neutral-400" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-light">{aggregatedReport.commonIssues?.length || 0}</p>
+                                        <p className="text-xs text-neutral-500">Common Issues</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-[#252525] flex items-center justify-center">
+                                        <CheckCircle2 size={20} className="text-neutral-400" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-light">{aggregatedReport.strengthsAcrossPersonas?.length || 0}</p>
+                                        <p className="text-xs text-neutral-500">Strengths Found</p>
+                                    </div>
+                                </div>
+                            </div>
+                            {aggregatedReport.executiveSummary && (
+                                <div className="mt-6 pt-6 border-t border-white/10">
+                                    <p className="text-sm font-light text-neutral-300 leading-relaxed">
+                                        {aggregatedReport.executiveSummary}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
                         {/* Strengths */}
                         {aggregatedReport.strengthsAcrossPersonas && aggregatedReport.strengthsAcrossPersonas.length > 0 && (
                             <div className="p-6 border rounded-xl border-green-500/20 bg-green-500/5">
@@ -251,6 +1037,36 @@ export default function SharedBatchTestPage() {
                                         </li>
                                     ))}
                                 </ul>
+                            </div>
+                        )}
+
+                        {/* Common Issues */}
+                        {aggregatedReport.commonIssues && aggregatedReport.commonIssues.length > 0 && (
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-medium flex items-center gap-2">
+                                    <AlertCircle size={20} />
+                                    Common Issues
+                                </h3>
+                                {aggregatedReport.commonIssues.map((issue, i) => (
+                                    <div key={i} className="p-6 border rounded-xl border-white/10 bg-[#1E1E1E]">
+                                        <div className="flex items-start gap-3">
+                                            <span className={`text-xs font-medium px-2 py-1 rounded ${getSeverityColor(issue.severity)}`}>
+                                                {issue.severity}
+                                            </span>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-medium text-neutral-200 mb-2">{issue.issue}</p>
+                                                <p className="text-xs text-neutral-400 mb-3">→ {issue.recommendation}</p>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {issue.affectedPersonas.map((persona, j) => (
+                                                        <span key={j} className="text-xs px-2 py-0.5 rounded bg-[#252525] text-neutral-400">
+                                                            {persona}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         )}
 
@@ -277,106 +1093,6 @@ export default function SharedBatchTestPage() {
                                         </div>
                                     ))}
                                 </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* Personas Tab */}
-                {activeTab === "personas" && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {testRuns.map((run) => (
-                            <div
-                                key={run.id}
-                                className="p-6 border rounded-xl border-white/10 bg-[#1E1E1E]"
-                            >
-                                <div className="flex items-start justify-between mb-4">
-                                    <div>
-                                        <h3 className="text-lg font-medium">
-                                            {run.personaName || "Anonymous User"}
-                                        </h3>
-                                        {run.personaData?.occupation && (
-                                            <p className="text-sm text-neutral-500">
-                                                {run.personaData.age} y/o {run.personaData.occupation}
-                                            </p>
-                                        )}
-                                    </div>
-                                    {run.report?.score != null && (
-                                        <div className={`text-2xl font-light ${getScoreColor(run.report.score)}`}>
-                                            {run.report.score}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {run.report?.summary && (
-                                    <p className="text-sm text-neutral-400 mb-4">
-                                        {run.report.summary}
-                                    </p>
-                                )}
-
-                                {run.report?.positiveAspects && run.report.positiveAspects.length > 0 && (
-                                    <div className="mb-3">
-                                        <p className="text-xs font-medium text-green-400 mb-1">Positives:</p>
-                                        <ul className="text-xs text-neutral-400 space-y-1">
-                                            {run.report.positiveAspects.slice(0, 3).map((p, i) => (
-                                                <li key={i}>• {p}</li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-
-                                {run.report?.usabilityIssues && run.report.usabilityIssues.length > 0 && (
-                                    <div>
-                                        <p className="text-xs font-medium text-red-400 mb-1">Issues:</p>
-                                        <ul className="text-xs text-neutral-400 space-y-1">
-                                            {run.report.usabilityIssues.slice(0, 3).map((issue, i) => (
-                                                <li key={i}>• {issue.description}</li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {/* Issues Tab */}
-                {activeTab === "issues" && aggregatedReport?.commonIssues && (
-                    <div className="space-y-4">
-                        {aggregatedReport.commonIssues.map((issue, i) => (
-                            <div
-                                key={i}
-                                className="p-6 border rounded-xl border-white/10 bg-[#1E1E1E]"
-                            >
-                                <div className="flex items-start gap-3">
-                                    <span className={`text-xs font-medium px-2 py-1 rounded ${getSeverityColor(issue.severity)}`}>
-                                        {issue.severity}
-                                    </span>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-medium text-neutral-200 mb-2">
-                                            {issue.issue}
-                                        </p>
-                                        <p className="text-xs text-neutral-400 mb-3">
-                                            → {issue.recommendation}
-                                        </p>
-                                        <div className="flex flex-wrap gap-1">
-                                            {issue.affectedPersonas.map((persona, j) => (
-                                                <span
-                                                    key={j}
-                                                    className="text-xs px-2 py-0.5 rounded bg-[#252525] text-neutral-400"
-                                                >
-                                                    {persona}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-
-                        {(!aggregatedReport.commonIssues || aggregatedReport.commonIssues.length === 0) && (
-                            <div className="text-center py-12 text-neutral-500">
-                                No common issues found across personas.
                             </div>
                         )}
                     </div>

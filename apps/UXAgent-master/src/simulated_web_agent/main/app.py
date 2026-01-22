@@ -5,6 +5,12 @@ import json
 import aiohttp
 import asyncio
 from functools import wraps
+
+# CRITICAL: Set litellm environment variables BEFORE any litellm imports
+# This prevents the LoggingWorker from being created with an asyncio Queue
+os.environ["LITELLM_LOG"] = "ERROR"
+os.environ["LITELLM_DISABLE_LOGGING"] = "true"
+
 from flask import Flask, jsonify, request
 from werkzeug.exceptions import BadRequest
 from flask_cors import CORS
@@ -19,15 +25,23 @@ logging.basicConfig(
     level=logging.INFO,
     format="[%(asctime)s] %(levelname)s in %(module)s: %(message)s"
 )
-logging.getLogger("LiteLLM").setLevel(logging.WARNING)
-logging.getLogger("LiteLLM Router").setLevel(logging.WARNING)
+logging.getLogger("LiteLLM").setLevel(logging.ERROR)
+logging.getLogger("LiteLLM Router").setLevel(logging.ERROR)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
-# Disable litellm async logging to prevent event loop errors
+# Aggressively disable litellm async logging to prevent event loop errors
 try:
     import litellm
     litellm.suppress_debug_info = True
+    litellm.set_verbose = False
     litellm._async_success_callback = []
     litellm._async_failure_callback = []
+    litellm.success_callback = []
+    litellm.failure_callback = []
+    if hasattr(litellm, 'callbacks'):
+        litellm.callbacks = []
+    if hasattr(litellm, '_logging_worker') and litellm._logging_worker is not None:
+        litellm._logging_worker = None
 except ImportError:
     pass
 
