@@ -9,13 +9,13 @@ config({ path: resolve(__dirname, "../../.env") });
 
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
-import * as schema from "@ux-testing/db/schema";
+import * as schemaModule from "@ux-testing/db/schema";
 
 const databaseUrl = process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/ux_testing";
 
 const client = postgres(databaseUrl);
-export const db = drizzle(client, { schema });
+export const db = drizzle(client, { schema: schemaModule });
 
-// Re-export specific tables directly to avoid undefined access via namespace
+// Re-export schema as schema object and all individual exports
 export * from "@ux-testing/db/schema";
-export { schema };
+export const schema = schemaModule;

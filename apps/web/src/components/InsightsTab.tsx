@@ -21,6 +21,7 @@ import {
     RefreshCw
 } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
+import { FlickeringGrid } from "@/components/ui/flickering-grid";
 
 interface InsightsTabProps {
     run: UXAgentRun;
@@ -102,17 +103,35 @@ export function InsightsTab({ run }: InsightsTabProps) {
 
     if (loading) {
         return (
-            <div className={`border p-12 text-center rounded-xl ${
-                isLight 
-                    ? "border-neutral-200 bg-white" 
-                    : "border-white/10 bg-[#1E1E1E]"
-            }`}>
+            <div className="relative w-full h-full min-h-[400px] flex items-center justify-center overflow-hidden">
+                {/* Flickering grid background */}
+                <div 
+                    className="absolute inset-0 pointer-events-none"
+                    style={{ 
+                        zIndex: 0,
+                        maskImage: "linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%), linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%)",
+                        WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%), linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%)",
+                        maskComposite: "intersect",
+                        WebkitMaskComposite: "source-in"
+                    }}
+                >
+                    <FlickeringGrid
+                        squareSize={4}
+                        gridGap={6}
+                        flickerChance={0.1}
+                        color={isLight ? "rgb(38, 38, 38)" : "rgb(229, 229, 229)"}
+                        maxOpacity={isLight ? 0.08 : 0.1}
+                        className="h-full w-full"
+                    />
+                </div>
+                <div className="relative z-10 text-center">
                 <Loader2 size={32} className={`mx-auto mb-3 animate-spin ${
                     isLight ? "text-neutral-500" : "text-neutral-400"
                 }`} />
                 <p className={`font-light ${
                     isLight ? "text-neutral-600" : "text-neutral-400"
                 }`}>Loading insights...</p>
+                </div>
             </div>
         );
     }
@@ -120,11 +139,28 @@ export function InsightsTab({ run }: InsightsTabProps) {
     // No insights yet - show generate button
     if (insights.length === 0) {
         return (
-            <div className={`border p-8 text-center rounded-xl ${
-                isLight 
-                    ? "border-neutral-200 bg-white" 
-                    : "border-white/10 bg-[#1E1E1E]"
-            }`}>
+            <div className="relative w-full h-full min-h-[400px] flex items-center justify-center overflow-hidden">
+                {/* Flickering grid background */}
+                <div 
+                    className="absolute inset-0 pointer-events-none"
+                    style={{ 
+                        zIndex: 0,
+                        maskImage: "linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%), linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%)",
+                        WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%), linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%)",
+                        maskComposite: "intersect",
+                        WebkitMaskComposite: "source-in"
+                    }}
+                >
+                    <FlickeringGrid
+                        squareSize={4}
+                        gridGap={6}
+                        flickerChance={0.1}
+                        color={isLight ? "rgb(38, 38, 38)" : "rgb(229, 229, 229)"}
+                        maxOpacity={isLight ? 0.08 : 0.1}
+                        className="h-full w-full"
+                    />
+                </div>
+                <div className="relative z-10 p-8 max-w-2xl mx-auto w-full text-center">
                 <div className={`w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center border ${
                     isLight
                         ? "bg-neutral-50 border-neutral-200"
@@ -170,6 +206,7 @@ export function InsightsTab({ run }: InsightsTabProps) {
                         </>
                     )}
                 </button>
+                </div>
             </div>
         );
     }
@@ -189,7 +226,29 @@ export function InsightsTab({ run }: InsightsTabProps) {
     }, {} as Record<string, number>);
 
     return (
-        <div className="space-y-6">
+        <div className="relative w-full h-full min-h-[400px] overflow-hidden">
+            {/* Flickering grid background */}
+            <div 
+                className="absolute inset-0 pointer-events-none"
+                style={{ 
+                    zIndex: 0,
+                    maskImage: "linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%), linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%)",
+                    WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%), linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%)",
+                    maskComposite: "intersect",
+                    WebkitMaskComposite: "source-in"
+                }}
+            >
+                <FlickeringGrid
+                    squareSize={4}
+                    gridGap={6}
+                    flickerChance={0.1}
+                    color={isLight ? "rgb(38, 38, 38)" : "rgb(229, 229, 229)"}
+                    maxOpacity={isLight ? 0.08 : 0.1}
+                    className="h-full w-full"
+                />
+            </div>
+            
+            <div className="relative z-10 p-8 space-y-6">
             {/* Summary Header */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <div className={`p-4 border rounded-lg ${
@@ -297,6 +356,7 @@ export function InsightsTab({ run }: InsightsTabProps) {
                     </div>
                 </div>
             ))}
+            </div>
         </div>
     );
 }

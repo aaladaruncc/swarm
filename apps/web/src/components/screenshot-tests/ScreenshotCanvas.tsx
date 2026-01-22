@@ -32,6 +32,8 @@ export function ScreenshotCanvas({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const [hasCentered, setHasCentered] = useState(false);
+  const [imagesLoaded, setImagesLoaded] = useState(0);
 
   // Calculate container size
   useEffect(() => {
@@ -42,24 +44,79 @@ export function ScreenshotCanvas({
       }
     };
     
-    updateSize();
+    // Use requestAnimationFrame to ensure DOM is ready
+    requestAnimationFrame(() => {
+      updateSize();
+    });
+    
     window.addEventListener("resize", updateSize);
     return () => window.removeEventListener("resize", updateSize);
   }, []);
 
-  // Center the canvas on load
+  // Center the canvas on load - start with step 1 centered
   useEffect(() => {
-    if (screenshots.length > 0 && containerSize.width > 0) {
-      // Calculate total width of all screenshots (assuming each is ~400px wide + 40px gap)
-      const screenshotWidth = 400;
-      const gap = 40;
-      const totalWidth = screenshots.length * (screenshotWidth + gap) - gap;
+    if (screenshots.length > 0 && containerSize.width > 0 && containerSize.height > 0 && !hasCentered && !isAnalyzing) {
+      const centerCanvas = () => {
+        // Start centered on step 1 (index 0)
+        const screenshotWidth = 400;
+        const gap = 40;
+        const padding = 40;
+        
+        // Position of step 1 (first screenshot)
+        const step1X = padding;
+        
+        // Center step 1 in the viewport
+        const viewportCenterX = containerSize.width / 2;
+        const panX = viewportCenterX - step1X - screenshotWidth / 2;
+        
+        // Center vertically
+        let screenshotHeight = 600; // default fallback
+        const firstScreenshot = canvasRef.current?.querySelector('img');
+        if (firstScreenshot && firstScreenshot.complete && firstScreenshot.naturalHeight > 0) {
+          const aspectRatio = firstScreenshot.naturalHeight / firstScreenshot.naturalWidth;
+          screenshotHeight = 400 * aspectRatio;
+        }
+        
+        const contentCenterY = padding + screenshotHeight / 2;
+        const viewportCenterY = containerSize.height / 2;
+        const panY = viewportCenterY - contentCenterY;
+        
+        setPan({ x: panX, y: panY });
+        setHasCentered(true);
+      };
+
+      // Try to center immediately, but also wait for images to load
+      const timeoutId = setTimeout(centerCanvas, 100);
       
-      // Center horizontally
-      const centerX = (totalWidth - containerSize.width) / 2;
-      setPan({ x: -centerX, y: 0 });
+      // Also center when images load
+      const images = canvasRef.current?.querySelectorAll('img');
+      let loadedCount = 0;
+      const checkAllLoaded = () => {
+        loadedCount++;
+        if (images && loadedCount === images.length && !hasCentered) {
+          setTimeout(centerCanvas, 50);
+        }
+      };
+      
+      if (images && images.length > 0) {
+        images.forEach(img => {
+          if (img.complete) {
+            checkAllLoaded();
+          } else {
+            img.addEventListener('load', checkAllLoaded, { once: true });
+          }
+        });
+      }
+      
+      return () => {
+        clearTimeout(timeoutId);
+        const images = canvasRef.current?.querySelectorAll('img');
+        images?.forEach(img => {
+          img.removeEventListener('load', checkAllLoaded);
+        });
+      };
     }
-  }, [screenshots.length, containerSize.width]);
+  }, [screenshots.length, containerSize.width, containerSize.height, hasCentered, isAnalyzing]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 0) { // Left mouse button
@@ -81,11 +138,22 @@ export function ScreenshotCanvas({
     setIsDragging(false);
   }, []);
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    const delta = e.deltaY * -0.001;
-    const newZoom = Math.min(Math.max(0.5, zoom + delta), 3);
-    setZoom(newZoom);
+  // Use useEffect to add wheel listener with passive: false to allow preventDefault
+  useEffect(() => {
+    const element = canvasRef.current;
+    if (!element) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY * -0.001;
+      const newZoom = Math.min(Math.max(0.5, zoom + delta), 3);
+      setZoom(newZoom);
+    };
+
+    element.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      element.removeEventListener('wheel', handleWheel);
+    };
   }, [zoom]);
 
   const handleZoomIn = () => {
@@ -98,28 +166,79 @@ export function ScreenshotCanvas({
 
   const handleReset = () => {
     setZoom(1);
-    if (screenshots.length > 0 && containerSize.width > 0) {
+    setHasCentered(false); // Allow re-centering
+    if (screenshots.length > 0 && containerSize.width > 0 && containerSize.height > 0) {
       const screenshotWidth = 400;
       const gap = 40;
-      const totalWidth = screenshots.length * (screenshotWidth + gap) - gap;
-      const centerX = (totalWidth - containerSize.width) / 2;
-      setPan({ x: -centerX, y: 0 });
+      const padding = 40;
+      const contentWidth = screenshots.length * (screenshotWidth + gap) - gap;
+      const contentCenterX = padding + contentWidth / 2;
+      const viewportCenterX = containerSize.width / 2;
+      const panX = viewportCenterX - contentCenterX;
+      
+      // Get actual screenshot height from the first loaded image, or use a reasonable default
+      let screenshotHeight = 600; // default fallback
+      const firstScreenshot = canvasRef.current?.querySelector('img');
+      if (firstScreenshot && firstScreenshot.complete && firstScreenshot.naturalHeight > 0) {
+        // Calculate height based on aspect ratio (width is 400px)
+        const aspectRatio = firstScreenshot.naturalHeight / firstScreenshot.naturalWidth;
+        screenshotHeight = 400 * aspectRatio;
+      }
+      
+      // Screenshots start at padding (40px from top), so their center is at padding + height/2
+      const contentCenterY = padding + screenshotHeight / 2;
+      const viewportCenterY = containerSize.height / 2;
+      const panY = viewportCenterY - contentCenterY;
+      setPan({ x: panX, y: panY });
+      setHasCentered(true);
     }
   };
 
   const sortedScreenshots = [...screenshots].sort((a, b) => a.orderIndex - b.orderIndex);
 
+  // Auto-pan to the currently analyzing screenshot
+  useEffect(() => {
+    if (isAnalyzing && analyzingStep > 0 && analyzingStep <= screenshots.length && containerSize.width > 0 && containerSize.height > 0) {
+      const screenshotWidth = 400;
+      const gap = 40;
+      const padding = 40;
+      
+      // Calculate the position of the current screenshot
+      const currentScreenshotIndex = analyzingStep - 1; // Convert to 0-based
+      const currentScreenshotX = padding + currentScreenshotIndex * (screenshotWidth + gap);
+      
+      // Center the current screenshot in the viewport
+      const viewportCenterX = containerSize.width / 2;
+      const panX = viewportCenterX - currentScreenshotX - screenshotWidth / 2;
+      
+      // Keep vertical centering
+      let screenshotHeight = 600;
+      const firstScreenshot = canvasRef.current?.querySelector('img');
+      if (firstScreenshot && firstScreenshot.complete && firstScreenshot.naturalHeight > 0) {
+        const aspectRatio = firstScreenshot.naturalHeight / firstScreenshot.naturalWidth;
+        screenshotHeight = 400 * aspectRatio;
+      }
+      const contentCenterY = padding + screenshotHeight / 2;
+      const viewportCenterY = containerSize.height / 2;
+      const panY = viewportCenterY - contentCenterY;
+      
+      // Smoothly pan to the current screenshot
+      setPan({ x: panX, y: panY });
+    }
+  }, [isAnalyzing, analyzingStep, screenshots.length, containerSize.width, containerSize.height]);
+
   return (
-    <div className="relative h-full w-full overflow-hidden">
+    <div className="relative h-full w-full overflow-hidden border-2 border-dashed rounded-xl p-2" style={{
+      borderColor: isLight ? '#d4d4d4' : 'rgba(255, 255, 255, 0.2)'
+    }}>
       {/* Canvas Container */}
       <div
         ref={canvasRef}
-        className="relative h-full w-full overflow-hidden cursor-grab active:cursor-grabbing"
+        className="relative h-full w-full overflow-hidden cursor-grab active:cursor-grabbing rounded-lg"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
       >
         {/* Canvas Background */}
         <div
@@ -172,11 +291,11 @@ export function ScreenshotCanvas({
                   }`}
                 >
                   {/* Screenshot Image */}
-                  <div className={`relative ${isLight ? 'bg-neutral-100' : 'bg-[#252525]'}`}>
+                  <div className={`relative w-full h-[600px] flex items-center justify-center ${isLight ? 'bg-neutral-100' : 'bg-[#252525]'}`}>
                     <img
                       src={screenshot.signedUrl || screenshot.s3Url}
                       alt={`Screenshot ${screenshot.orderIndex + 1}`}
-                      className="w-full h-auto block"
+                      className="w-full h-full object-contain block"
                       draggable={false}
                     />
                     
@@ -281,18 +400,18 @@ export function ScreenshotCanvas({
 
       {/* Analysis Progress Indicator */}
       {isAnalyzing && (
-        <div className={`absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg shadow-lg ${
+        <div className={`absolute top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg z-10 ${
           isLight
             ? 'bg-blue-50 border border-blue-200 text-blue-900'
             : 'bg-blue-500/20 border border-blue-500/30 text-blue-300'
         }`}>
           <div className="flex items-center gap-3">
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Loader2 className="w-5 h-5 animate-spin" />
             <div>
               <p className="text-sm font-medium">Swarm is analyzing your screenshots...</p>
               <p className="text-xs font-light">
                 {analyzingStep > 0 && totalSteps > 0
-                  ? `Step ${analyzingStep} of ${totalSteps}`
+                  ? `Analyzing Step ${analyzingStep} of ${totalSteps}`
                   : 'This usually takes 30-60 seconds'}
               </p>
             </div>

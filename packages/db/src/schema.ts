@@ -407,6 +407,10 @@ export const screenshotAnalysisResults = pgTable("screenshot_analysis_results", 
   accessibilityNotes: jsonb("accessibility_notes").$type<string[]>(),
   thoughts: text("thoughts"),
   comparisonWithPrevious: text("comparison_with_previous"),
+  // New concise format fields
+  userObservation: text("user_observation"), // Action-oriented quoted feedback
+  missionContext: text("mission_context"), // Why this action makes sense, what it tests
+  expectedOutcome: text("expected_outcome"), // What happens next
 
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

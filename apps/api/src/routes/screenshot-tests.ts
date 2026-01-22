@@ -290,16 +290,51 @@ screenshotTestsRoutes.post("/:id/rerun", async (c) => {
             })
         );
 
-        const personasForRerun = Array.isArray(existingTest.generatedPersonas) && existingTest.generatedPersonas.length > 0
-            ? existingTest.generatedPersonas
-            : existingTest.personaData
-                ? [existingTest.personaData]
-                : [];
-        const personaIndicesForRerun = Array.isArray(existingTest.selectedPersonaIndices) && existingTest.selectedPersonaIndices.length > 0
-            ? existingTest.selectedPersonaIndices
-            : personasForRerun.length > 0
-                ? [0]
-                : [];
+        // Reconstruct personas for rerun - handle both single persona and multiple personas cases
+        let personasForRerun: any[] = [];
+        let personaIndicesForRerun: number[] = [];
+
+        // Check if we have multiple personas (from generatedPersonas)
+        const hasMultiplePersonas = Array.isArray(existingTest.generatedPersonas) && existingTest.generatedPersonas.length > 0
+            && Array.isArray(existingTest.selectedPersonaIndices) && existingTest.selectedPersonaIndices.length > 0;
+
+        console.log(`[Rerun ${testId}] Persona data check:`, {
+            hasMultiplePersonas,
+            hasGeneratedPersonas: Array.isArray(existingTest.generatedPersonas) && existingTest.generatedPersonas.length > 0,
+            hasSelectedIndices: Array.isArray(existingTest.selectedPersonaIndices) && existingTest.selectedPersonaIndices.length > 0,
+            hasPersonaData: !!existingTest.personaData,
+        });
+
+        if (hasMultiplePersonas) {
+            // Use the selected personas from the generated list
+            personasForRerun = existingTest.selectedPersonaIndices
+                .map((idx: number) => existingTest.generatedPersonas![idx])
+                .filter((persona: any) => persona != null);
+            personaIndicesForRerun = existingTest.selectedPersonaIndices;
+            console.log(`[Rerun ${testId}] Using ${personasForRerun.length} selected personas from generated list`);
+        } else if (existingTest.personaData) {
+            // Single persona case
+            personasForRerun = [existingTest.personaData];
+            personaIndicesForRerun = [0];
+            console.log(`[Rerun ${testId}] Using single persona from personaData`);
+        } else if (Array.isArray(existingTest.generatedPersonas) && existingTest.generatedPersonas.length > 0) {
+            // Fallback: if generatedPersonas exists but no selectedPersonaIndices, use all personas
+            personasForRerun = existingTest.generatedPersonas;
+            personaIndicesForRerun = existingTest.generatedPersonas.map((_, idx) => idx);
+            console.log(`[Rerun ${testId}] Using all ${personasForRerun.length} generated personas (no selected indices found)`);
+        }
+
+        // Validate we have personas
+        if (personasForRerun.length === 0) {
+            console.error(`[Rerun ${testId}] No personas found. Test data:`, {
+                personaData: existingTest.personaData,
+                generatedPersonas: existingTest.generatedPersonas,
+                selectedPersonaIndices: existingTest.selectedPersonaIndices,
+            });
+            return c.json({ 
+                error: "No personas found for rerun. The original test may not have persona data saved." 
+            }, 400);
+        }
 
         runScreenshotAnalysisInBackground(
             newTestRun.id,
@@ -598,6 +633,43 @@ screenshotTestsRoutes.post("/:id/insights/generate", async (c) => {
             return c.json({ insights: [], message: "No analysis data available" });
         }
 
+        // Helper function to clean markdown from text
+        const cleanMarkdown = (text: string): string => {
+            if (!text) return text;
+            let cleaned = text;
+            // Remove markdown blockquotes (lines starting with >)
+            cleaned = cleaned.replace(/^>\s+/gm, '');
+            // Remove HTML blockquote tags
+            cleaned = cleaned.replace(/<blockquote[^>]*>/gi, '');
+            cleaned = cleaned.replace(/<\/blockquote>/gi, '');
+            // Remove markdown bold (**text** or __text__)
+            cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, '$1');
+            cleaned = cleaned.replace(/__([^_]+)__/g, '$1');
+            // Remove markdown italic (*text* or _text_)
+            cleaned = cleaned.replace(/\*([^*]+)\*/g, '$1');
+            cleaned = cleaned.replace(/_([^_]+)_/g, '$1');
+            // Remove markdown code (`text`)
+            cleaned = cleaned.replace(/`([^`]+)`/g, '$1');
+            // Remove markdown links [text](url)
+            cleaned = cleaned.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1');
+            // Remove markdown strikethrough (~~text~~)
+            cleaned = cleaned.replace(/~~([^~]+)~~/g, '$1');
+            // Remove markdown headers (# ## ###)
+            cleaned = cleaned.replace(/^#{1,6}\s+/gm, '');
+            // Remove markdown horizontal rules (--- or ***)
+            cleaned = cleaned.replace(/^[-*]{3,}$/gm, '');
+            // Remove leading/trailing quotes if the entire text is wrapped
+            cleaned = cleaned.trim();
+            if ((cleaned.startsWith('"') && cleaned.endsWith('"')) || 
+                (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
+                cleaned = cleaned.slice(1, -1);
+            }
+            // Remove any remaining quote markers at the start/end
+            cleaned = cleaned.replace(/^["']+/, '');
+            cleaned = cleaned.replace(/["']+$/, '');
+            return cleaned.trim();
+        };
+
         // Extract and store insights
         const insightsToInsert: Array<{
             screenshotTestRunId: string;
@@ -617,13 +689,14 @@ screenshotTestsRoutes.post("/:id/insights/generate", async (c) => {
             // Extract issues
             if (analysis.issues && Array.isArray(analysis.issues)) {
                 for (const issue of analysis.issues) {
+                    const cleanDescription = cleanMarkdown(issue.description);
                     insightsToInsert.push({
                         screenshotTestRunId: testId,
                         category: "issues",
                         severity: issue.severity,
-                        title: issue.description.substring(0, 100),
-                        description: issue.description,
-                        recommendation: issue.recommendation,
+                        title: cleanDescription.substring(0, 100),
+                        description: cleanDescription,
+                        recommendation: issue.recommendation ? cleanMarkdown(issue.recommendation) : null,
                         personaName,
                         personaIndex: analysis.personaIndex,
                         screenshotOrder: analysis.screenshotOrder,
@@ -634,12 +707,13 @@ screenshotTestsRoutes.post("/:id/insights/generate", async (c) => {
             // Extract positive aspects
             if (analysis.positiveAspects && Array.isArray(analysis.positiveAspects)) {
                 for (const positive of analysis.positiveAspects) {
+                    const cleanPositive = cleanMarkdown(positive);
                     insightsToInsert.push({
                         screenshotTestRunId: testId,
                         category: "positives",
                         severity: null,
-                        title: positive.substring(0, 100),
-                        description: positive,
+                        title: cleanPositive.substring(0, 100),
+                        description: cleanPositive,
                         recommendation: null,
                         personaName,
                         personaIndex: analysis.personaIndex,
@@ -651,12 +725,13 @@ screenshotTestsRoutes.post("/:id/insights/generate", async (c) => {
             // Extract accessibility notes
             if (analysis.accessibilityNotes && Array.isArray(analysis.accessibilityNotes)) {
                 for (const note of analysis.accessibilityNotes) {
+                    const cleanNote = cleanMarkdown(note);
                     insightsToInsert.push({
                         screenshotTestRunId: testId,
                         category: "accessibility",
                         severity: null,
-                        title: note.substring(0, 100),
-                        description: note,
+                        title: cleanNote.substring(0, 100),
+                        description: cleanNote,
                         recommendation: null,
                         personaName,
                         personaIndex: analysis.personaIndex,
@@ -668,12 +743,13 @@ screenshotTestsRoutes.post("/:id/insights/generate", async (c) => {
             // Extract observations
             if (analysis.observations && Array.isArray(analysis.observations)) {
                 for (const observation of analysis.observations) {
+                    const cleanObservation = cleanMarkdown(observation);
                     insightsToInsert.push({
                         screenshotTestRunId: testId,
                         category: "observations",
                         severity: null,
-                        title: observation.substring(0, 100),
-                        description: observation,
+                        title: cleanObservation.substring(0, 100),
+                        description: cleanObservation,
                         recommendation: null,
                         personaName,
                         personaIndex: analysis.personaIndex,
@@ -835,6 +911,9 @@ async function runScreenshotAnalysisInBackground(
                         accessibilityNotes: analysis.accessibilityNotes,
                         thoughts: analysis.thoughts,
                         comparisonWithPrevious: analysis.comparisonWithPrevious,
+                        userObservation: analysis.userObservation,
+                        missionContext: analysis.missionContext,
+                        expectedOutcome: analysis.expectedOutcome,
                     }))
                 );
 

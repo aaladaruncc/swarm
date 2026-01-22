@@ -16,6 +16,7 @@ import {
 import { useTheme } from "@/contexts/theme-context";
 import type { ScreenshotTestResult, ScreenshotAggregatedInsight } from "@/lib/screenshot-api";
 import { getScreenshotInsights, generateScreenshotInsights } from "@/lib/screenshot-api";
+import { cleanMarkdown } from "@/lib/utils";
 
 interface AggregatedScreenshotInsightsProps {
     result: ScreenshotTestResult;
@@ -389,7 +390,7 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
                                             >
                                                 <div className="flex items-start justify-between gap-4 mb-2">
                                                     <p className={`text-sm font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>
-                                                        {issue.description}
+                                                        {cleanMarkdown(issue.description)}
                                                     </p>
                                                     <div className="flex items-center gap-2 shrink-0">
                                                         <span className={`text-xs px-2 py-0.5 border rounded-lg ${isLight
@@ -415,7 +416,7 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
                                                             Recommendation
                                                         </p>
                                                         <p className={`text-sm font-light ${isLight ? "text-neutral-700" : "text-neutral-300"}`}>
-                                                            {issue.recommendation}
+                                                            {cleanMarkdown(issue.recommendation)}
                                                         </p>
                                                     </div>
                                                 )}
@@ -450,7 +451,7 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
                         {positives.slice(0, 10).map((item) => (
                             <div key={item.id} className="p-4 flex items-start justify-between gap-4">
                                 <p className={`text-sm font-light ${isLight ? "text-neutral-700" : "text-neutral-300"}`}>
-                                    {item.description}
+                                    {cleanMarkdown(item.description)}
                                 </p>
                                 <span className={`text-xs px-2 py-0.5 border rounded-lg shrink-0 ${isLight
                                     ? "bg-neutral-100 border-neutral-300 text-neutral-600"
@@ -490,7 +491,7 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
                         {accessibility.slice(0, 8).map((item) => (
                             <div key={item.id} className="p-4 flex items-start justify-between gap-4">
                                 <p className={`text-sm font-light ${isLight ? "text-neutral-700" : "text-neutral-300"}`}>
-                                    {item.description}
+                                    {cleanMarkdown(item.description)}
                                 </p>
                                 <span className={`text-xs px-2 py-0.5 border rounded-lg shrink-0 ${isLight
                                     ? "bg-neutral-100 border-neutral-300 text-neutral-600"

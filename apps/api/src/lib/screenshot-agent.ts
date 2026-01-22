@@ -47,6 +47,10 @@ export interface ScreenshotAnalysis {
   accessibilityNotes: string[];
   thoughts: string;
   comparisonWithPrevious?: string;
+  // New concise format fields
+  userObservation?: string; // Action-oriented quoted feedback
+  missionContext?: string; // Why this action makes sense, what it tests
+  expectedOutcome?: string; // What happens next
 }
 
 export interface ScreenshotTestResult {
@@ -111,6 +115,51 @@ async function generateContentWithFallback(
 }
 
 // ============================================================================
+// TEXT CLEANING UTILITY
+// ============================================================================
+
+/**
+ * Removes markdown formatting from text
+ */
+function cleanMarkdown(text: string): string {
+  if (!text) return text;
+  let cleaned = text;
+  
+  // Remove markdown blockquotes (lines starting with >)
+  cleaned = cleaned.replace(/^>\s+/gm, '');
+  // Remove HTML blockquote tags
+  cleaned = cleaned.replace(/<blockquote[^>]*>/gi, '');
+  cleaned = cleaned.replace(/<\/blockquote>/gi, '');
+  // Remove markdown bold (**text** or __text__)
+  cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, '$1');
+  cleaned = cleaned.replace(/__([^_]+)__/g, '$1');
+  // Remove markdown italic (*text* or _text_)
+  cleaned = cleaned.replace(/\*([^*]+)\*/g, '$1');
+  cleaned = cleaned.replace(/_([^_]+)_/g, '$1');
+  // Remove markdown code (`text`)
+  cleaned = cleaned.replace(/`([^`]+)`/g, '$1');
+  // Remove markdown links [text](url)
+  cleaned = cleaned.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1');
+  // Remove markdown strikethrough (~~text~~)
+  cleaned = cleaned.replace(/~~([^~]+)~~/g, '$1');
+  // Remove markdown headers (# ## ###)
+  cleaned = cleaned.replace(/^#{1,6}\s+/gm, '');
+  // Remove markdown horizontal rules (--- or ***)
+  cleaned = cleaned.replace(/^[-*]{3,}$/gm, '');
+  // Remove leading/trailing quotes if the entire text is wrapped
+  cleaned = cleaned.trim();
+  if ((cleaned.startsWith('"') && cleaned.endsWith('"')) || 
+      (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
+    cleaned = cleaned.slice(1, -1);
+  }
+  // Remove any remaining quote markers at the start/end
+  cleaned = cleaned.replace(/^["']+/, '');
+  cleaned = cleaned.replace(/["']+$/, '');
+  
+  return cleaned.trim();
+}
+
+// ============================================================================
 // SCREENSHOT ANALYSIS
 // ============================================================================
 
@@ -165,8 +214,29 @@ async function analyzeScreenshotWithVision(
   const response = await result.response;
   const text = response.text();
 
+  // Log the raw response for debugging (first 1000 chars)
+  console.log(`[Screenshot Agent] Raw response preview (first 1000 chars):\n${text.substring(0, 1000)}...`);
+
   // Parse structured response
-  return parseAnalysisResponse(text, previousContext);
+  const parsed = parseAnalysisResponse(text, previousContext);
+  
+  // Log if new format fields are missing - this is critical for debugging
+  if (!parsed.userObservation || !parsed.missionContext || !parsed.expectedOutcome) {
+    console.warn(`[Screenshot Agent] ⚠️ Missing new format fields:`, {
+      hasUserObservation: !!parsed.userObservation,
+      hasMissionContext: !!parsed.missionContext,
+      hasExpectedOutcome: !!parsed.expectedOutcome,
+      responseLength: text.length,
+    });
+    // Log a sample of the response to help debug parsing issues
+    if (!parsed.userObservation) {
+      console.warn(`[Screenshot Agent] Response sample around USER OBSERVATION:\n${text.substring(0, 2000)}`);
+    }
+  } else {
+    console.log(`[Screenshot Agent] ✅ Successfully extracted all new format fields`);
+  }
+  
+  return parsed;
 }
 
 async function generateReflection(
@@ -190,11 +260,12 @@ Write a concise reflection (3-5 sentences) covering:
 2) The most important friction or confusion
 3) What you expect or hope to see next
 4) Any overall sentiment shift
-`;
+
+IMPORTANT: Write in plain text format. Do NOT use markdown formatting like hash symbols (#), asterisks (*), backticks (\`), or other markdown syntax. Use plain text only.`;
 
   const result = await generateContentWithFallback(model, fallbackModel, [{ text: prompt }]);
   const response = await result.response;
-  return response.text().trim();
+  return cleanMarkdown(response.text().trim());
 }
 
 /**
@@ -206,42 +277,44 @@ function generateScreenshotAnalysisPrompt(
   userDescription?: string,
   screenshotContext?: string
 ): string {
+  const missionContext = persona.context || userDescription || screenshotContext;
+  
   return `You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation} from ${persona.country}. You are participating in a user testing session where you'll analyze a series of screenshots.
 
 YOUR PROFILE:
 - Tech Savviness: ${persona.techSavviness} (${persona.techSavviness === "beginner" ? "you struggle with complex interfaces and need things to be simple" : persona.techSavviness === "advanced" ? "you quickly spot UX issues and expect efficient workflows" : "you can navigate most apps but appreciate good design"})
 - Goal: ${persona.financialGoal}
-${persona.context ? `- Context: ${persona.context}` : ""}
+${missionContext ? `- Mission/Context: ${missionContext}` : ""}
 
 WHAT FRUSTRATES YOU:
 ${persona.painPoints.map((p) => `- ${p}`).join("\n")}
 
 ${previousContext ? `PREVIOUS SCREENSHOT CONTEXT:\n${previousContext}\n\n` : ""}
-${userDescription ? `USER'S DESCRIPTION:\n${userDescription}\n\n` : ""}
-${screenshotContext ? `SCREENSHOT CONTEXT:\n${screenshotContext}\n\n` : ""}
 
-ANALYZE THIS SCREENSHOT as if you were seeing it for the first time. Think out loud about:
-1. What you notice first
-2. What makes sense to you
-3. What confuses you
-4. What you like
-5. What frustrates you
-6. Accessibility concerns (text size, colors, complexity)
+ANALYZE THIS SCREENSHOT as if you were seeing it for the first time. Be concise and action-oriented.
 
-${previousContext ? "Also compare this screenshot to the previous one you saw. What changed? Is the flow logical?" : ""}
+CRITICAL: You MUST provide these three sections in your response. They are required.
 
 Provide your analysis in this EXACT format:
 
 === ANALYSIS ===
 
+USER OBSERVATION:
+[REQUIRED - Write a concise, action-oriented observation (2-4 sentences) as a direct quote. Start with what you would do next (e.g., "I would tap the 'Shop' link in the header to find available bowl packages. The hero image is visually appealing and communicates brand, but there are no product CTAs visible on this frame. The cart icon is visible but shows 0 items — I expect adding items will increment it."). Include what you notice, what you like, and any concerns. Be specific and brief. This should be written in first person as if you are speaking.]
+
+${missionContext ? `MISSION/CONTEXT:
+[REQUIRED - Explain the mission/goal (${missionContext}). What is the logical next step on this frame? Why does this action align with the scenario? What UX aspect does this action test (e.g., navigation discoverability, CTA clarity, consistency)? Keep it to 2-3 sentences. Example: "The mission is to purchase one bowl package; the logical next step is to navigate to the online shop. On this frame the top navigation clearly lists 'Shop' near the center; tapping it should reveal product listings or categories. This action aligns with the scenario and tests whether the header navigation is discoverable and consistent."]` : `MISSION/CONTEXT:
+[REQUIRED - What is the logical next step on this frame? Why does this action make sense given your goal (${persona.financialGoal})? What UX aspect does this action test (e.g., navigation discoverability, CTA clarity, consistency)? Keep it to 2-3 sentences. Example: "The logical next step is to navigate to the online shop. On this frame the top navigation clearly lists 'Shop' near the center; tapping it should reveal product listings. This action tests whether the header navigation is discoverable and consistent."]`}
+
+EXPECTED OUTCOME:
+[REQUIRED - What do you expect to happen when you perform the next action? What do you plan to do after that? Keep it to 1-2 sentences. Example: "I expect the prototype to navigate to a product listing or shop category page showing bowls or frozen meals. From there I plan to select a single bowl package to add to the cart."]
+
 OBSERVATIONS:
 - [What you see and notice]
 - [Key elements visible]
-- [Overall layout and design]
 
 POSITIVE ASPECTS:
 - [What you like about this screenshot]
-- [What works well]
 
 ISSUES FOUND:
 - [Issue 1 - severity: low/medium/high/critical]
@@ -250,12 +323,14 @@ ISSUES FOUND:
 ACCESSIBILITY CONCERNS:
 - [Any issues with text size, colors, complexity, language?]
 
-${previousContext ? "COMPARISON WITH PREVIOUS:\n[How does this compare to the previous screenshot? What changed? Is the flow logical?]\n" : ""}
-
 THOUGHTS:
-[Your stream of consciousness - what you're thinking as ${persona.name} looking at this screenshot. Be honest and authentic.]
+[Your detailed stream of consciousness - what you're thinking as ${persona.name} looking at this screenshot. This can be longer and more detailed than the USER OBSERVATION above. Be honest and authentic.]
 
-=== END ANALYSIS ===`;
+=== END ANALYSIS ===
+
+IMPORTANT: 
+- Keep USER OBSERVATION, MISSION/CONTEXT, and EXPECTED OUTCOME concise (as shown in examples)
+- Write all text in plain format. Do NOT use markdown formatting like hash symbols (#), asterisks (*), backticks (\`), bold (**text**), italic (*text*), or other markdown syntax. Use plain text only.`;
 }
 
 /**
@@ -271,7 +346,29 @@ function parseAnalysisResponse(
     issues: [],
     accessibilityNotes: [],
     thoughts: "",
+    userObservation: undefined,
+    missionContext: undefined,
+    expectedOutcome: undefined,
   };
+
+  // Extract user observation (new concise format)
+  // More flexible regex to handle variations in formatting
+  const userObsMatch = responseText.match(/USER\s+OBSERVATION:\s*([\s\S]*?)(?=\n\s*(?:MISSION\/CONTEXT|EXPECTED\s+OUTCOME|OBSERVATIONS|POSITIVE\s+ASPECTS|ISSUES\s+FOUND|ACCESSIBILITY|THOUGHTS|===))/i);
+  if (userObsMatch) {
+    result.userObservation = cleanMarkdown(userObsMatch[1].trim());
+  }
+
+  // Extract mission context (new concise format)
+  const missionMatch = responseText.match(/MISSION\/CONTEXT:\s*([\s\S]*?)(?=\n\s*(?:EXPECTED\s+OUTCOME|OBSERVATIONS|POSITIVE\s+ASPECTS|ISSUES\s+FOUND|ACCESSIBILITY|THOUGHTS|===))/i);
+  if (missionMatch) {
+    result.missionContext = cleanMarkdown(missionMatch[1].trim());
+  }
+
+  // Extract expected outcome (new concise format)
+  const expectedMatch = responseText.match(/EXPECTED\s+OUTCOME:\s*([\s\S]*?)(?=\n\s*(?:OBSERVATIONS|POSITIVE\s+ASPECTS|ISSUES\s+FOUND|ACCESSIBILITY|THOUGHTS|===))/i);
+  if (expectedMatch) {
+    result.expectedOutcome = cleanMarkdown(expectedMatch[1].trim());
+  }
 
   // Extract observations
   const obsMatch = responseText.match(/OBSERVATIONS:\s*([\s\S]*?)(?=POSITIVE ASPECTS:|ISSUES FOUND:|ACCESSIBILITY|THOUGHTS:|===)/i);
@@ -279,7 +376,8 @@ function parseAnalysisResponse(
     result.observations = obsMatch[1]
       .split("\n")
       .map((line) => line.replace(/^[-•]\s*/, "").trim())
-      .filter((line) => line.length > 0);
+      .filter((line) => line.length > 0)
+      .map(cleanMarkdown);
   }
 
   // Extract positive aspects
@@ -288,7 +386,8 @@ function parseAnalysisResponse(
     result.positiveAspects = posMatch[1]
       .split("\n")
       .map((line) => line.replace(/^[-•]\s*/, "").trim())
-      .filter((line) => line.length > 0);
+      .filter((line) => line.length > 0)
+      .map(cleanMarkdown);
   }
 
   // Extract issues
@@ -302,11 +401,11 @@ function parseAnalysisResponse(
     result.issues = issueLines.map((line) => {
       const severityMatch = line.match(/\b(low|medium|high|critical)\b/i);
       const severity = (severityMatch?.[1]?.toLowerCase() as "low" | "medium" | "high" | "critical") || "medium";
-      const description = line.replace(/\s*[-–]\s*severity:\s*(low|medium|high|critical)\s*/i, "").trim();
+      const description = cleanMarkdown(line.replace(/\s*[-–]\s*severity:\s*(low|medium|high|critical)\s*/i, "").trim());
       return {
         severity,
         description,
-        recommendation: `Address this issue to improve user experience`,
+        recommendation: cleanMarkdown(`Address this issue to improve user experience`),
       };
     });
   }
@@ -317,24 +416,25 @@ function parseAnalysisResponse(
     result.accessibilityNotes = accMatch[1]
       .split("\n")
       .map((line) => line.replace(/^[-•]\s*/, "").trim())
-      .filter((line) => line.length > 0);
+      .filter((line) => line.length > 0)
+      .map(cleanMarkdown);
   }
 
   // Extract comparison
   if (previousContext) {
     const compMatch = responseText.match(/COMPARISON WITH PREVIOUS:\s*([\s\S]*?)(?=THOUGHTS:|===)/i);
     if (compMatch) {
-      result.comparisonWithPrevious = compMatch[1].trim();
+      result.comparisonWithPrevious = cleanMarkdown(compMatch[1].trim());
     }
   }
 
   // Extract thoughts
   const thoughtsMatch = responseText.match(/THOUGHTS:\s*([\s\S]*?)(?===|$)/i);
   if (thoughtsMatch) {
-    result.thoughts = thoughtsMatch[1].trim();
+    result.thoughts = cleanMarkdown(thoughtsMatch[1].trim());
   } else {
     // Fallback: use the entire response as thoughts
-    result.thoughts = responseText;
+    result.thoughts = cleanMarkdown(responseText);
   }
 
   return result;

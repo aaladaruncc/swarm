@@ -298,6 +298,22 @@
   animation: ripple var(--duration, 2s) ease calc(var(--i, 0) * 0.2s) infinite;
 }
 
+@keyframes shine {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+.animate-shine {
+  animation: shine var(--duration, 14s) infinite linear;
+}
+
 @keyframes loading-bar-fill {
   0% {
     width: 0%;
