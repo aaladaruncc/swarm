@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { Loader2, CheckCircle2, AlertCircle, Lightbulb, MessageCircle, ZoomIn, ZoomOut, RotateCcw, ChevronLeft, ChevronRight, Share2, X, Settings, FileText } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, Lightbulb, MessageCircle, ChevronLeft, ChevronRight, Share2, X, Settings, FileText } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { AggregatedScreenshotInsights } from "@/components/screenshot-tests/AggregatedScreenshotInsights";
 import { ShineBorder } from "@/components/ui/shine-border";
@@ -67,12 +67,8 @@ export default function SharedScreenshotTestPage() {
     const [activePersonaIndex, setActivePersonaIndex] = useState<number>(0);
     const [activeTab, setActiveTab] = useState<"insights" | "agent-sessions">("insights");
     const [selectedStepIndex, setSelectedStepIndex] = useState<number>(0);
-    const [canvasPan, setCanvasPan] = useState({ x: 0, y: 0 });
-    const [canvasZoom, setCanvasZoom] = useState(1);
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     const [selectedScreenshotModal, setSelectedScreenshotModal] = useState<number | null>(null);
-    const canvasRef = useRef<HTMLDivElement>(null);
+    const [selectedThoughtsIndex, setSelectedThoughtsIndex] = useState<number | null>(null);
 
     useEffect(() => {
         if (!token) return;
@@ -135,33 +131,6 @@ export default function SharedScreenshotTestPage() {
         return map;
     }, [activePersona]);
 
-    // Center selected screenshot when step changes or window resizes
-    const screenshotsLength = result?.screenshots?.length ?? 0;
-    const centerSelectedScreenshot = useCallback(() => {
-        if (canvasRef.current && screenshotsLength > 0) {
-            const screenshotWidth = 400;
-            const gap = 40;
-            const padding = 40;
-            const containerWidth = canvasRef.current.offsetWidth;
-            const viewportCenterX = containerWidth / 2;
-            const selectedScreenshotX = padding + selectedStepIndex * (screenshotWidth + gap) + screenshotWidth / 2;
-            const panX = viewportCenterX - selectedScreenshotX;
-            setCanvasPan(prev => ({ x: panX, y: prev.y }));
-        }
-    }, [selectedStepIndex, screenshotsLength]);
-
-    useEffect(() => {
-        centerSelectedScreenshot();
-    }, [centerSelectedScreenshot]);
-
-    // Handle window resize
-    useEffect(() => {
-        const handleResize = () => {
-            centerSelectedScreenshot();
-        };
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, [centerSelectedScreenshot]);
 
     if (loading) {
         return (
@@ -197,7 +166,7 @@ export default function SharedScreenshotTestPage() {
     } as any;
 
     return (
-        <div className={`min-h-screen ${isLight ? "bg-neutral-50" : "bg-neutral-950"} ${isLight ? "text-neutral-900" : "text-white"}`}>
+        <div className={`${isLight ? "bg-neutral-50" : "bg-neutral-950"} ${isLight ? "text-neutral-900" : "text-white"}`} style={{ minHeight: '100vh' }}>
             {/* Shared Badge */}
             <div className={isLight ? "bg-blue-50 border-b border-blue-200" : "bg-blue-500/10 border-b border-blue-500/20"}>
                 <div className="max-w-7xl mx-auto px-8 py-3 flex items-center justify-between">
@@ -211,7 +180,7 @@ export default function SharedScreenshotTestPage() {
                 </div>
             </div>
 
-            <div className="h-full flex flex-col p-8 max-w-7xl mx-auto w-full overflow-hidden">
+            <div className="flex flex-col p-8 pb-32 max-w-7xl mx-auto w-full">
                 {/* Header */}
                 <div className="mb-8 flex-shrink-0">
                     <div>
@@ -243,7 +212,7 @@ export default function SharedScreenshotTestPage() {
 
                 {/* Screenshots Analysis - Only show when completed */}
                 {isCompleted && (
-                    <div className="flex-1 flex flex-col min-h-0">
+                    <div className="flex flex-col">
                         {/* Tabs - Fixed at top */}
                         <div className={`border-b flex-shrink-0 ${isLight ? "border-neutral-200" : "border-white/10"}`}>
                             <div className="flex gap-1 overflow-x-auto">
@@ -307,24 +276,28 @@ export default function SharedScreenshotTestPage() {
                             </div>
                         )}
 
-                        {/* Tab Content - Not scrollable */}
-                        <div className="flex-1 min-h-0 flex flex-col">
+                        {/* Tab Content */}
+                        <div className="flex flex-col">
                             {/* Insights Tab */}
                             {activeTab === "insights" && result && (
-                                <div className="flex-1 overflow-y-auto min-h-0">
+                                <div>
                                     <AggregatedScreenshotInsights result={resultForInsights} />
                                 </div>
                             )}
 
                             {/* Agent Sessions Tab */}
                             {activeTab === "agent-sessions" && (
-                                <div className="flex-1 min-h-0 flex flex-col">
-                                    {/* Dotted Container for Steps + Canvas - Horizontally scrollable */}
-                                    <div className={`border-2 border-dashed rounded-xl p-6 flex-1 min-h-0 flex flex-col ${isLight ? "border-neutral-300 bg-neutral-50/50" : "border-white/20 bg-[#1E1E1E]/50"}`}>
-                                        {/* Split Layout: Steps on Left, Canvas on Right */}
-                                        <div className="flex gap-6 flex-1 min-h-0">
-                                        {/* Left Panel - Step Modules - Scrollable within container */}
-                                        <div className="w-[65%] pr-4 overflow-y-auto flex-shrink-0">
+                                <div className="flex flex-col lg:flex-row gap-6">
+                                    {/* Left Panel - Dotted Container with Step Modules - Scrollable */}
+                                    <div className={`lg:w-[65%] border-2 border-dashed rounded-xl h-[500px] lg:h-[600px] ${isLight ? "border-neutral-300 bg-neutral-50/50" : "border-white/20 bg-[#1E1E1E]/50"}`}>
+                                        <div 
+                                            className="h-full overflow-y-scroll px-6 py-6"
+                                            style={{ 
+                                                scrollbarWidth: 'thin',
+                                                scrollbarColor: isLight ? '#d4d4d4 #f5f5f5' : '#404040 #1E1E1E',
+                                                WebkitOverflowScrolling: 'touch'
+                                            }}
+                                        >
                                             <div className="space-y-4">
                                             {screenshots.map((screenshot, index) => {
                                                 const analysis = hasMultiplePersonas && activePersona
@@ -355,10 +328,24 @@ export default function SharedScreenshotTestPage() {
                                                             />
                                                         )}
                                                         {/* Step Header */}
-                                                        <div className={`mb-4 pb-3 border-b ${isLight ? "border-neutral-200" : "border-white/10"}`}>
+                                                        <div className={`mb-4 pb-3 border-b flex items-center justify-between ${isLight ? "border-neutral-200" : "border-white/10"}`}>
                                                             <span className={`text-sm font-medium px-2 py-1 rounded ${isLight ? "bg-neutral-100 text-neutral-600" : "bg-[#252525] text-neutral-400"}`}>
                                                                 Step {index + 1}
                                                             </span>
+                                                            {analysis?.thoughts && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setSelectedThoughtsIndex(index);
+                                                                    }}
+                                                                    className={`text-xs font-medium px-3 py-1.5 rounded transition-colors ${isLight
+                                                                        ? "bg-neutral-900 text-white hover:bg-neutral-800"
+                                                                        : "bg-white text-neutral-900 hover:bg-neutral-200"
+                                                                    }`}
+                                                                >
+                                                                    Full thoughts
+                                                                </button>
+                                                            )}
                                                         </div>
 
                                                         {/* User Observation - New concise format */}
@@ -423,20 +410,20 @@ export default function SharedScreenshotTestPage() {
                                                             <>
                                                                 {/* Observations */}
                                                                 {analysis?.observations && analysis.observations.length > 0 && (
-                                                            <div className="mb-4">
-                                                                <h4 className={`text-sm font-medium mb-2 ${isLight ? "text-neutral-900" : "text-white"}`}>
-                                                                    Observations
-                                                                </h4>
-                                                                <ul className="space-y-1">
-                                                                    {analysis.observations.map((obs, i) => (
-                                                                        <li key={i} className={`text-xs font-light flex items-start gap-2 ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
-                                                                            <span>•</span>
-                                                                            <span>{cleanMarkdown(obs)}</span>
-                                                                        </li>
-                                                                    ))}
-                                                                </ul>
-                                                            </div>
-                                                        )}
+                                                                    <div className="mb-4">
+                                                                        <h4 className={`text-sm font-medium mb-2 ${isLight ? "text-neutral-900" : "text-white"}`}>
+                                                                            Observations
+                                                                        </h4>
+                                                                        <ul className="space-y-1">
+                                                                            {analysis.observations.map((obs: string, i: number) => (
+                                                                                <li key={i} className={`text-xs font-light flex items-start gap-2 ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
+                                                                                    <span>•</span>
+                                                                                    <span>{cleanMarkdown(obs)}</span>
+                                                                                </li>
+                                                                            ))}
+                                                                        </ul>
+                                                                    </div>
+                                                                )}
 
                                                                 {/* Positive Aspects */}
                                                                 {analysis?.positiveAspects && analysis.positiveAspects.length > 0 && (
@@ -446,7 +433,7 @@ export default function SharedScreenshotTestPage() {
                                                                             Positive Aspects
                                                                         </h4>
                                                                         <ul className="space-y-1">
-                                                                            {analysis.positiveAspects.map((aspect, i) => (
+                                                                            {analysis.positiveAspects.map((aspect: string, i: number) => (
                                                                                 <li key={i} className={`text-xs font-light flex items-start gap-2 ${isLight ? "text-green-600" : "text-green-400"}`}>
                                                                                     <span>•</span>
                                                                                     <span>{cleanMarkdown(aspect)}</span>
@@ -458,39 +445,39 @@ export default function SharedScreenshotTestPage() {
 
                                                                 {/* Issues */}
                                                                 {analysis?.issues && analysis.issues.length > 0 && (
-                                                            <div>
-                                                                <h4 className={`text-sm font-medium mb-2 flex items-center gap-2 ${isLight ? "text-red-700" : "text-red-400"}`}>
-                                                                    <AlertCircle size={16} />
-                                                                    Issues Found
-                                                                </h4>
-                                                                <div className="space-y-2">
-                                                                    {analysis.issues.slice(0, 2).map((issue, i) => (
-                                                                        <div
-                                                                            key={i}
-                                                                            className={`p-2 border rounded-lg ${isLight ? "border-red-200 bg-red-50" : "border-red-500/20 bg-red-500/10"}`}
-                                                                        >
-                                                                            <div className="flex items-start gap-2 mb-1">
-                                                                                <span className={`text-[10px] font-medium uppercase px-1.5 py-0.5 rounded ${issue.severity === "critical"
-                                                                                    ? isLight ? "bg-red-600 text-white" : "bg-red-500 text-white"
-                                                                                    : issue.severity === "high"
-                                                                                        ? isLight ? "bg-orange-500 text-white" : "bg-orange-400 text-black"
-                                                                                        : isLight ? "bg-neutral-400 text-white" : "bg-neutral-500 text-black"
-                                                                                    }`}>
-                                                                                    {issue.severity}
-                                                                                </span>
-                                                                                <p className={`text-xs font-medium flex-1 ${isLight ? "text-red-900" : "text-red-300"}`}>
-                                                                                    {cleanMarkdown(issue.description)}
+                                                                    <div>
+                                                                        <h4 className={`text-sm font-medium mb-2 flex items-center gap-2 ${isLight ? "text-red-700" : "text-red-400"}`}>
+                                                                            <AlertCircle size={16} />
+                                                                            Issues Found
+                                                                        </h4>
+                                                                        <div className="space-y-2">
+                                                                            {analysis.issues.slice(0, 2).map((issue: any, i: number) => (
+                                                                                <div
+                                                                                    key={i}
+                                                                                    className={`p-2 border rounded-lg ${isLight ? "border-red-200 bg-red-50" : "border-red-500/20 bg-red-500/10"}`}
+                                                                                >
+                                                                                    <div className="flex items-start gap-2 mb-1">
+                                                                                        <span className={`text-[10px] font-medium uppercase px-1.5 py-0.5 rounded ${issue.severity === "critical"
+                                                                                            ? isLight ? "bg-red-600 text-white" : "bg-red-500 text-white"
+                                                                                            : issue.severity === "high"
+                                                                                                ? isLight ? "bg-orange-500 text-white" : "bg-orange-400 text-black"
+                                                                                                : isLight ? "bg-neutral-400 text-white" : "bg-neutral-500 text-black"
+                                                                                            }`}>
+                                                                                            {issue.severity}
+                                                                                        </span>
+                                                                                        <p className={`text-xs font-medium flex-1 ${isLight ? "text-red-900" : "text-red-300"}`}>
+                                                                                            {cleanMarkdown(issue.description)}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                </div>
+                                                                            ))}
+                                                                            {analysis.issues.length > 2 && (
+                                                                                <p className={`text-xs font-light ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
+                                                                                    +{analysis.issues.length - 2} more issues
                                                                                 </p>
-                                                                            </div>
+                                                                            )}
                                                                         </div>
-                                                                    ))}
-                                                                    {analysis.issues.length > 2 && (
-                                                                        <p className={`text-xs font-light ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
-                                                                            +{analysis.issues.length - 2} more issues
-                                                                        </p>
-                                                                    )}
-                                                                </div>
-                                                            </div>
+                                                                    </div>
                                                                 )}
                                                             </>
                                                         )}
@@ -499,216 +486,122 @@ export default function SharedScreenshotTestPage() {
                                             })}
                                             </div>
                                         </div>
+                                    </div>
 
-                                        {/* Right Panel - Canvas Viewer with All Screenshots */}
-                                        <div className="w-[35%] relative overflow-hidden rounded-xl flex-shrink-0" style={{ background: isLight ? "#f5f5f5" : "#1E1E1E" }}>
-                                            {screenshots.length > 0 && (() => {
-                                                const screenshotWidth = 400;
-                                                const gap = 40;
-                                                const padding = 40;
-                                                
-                                                const handleMouseDown = (e: React.MouseEvent) => {
-                                                    if (e.button === 0) {
-                                                        setIsDragging(true);
-                                                        setDragStart({ x: e.clientX - canvasPan.x, y: e.clientY - canvasPan.y });
-                                                    }
-                                                };
-
-                                                const handleMouseMove = (e: React.MouseEvent) => {
-                                                    if (isDragging) {
-                                                        setCanvasPan({
-                                                            x: e.clientX - dragStart.x,
-                                                            y: e.clientY - dragStart.y,
-                                                        });
-                                                    }
-                                                };
-
-                                                const handleMouseUp = () => {
-                                                    setIsDragging(false);
-                                                };
-
-                                                // Ref callback to set up wheel listener with passive: false
-                                                const setCanvasRef = (element: HTMLDivElement | null) => {
-                                                    // Remove old listener if ref was already set
-                                                    if (canvasRef.current && canvasRef.current !== element) {
-                                                        const oldElement = canvasRef.current;
-                                                        const oldHandler = (oldElement as any).__wheelHandler;
-                                                        if (oldHandler) {
-                                                            oldElement.removeEventListener('wheel', oldHandler);
-                                                        }
-                                                    }
-                                                    
-                                                    if (element) {
-                                                        const handleWheel = (e: WheelEvent) => {
-                                                            e.preventDefault();
-                                                            const delta = e.deltaY * -0.001;
-                                                            const newZoom = Math.min(Math.max(0.5, canvasZoom + delta), 3);
-                                                            setCanvasZoom(newZoom);
-                                                        };
-                                                        
-                                                        // Store handler on element for cleanup
-                                                        (element as any).__wheelHandler = handleWheel;
-                                                        element.addEventListener('wheel', handleWheel, { passive: false });
-                                                        // Update ref using Object.assign or direct property access
-                                                        (canvasRef as any).current = element;
-                                                    }
-                                                };
-
-                                                return (
-                                                    <>
-                                                        {/* Canvas Container */}
-                                                        <div
-                                                            ref={setCanvasRef}
-                                                            className="relative h-full w-full overflow-hidden cursor-grab active:cursor-grabbing"
-                                                            onMouseDown={handleMouseDown}
-                                                            onMouseMove={handleMouseMove}
-                                                            onMouseUp={handleMouseUp}
-                                                            onMouseLeave={handleMouseUp}
-                                                        >
-                                                            {/* Grid Background */}
-                                                            <div
-                                                                className="absolute inset-0"
-                                                                style={{
-                                                                    backgroundImage: isLight
-                                                                        ? `radial-gradient(circle, #d4d4d4 1px, transparent 1px)`
-                                                                        : `radial-gradient(circle, #404040 1px, transparent 1px)`,
-                                                                    backgroundSize: '20px 20px',
-                                                                    backgroundPosition: '0 0',
-                                                                }}
+                                    {/* Right Panel - Simple Screenshot Carousel */}
+                                    <div className="lg:w-[35%] relative lg:sticky lg:top-6 h-[500px] lg:h-[600px] flex-shrink-0">
+                                        {screenshots.length > 0 && (
+                                            <div className={`relative w-full h-full rounded-xl overflow-hidden ${isLight ? "bg-neutral-100" : "bg-[#1E1E1E]"}`}>
+                                                {/* Screenshot Display */}
+                                                <div className="w-full h-full flex items-center justify-center p-4">
+                                                    <div className={`relative rounded-lg overflow-hidden shadow-lg border-2 transition-all ${isLight ? "bg-white border-neutral-300" : "bg-[#1E1E1E] border-white/20"}`}>
+                                                        <div className="w-full h-full flex items-center justify-center">
+                                                            <img
+                                                                src={screenshots[selectedStepIndex].signedUrl || screenshots[selectedStepIndex].s3Url}
+                                                                alt={`Screenshot ${selectedStepIndex + 1}`}
+                                                                className="max-w-full max-h-full object-contain block cursor-pointer"
+                                                                draggable={false}
+                                                                onClick={() => setSelectedScreenshotModal(selectedStepIndex)}
                                                             />
-
-                                                            {/* Screenshot Sequence */}
-                                                            <div
-                                                                className="absolute"
-                                                                style={{
-                                                                    transform: `translate(${canvasPan.x}px, ${canvasPan.y}px) scale(${canvasZoom})`,
-                                                                    transformOrigin: '0 0',
-                                                                    display: 'flex',
-                                                                    gap: `${gap}px`,
-                                                                    padding: `${padding}px`,
-                                                                    transition: isDragging ? 'none' : 'transform 0.1s ease-out',
-                                                                }}
-                                                            >
-                                                                {screenshots.map((screenshot, index) => {
-                                                                    const isSelected = selectedStepIndex === index;
-                                                                    return (
-                                                                        <div
-                                                                            key={screenshot.id}
-                                                                            className="relative flex-shrink-0"
-                                                                            style={{ width: `${screenshotWidth}px` }}
-                                                                        >
-                                                                            <div className={`relative rounded-lg overflow-hidden shadow-lg border-2 transition-all cursor-pointer hover:opacity-90 ${
-                                                                                isSelected
-                                                                                    ? isLight
-                                                                                        ? 'border-neutral-900 bg-white ring-4 ring-neutral-900/20'
-                                                                                        : 'border-white bg-[#1E1E1E] ring-4 ring-white/20'
-                                                                                    : isLight
-                                                                                        ? 'border-neutral-300 bg-white'
-                                                                                        : 'border-white/20 bg-[#1E1E1E]'
-                                                                            }`}>
-                                                                                <div className="w-full h-[400px] flex items-center justify-center bg-neutral-100 dark:bg-[#252525]">
-                                                                                    <img
-                                                                                        src={screenshot.signedUrl || screenshot.s3Url}
-                                                                                        alt={`Screenshot ${index + 1}`}
-                                                                                        className="w-full h-full object-contain block"
-                                                                                        draggable={false}
-                                                                                        onClick={(e) => {
-                                                                                            e.stopPropagation();
-                                                                                            setSelectedScreenshotModal(index);
-                                                                                        }}
-                                                                                    />
-                                                                                </div>
-                                                                                {/* Step Number Badge */}
-                                                                                <div className={`absolute bottom-2 right-2 px-3 py-1 rounded-lg text-xs font-medium ${
-                                                                                    isSelected
-                                                                                        ? isLight ? "bg-neutral-900 text-white" : "bg-white text-neutral-900"
-                                                                                        : isLight ? "bg-black/60 text-white" : "bg-white/20 text-white"
-                                                                                }`}>
-                                                                                    {index + 1}
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
                                                         </div>
-
-
-                                                        {/* Controls */}
-                                                        <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-lg shadow-lg ${isLight ? "bg-white border border-neutral-200" : "bg-[#1E1E1E] border border-white/10"}`}>
-                                                            <button
-                                                                onClick={() => setCanvasZoom(prev => Math.max(prev - 0.2, 0.5))}
-                                                                className={`p-2 rounded transition-colors ${isLight ? "hover:bg-neutral-100 text-neutral-700" : "hover:bg-white/10 text-neutral-300"}`}
-                                                                title="Zoom Out"
-                                                            >
-                                                                <ZoomOut size={16} />
-                                                            </button>
-                                                            <span className={`text-xs font-medium px-2 ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
-                                                                {Math.round(canvasZoom * 100)}%
-                                                            </span>
-                                                            <button
-                                                                onClick={() => setCanvasZoom(prev => Math.min(prev + 0.2, 3))}
-                                                                className={`p-2 rounded transition-colors ${isLight ? "hover:bg-neutral-100 text-neutral-700" : "hover:bg-white/10 text-neutral-300"}`}
-                                                                title="Zoom In"
-                                                            >
-                                                                <ZoomIn size={16} />
-                                                            </button>
-                                                            <div className={`w-px h-6 mx-1 ${isLight ? "bg-neutral-200" : "bg-white/10"}`} />
-                                                            <button
-                                                                onClick={() => {
-                                                                    setCanvasZoom(1);
-                                                                    centerSelectedScreenshot();
-                                                                }}
-                                                                className={`p-2 rounded transition-colors ${isLight ? "hover:bg-neutral-100 text-neutral-700" : "hover:bg-white/10 text-neutral-300"}`}
-                                                                title="Reset View"
-                                                            >
-                                                                <RotateCcw size={16} />
-                                                            </button>
+                                                        {/* Step Number Badge */}
+                                                        <div className={`absolute bottom-2 right-2 px-3 py-1 rounded-lg text-xs font-medium ${isLight ? "bg-black/60 text-white" : "bg-white/20 text-white"}`}>
+                                                            {selectedStepIndex + 1} / {screenshots.length}
                                                         </div>
+                                                    </div>
+                                                </div>
 
-                                                        {/* Frame Navigation */}
-                                                        {screenshots.length > 1 && (
-                                                            <div className={`absolute top-4 right-4 flex items-center gap-2 ${isLight ? "bg-white/90" : "bg-[#1E1E1E]/90"} border ${isLight ? "border-neutral-200" : "border-white/10"} rounded-lg px-3 py-2`}>
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        if (selectedStepIndex > 0) {
-                                                                            setSelectedStepIndex(selectedStepIndex - 1);
-                                                                        }
-                                                                    }}
-                                                                    disabled={selectedStepIndex === 0}
-                                                                    className={`p-1 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isLight ? "hover:bg-neutral-100 text-neutral-700" : "hover:bg-white/10 text-neutral-300"}`}
-                                                                >
-                                                                    <ChevronLeft size={16} />
-                                                                </button>
-                                                                <span className={`text-xs font-light px-2 ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
-                                                                    {selectedStepIndex + 1} / {screenshots.length}
-                                                                </span>
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        if (selectedStepIndex < screenshots.length - 1) {
-                                                                            setSelectedStepIndex(selectedStepIndex + 1);
-                                                                        }
-                                                                    }}
-                                                                    disabled={selectedStepIndex === screenshots.length - 1}
-                                                                    className={`p-1 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isLight ? "hover:bg-neutral-100 text-neutral-700" : "hover:bg-white/10 text-neutral-300"}`}
-                                                                >
-                                                                    <ChevronRight size={16} />
-                                                                </button>
-                                                            </div>
-                                                        )}
+                                                {/* Navigation Controls */}
+                                                {screenshots.length > 1 && (
+                                                    <>
+                                                        {/* Previous Button */}
+                                                        <button
+                                                            onClick={() => {
+                                                                if (selectedStepIndex > 0) {
+                                                                    setSelectedStepIndex(selectedStepIndex - 1);
+                                                                }
+                                                            }}
+                                                            disabled={selectedStepIndex === 0}
+                                                            className={`absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isLight ? "bg-white/90 hover:bg-white border border-neutral-200 text-neutral-700" : "bg-[#1E1E1E]/90 hover:bg-[#1E1E1E] border border-white/10 text-neutral-300"}`}
+                                                        >
+                                                            <ChevronLeft size={20} />
+                                                        </button>
+                                                        {/* Next Button */}
+                                                        <button
+                                                            onClick={() => {
+                                                                if (selectedStepIndex < screenshots.length - 1) {
+                                                                    setSelectedStepIndex(selectedStepIndex + 1);
+                                                                }
+                                                            }}
+                                                            disabled={selectedStepIndex === screenshots.length - 1}
+                                                            className={`absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isLight ? "bg-white/90 hover:bg-white border border-neutral-200 text-neutral-700" : "bg-[#1E1E1E]/90 hover:bg-[#1E1E1E] border border-white/10 text-neutral-300"}`}
+                                                        >
+                                                            <ChevronRight size={20} />
+                                                        </button>
                                                     </>
-                                                );
-                                            })()}
-                                        </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+
+            {/* Thoughts Modal */}
+            <AnimatePresence>
+                {selectedThoughtsIndex !== null && screenshots[selectedThoughtsIndex] && (() => {
+                    // Get analysis - works for both single and multiple personas
+                    const analysis = activePersona
+                        ? activeAnalysesByOrder.get(screenshots[selectedThoughtsIndex].orderIndex)
+                        : null;
+                    return analysis?.thoughts ? (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4"
+                            onClick={() => setSelectedThoughtsIndex(null)}
+                        >
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                className={`relative max-w-2xl w-full rounded-xl shadow-2xl ${isLight ? "bg-white" : "bg-[#1E1E1E] border border-white/10"}`}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {/* Header */}
+                                <div className={`flex items-center justify-between p-6 border-b ${isLight ? "border-neutral-200" : "border-white/10"}`}>
+                                    <div>
+                                        <h2 className={`text-lg font-semibold ${isLight ? "text-neutral-900" : "text-white"}`}>
+                                            Full Thoughts - Step {selectedThoughtsIndex + 1}
+                                        </h2>
+                                        <p className={`text-sm font-light mt-1 ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
+                                            {activePersona?.personaName || "Agent"}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => setSelectedThoughtsIndex(null)}
+                                        className={`p-2 rounded-lg transition-colors ${isLight
+                                            ? "hover:bg-neutral-100 text-neutral-600"
+                                            : "hover:bg-white/10 text-neutral-400"
+                                        }`}
+                                    >
+                                        <X size={20} />
+                                    </button>
+                                </div>
+                                {/* Content */}
+                                <div className="p-6 max-h-[60vh] overflow-y-auto">
+                                    <p className={`text-sm font-light leading-relaxed whitespace-pre-wrap ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
+                                        {cleanMarkdown(analysis.thoughts)}
+                                    </p>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    ) : null;
+                })()}
+            </AnimatePresence>
 
             {/* Screenshot Modal */}
             <AnimatePresence>
@@ -763,6 +656,7 @@ export default function SharedScreenshotTestPage() {
                     </div>
                 )}
             </AnimatePresence>
+            </div>
         </div>
     );
 }

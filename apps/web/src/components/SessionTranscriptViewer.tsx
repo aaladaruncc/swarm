@@ -53,16 +53,6 @@ export function SessionTranscriptViewer({ testRunId, personaName, onClose }: Ses
     loadTranscript();
   }, [testRunId]);
 
-  // Set default selected step when transcript loads
-  useEffect(() => {
-    if (transcript) {
-      const steps = groupIntoSteps(transcript);
-      if (steps.length > 0 && selectedStep === null) {
-        setSelectedStep(steps[0].stepNumber);
-      }
-    }
-  }, [transcript, groupIntoSteps, selectedStep]);
-
   // Group timeline into steps - memoized
   const groupIntoSteps = useCallback((transcript: SessionTranscript): Step[] => {
     const steps: Step[] = [];

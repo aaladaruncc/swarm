@@ -34,6 +34,11 @@ export function useTestNotifications() {
 
     const checkForCompletedTests = async () => {
       try {
+        // Double-check session is still valid before making request
+        if (!session?.user) {
+          return;
+        }
+        
         const { tests } = await getTests();
         const lastCheckedId = getLastCheckedTestId();
 
@@ -70,7 +75,11 @@ export function useTestNotifications() {
           sendTestCompleteNotification(testName, score);
           setLastCheckedTestId(newestTest.id);
         }
-      } catch (error) {
+      } catch (error: any) {
+        // Silently ignore auth errors - user might not be logged in yet
+        if (error?.message?.includes("Unauthorized") || error?.message?.includes("Failed to fetch")) {
+          return;
+        }
         console.error("Error checking for completed tests:", error);
       }
     };

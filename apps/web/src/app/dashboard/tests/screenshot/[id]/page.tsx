@@ -1,17 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { useSession } from "@/lib/auth-client";
-import { getScreenshotTest, rerunScreenshotTest, enableScreenshotTestSharing, disableScreenshotTestSharing, getScreenshotTestShareStatus, type ScreenshotTestResult, type ShareStatus } from "@/lib/screenshot-api";
-import { Loader2, ArrowLeft, CheckCircle2, AlertCircle, Info, RefreshCw, Share2, Link as LinkIcon, Check, X, LayoutGrid, List, Lightbulb, MessageCircle, ZoomIn, ZoomOut, RotateCcw, ChevronLeft, ChevronRight, Clipboard, Settings, FileText } from "lucide-react";
+import { getScreenshotTest, rerunScreenshotTest, terminateScreenshotTest, enableScreenshotTestSharing, disableScreenshotTestSharing, getScreenshotTestShareStatus, type ScreenshotTestResult, type ShareStatus } from "@/lib/screenshot-api";
+import { Loader2, ArrowLeft, CheckCircle2, AlertCircle, Info, RefreshCw, Share2, Link as LinkIcon, Check, X, LayoutGrid, List, Lightbulb, MessageCircle, ChevronLeft, ChevronRight, Clipboard, Settings, FileText, XCircle } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { ScreenshotCanvas } from "@/components/screenshot-tests/ScreenshotCanvas";
 import { AggregatedScreenshotInsights } from "@/components/screenshot-tests/AggregatedScreenshotInsights";
 import { ShineBorder } from "@/components/ui/shine-border";
-import { useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cleanMarkdown } from "@/lib/utils";
 
@@ -28,16 +27,13 @@ export default function ScreenshotTestResults() {
     const [error, setError] = useState("");
     const [rerunning, setRerunning] = useState(false);
     const [rerunError, setRerunError] = useState("");
+    const [terminating, setTerminating] = useState(false);
+    const [terminateError, setTerminateError] = useState("");
     const [activePersonaIndex, setActivePersonaIndex] = useState<number>(0);
     const [activeTab, setActiveTab] = useState<"insights" | "agent-sessions">("insights");
     const [selectedStepIndex, setSelectedStepIndex] = useState<number>(0);
-    const [canvasPan, setCanvasPan] = useState({ x: 0, y: 0 });
-    const [canvasZoom, setCanvasZoom] = useState(1);
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     const [selectedScreenshotModal, setSelectedScreenshotModal] = useState<number | null>(null);
     const [selectedThoughtsIndex, setSelectedThoughtsIndex] = useState<number | null>(null);
-    const canvasRef = useRef<HTMLDivElement>(null);
 
     // Share state
     const [shareStatus, setShareStatus] = useState<ShareStatus | null>(null);
@@ -182,9 +178,27 @@ export default function ScreenshotTestResults() {
     useEffect(() => {
         if (showSharePopup && shareButtonRef.current) {
             const rect = shareButtonRef.current.getBoundingClientRect();
+            const popupWidth = 300; // min-w-[300px]
+            const padding = 16; // padding from viewport edge
+            const viewportWidth = window.innerWidth;
+            
+            // Calculate initial left position
+            let left = rect.left + window.scrollX;
+            
+            // Check if popup would overflow on the right
+            if (left + popupWidth + padding > viewportWidth + window.scrollX) {
+                // Position to the left of the button, aligned to right edge
+                left = rect.right + window.scrollX - popupWidth;
+                
+                // If still overflowing, position it at the right edge of viewport
+                if (left < window.scrollX + padding) {
+                    left = window.scrollX + padding;
+                }
+            }
+            
             setPopupPosition({
                 top: rect.bottom + window.scrollY + 8,
-                left: rect.left + window.scrollX,
+                left: left,
             });
         }
     }, [showSharePopup]);
@@ -206,34 +220,6 @@ export default function ScreenshotTestResults() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showSharePopup]);
 
-    // Center selected screenshot when step changes or window resizes
-    // Must be defined before early returns to follow Rules of Hooks
-    const screenshotsLength = result?.screenshots?.length ?? 0;
-    const centerSelectedScreenshot = useCallback(() => {
-        if (canvasRef.current && screenshotsLength > 0) {
-            const screenshotWidth = 400;
-            const gap = 40;
-            const padding = 40;
-            const containerWidth = canvasRef.current.offsetWidth;
-            const viewportCenterX = containerWidth / 2;
-            const selectedScreenshotX = padding + selectedStepIndex * (screenshotWidth + gap) + screenshotWidth / 2;
-            const panX = viewportCenterX - selectedScreenshotX;
-            setCanvasPan(prev => ({ x: panX, y: prev.y }));
-        }
-    }, [selectedStepIndex, screenshotsLength]);
-
-    useEffect(() => {
-        centerSelectedScreenshot();
-    }, [centerSelectedScreenshot]);
-
-    // Handle window resize
-    useEffect(() => {
-        const handleResize = () => {
-            centerSelectedScreenshot();
-        };
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, [centerSelectedScreenshot]);
 
     if (isPending || loading) {
         return (
@@ -289,6 +275,22 @@ export default function ScreenshotTestResults() {
             setRerunError(err instanceof Error ? err.message : "Failed to rerun test");
         } finally {
             setRerunning(false);
+        }
+    };
+
+    const handleTerminate = async () => {
+        if (!testId || terminating) return;
+        setTerminating(true);
+        setTerminateError("");
+        try {
+            await terminateScreenshotTest(testId);
+            // Refresh the results to show terminated status
+            const data = await getScreenshotTest(testId);
+            setResult(data);
+        } catch (err) {
+            setTerminateError(err instanceof Error ? err.message : "Failed to terminate test");
+        } finally {
+            setTerminating(false);
         }
     };
 
@@ -358,7 +360,7 @@ export default function ScreenshotTestResults() {
     };
 
     return (
-        <div className="h-full flex flex-col p-8 max-w-7xl mx-auto w-full overflow-hidden">
+        <div className="min-h-screen flex flex-col p-8 max-w-7xl mx-auto w-full">
             {/* Header */}
             <div className="mb-8 flex-shrink-0">
                 <nav className="flex items-center gap-2 text-sm mb-6">
@@ -411,6 +413,20 @@ export default function ScreenshotTestResults() {
                             {rerunning ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
                             <span>{rerunning ? "Rerunning..." : "Rerun"}</span>
                         </button>
+                        {/* Terminate Button - Only show when analyzing */}
+                        {isAnalyzing && (
+                            <button
+                                onClick={handleTerminate}
+                                disabled={terminating}
+                                className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isLight
+                                    ? "border border-red-200 text-red-700 hover:border-red-400 hover:text-red-900 bg-red-50"
+                                    : "border border-red-500/20 text-red-400 hover:border-red-500/40 hover:text-red-300 bg-red-500/10"
+                                    }`}
+                            >
+                                {terminating ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={12} />}
+                                <span>{terminating ? "Terminating..." : "Terminate"}</span>
+                            </button>
+                        )}
                         {/* Share Button */}
                         {isCompleted && (
                             <div className="relative">
@@ -526,12 +542,12 @@ export default function ScreenshotTestResults() {
                 </div>
             )}
 
-            {rerunError && (
+            {(rerunError || terminateError) && (
                 <div className={`mb-6 p-4 border rounded-lg text-sm font-light ${isLight
                     ? "border-red-200 bg-red-50 text-red-700"
                     : "border-red-500/20 bg-red-500/10 text-red-400"
                     }`}>
-                    {rerunError}
+                    {rerunError || terminateError}
                 </div>
             )}
 
@@ -603,7 +619,7 @@ export default function ScreenshotTestResults() {
                         </div>
                     )}
 
-                    {/* Tab Content - Not scrollable */}
+                    {/* Tab Content */}
                     <div className="flex-1 min-h-0 flex flex-col">
                         {/* Insights Tab */}
                         {activeTab === "insights" && result && (
@@ -615,13 +631,19 @@ export default function ScreenshotTestResults() {
                         {/* Agent Sessions Tab */}
                         {activeTab === "agent-sessions" && (
                             <div className="flex-1 min-h-0 flex flex-col">
-                                {/* Dotted Container for Steps + Canvas - Horizontally scrollable */}
-                                <div className={`border-2 border-dashed rounded-xl p-6 flex-1 min-h-0 flex flex-col ${isLight ? "border-neutral-300 bg-neutral-50/50" : "border-white/20 bg-[#1E1E1E]/50"}`}>
-                                    {/* Split Layout: Steps on Left, Canvas on Right */}
-                                    <div className="flex gap-6 flex-1 min-h-0">
-                                    {/* Left Panel - Step Modules - Scrollable within container */}
-                                    <div className="w-[65%] pr-4 overflow-y-auto flex-shrink-0">
-                                        <div className="space-y-4">
+                                {/* Split Layout: Steps in Dotted Container on Left, Canvas on Right */}
+                                <div className="flex gap-6 flex-1 min-h-0">
+                                    {/* Left Panel - Dotted Container with Step Modules */}
+                                    <div className={`w-[65%] border-2 border-dashed rounded-xl h-[500px] lg:h-[600px] flex-shrink-0 ${isLight ? "border-neutral-300 bg-neutral-50/50" : "border-white/20 bg-[#1E1E1E]/50"}`}>
+                                        <div 
+                                            className="h-full overflow-y-scroll px-6 py-6"
+                                            style={{ 
+                                                scrollbarWidth: 'thin',
+                                                scrollbarColor: isLight ? '#d4d4d4 #f5f5f5' : '#404040 #1E1E1E',
+                                                WebkitOverflowScrolling: 'touch'
+                                            }}
+                                        >
+                                            <div className="space-y-4">
                                         {screenshots.map((screenshot, index) => {
                                             const analysis = hasMultiplePersonas && activePersona
                                                 ? activeAnalysesByOrder.get(screenshot.orderIndex)
@@ -795,213 +817,66 @@ export default function ScreenshotTestResults() {
                                                 </div>
                                             );
                                         })}
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* Right Panel - Canvas Viewer with All Screenshots */}
-                                    <div className="w-[35%] relative overflow-hidden rounded-xl flex-shrink-0" style={{ background: isLight ? "#f5f5f5" : "#1E1E1E" }}>
-                                        {screenshots.length > 0 && (() => {
-                                            const screenshotWidth = 400;
-                                            const gap = 40;
-                                            const padding = 40;
-                                            
-                                            const handleMouseDown = (e: React.MouseEvent) => {
-                                                if (e.button === 0) {
-                                                    setIsDragging(true);
-                                                    setDragStart({ x: e.clientX - canvasPan.x, y: e.clientY - canvasPan.y });
-                                                }
-                                            };
-
-                                            const handleMouseMove = (e: React.MouseEvent) => {
-                                                if (isDragging) {
-                                                    setCanvasPan({
-                                                        x: e.clientX - dragStart.x,
-                                                        y: e.clientY - dragStart.y,
-                                                    });
-                                                }
-                                            };
-
-                                            const handleMouseUp = () => {
-                                                setIsDragging(false);
-                                            };
-
-                                            // Ref callback to set up wheel listener with passive: false
-                                            const setCanvasRef = (element: HTMLDivElement | null) => {
-                                                // Remove old listener if ref was already set
-                                                if (canvasRef.current && canvasRef.current !== element) {
-                                                    const oldElement = canvasRef.current;
-                                                    const oldHandler = (oldElement as any).__wheelHandler;
-                                                    if (oldHandler) {
-                                                        oldElement.removeEventListener('wheel', oldHandler);
-                                                    }
-                                                }
-                                                
-                                                if (element) {
-                                                    const handleWheel = (e: WheelEvent) => {
-                                                        e.preventDefault();
-                                                        const delta = e.deltaY * -0.001;
-                                                        const newZoom = Math.min(Math.max(0.5, canvasZoom + delta), 3);
-                                                        setCanvasZoom(newZoom);
-                                                    };
-                                                    
-                                                    // Store handler on element for cleanup
-                                                    (element as any).__wheelHandler = handleWheel;
-                                                    element.addEventListener('wheel', handleWheel, { passive: false });
-                                                    // Update ref using Object.assign or direct property access
-                                                    (canvasRef as any).current = element;
-                                                }
-                                            };
-
-                                            return (
-                                                <>
-                                                    {/* Canvas Container */}
-                                                    <div
-                                                        ref={setCanvasRef}
-                                                        className="relative h-full w-full overflow-hidden cursor-grab active:cursor-grabbing"
-                                                        onMouseDown={handleMouseDown}
-                                                        onMouseMove={handleMouseMove}
-                                                        onMouseUp={handleMouseUp}
-                                                        onMouseLeave={handleMouseUp}
-                                                    >
-                                                        {/* Grid Background */}
-                                                        <div
-                                                            className="absolute inset-0"
-                                                            style={{
-                                                                backgroundImage: isLight
-                                                                    ? `radial-gradient(circle, #d4d4d4 1px, transparent 1px)`
-                                                                    : `radial-gradient(circle, #404040 1px, transparent 1px)`,
-                                                                backgroundSize: '20px 20px',
-                                                                backgroundPosition: '0 0',
-                                                            }}
-                                                        />
-
-                                                        {/* Screenshot Sequence */}
-                                                        <div
-                                                            className="absolute"
-                                                            style={{
-                                                                transform: `translate(${canvasPan.x}px, ${canvasPan.y}px) scale(${canvasZoom})`,
-                                                                transformOrigin: '0 0',
-                                                                display: 'flex',
-                                                                gap: `${gap}px`,
-                                                                padding: `${padding}px`,
-                                                                transition: isDragging ? 'none' : 'transform 0.1s ease-out',
-                                                            }}
-                                                        >
-                                                            {screenshots.map((screenshot, index) => {
-                                                                const isSelected = selectedStepIndex === index;
-                                                                return (
-                                                                    <div
-                                                                        key={screenshot.id}
-                                                                        className="relative flex-shrink-0"
-                                                                        style={{ width: `${screenshotWidth}px` }}
-                                                                    >
-                                                                        <div className={`relative rounded-lg overflow-hidden shadow-lg border-2 transition-all cursor-pointer hover:opacity-90 ${
-                                                                            isSelected
-                                                                                ? isLight
-                                                                                    ? 'border-neutral-900 bg-white ring-4 ring-neutral-900/20'
-                                                                                    : 'border-white bg-[#1E1E1E] ring-4 ring-white/20'
-                                                                                : isLight
-                                                                                    ? 'border-neutral-300 bg-white'
-                                                                                    : 'border-white/20 bg-[#1E1E1E]'
-                                                                        }`}>
-                                                                            <div className="w-full h-[400px] flex items-center justify-center bg-neutral-100 dark:bg-[#252525]">
-                                                                                <img
-                                                                                    src={screenshot.signedUrl || screenshot.s3Url}
-                                                                                    alt={`Screenshot ${index + 1}`}
-                                                                                    className="w-full h-full object-contain block"
-                                                                                    draggable={false}
-                                                                                    onClick={(e) => {
-                                                                                        e.stopPropagation();
-                                                                                        setSelectedScreenshotModal(index);
-                                                                                    }}
-                                                                                />
-                                                                            </div>
-                                                                            {/* Step Number Badge */}
-                                                                            <div className={`absolute bottom-2 right-2 px-3 py-1 rounded-lg text-xs font-medium ${
-                                                                                isSelected
-                                                                                    ? isLight ? "bg-neutral-900 text-white" : "bg-white text-neutral-900"
-                                                                                    : isLight ? "bg-black/60 text-white" : "bg-white/20 text-white"
-                                                                            }`}>
-                                                                                {index + 1}
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            })}
+                                    {/* Right Panel - Simple Screenshot Carousel */}
+                                    <div className="w-[35%] relative min-h-[500px] flex-shrink-0">
+                                        {screenshots.length > 0 && (
+                                            <div className={`relative w-full h-full rounded-xl overflow-hidden ${isLight ? "bg-neutral-100" : "bg-[#1E1E1E]"}`}>
+                                                {/* Screenshot Display */}
+                                                <div className="w-full h-full flex items-center justify-center p-4">
+                                                    <div className={`relative rounded-lg overflow-hidden shadow-lg border-2 transition-all ${isLight ? "bg-white border-neutral-300" : "bg-[#1E1E1E] border-white/20"}`}>
+                                                        <div className="w-full h-full flex items-center justify-center">
+                                                            <img
+                                                                src={screenshots[selectedStepIndex].signedUrl || screenshots[selectedStepIndex].s3Url}
+                                                                alt={`Screenshot ${selectedStepIndex + 1}`}
+                                                                className="max-w-full max-h-full object-contain block cursor-pointer"
+                                                                draggable={false}
+                                                                onClick={() => setSelectedScreenshotModal(selectedStepIndex)}
+                                                            />
+                                                        </div>
+                                                        {/* Step Number Badge */}
+                                                        <div className={`absolute bottom-2 right-2 px-3 py-1 rounded-lg text-xs font-medium ${isLight ? "bg-black/60 text-white" : "bg-white/20 text-white"}`}>
+                                                            {selectedStepIndex + 1} / {screenshots.length}
                                                         </div>
                                                     </div>
+                                                </div>
 
-
-                                                    {/* Controls */}
-                                                    <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-lg shadow-lg ${isLight ? "bg-white border border-neutral-200" : "bg-[#1E1E1E] border border-white/10"}`}>
-                                                        <button
-                                                            onClick={() => setCanvasZoom(prev => Math.max(prev - 0.2, 0.5))}
-                                                            className={`p-2 rounded transition-colors ${isLight ? "hover:bg-neutral-100 text-neutral-700" : "hover:bg-white/10 text-neutral-300"}`}
-                                                            title="Zoom Out"
-                                                        >
-                                                            <ZoomOut size={16} />
-                                                        </button>
-                                                        <span className={`text-xs font-medium px-2 ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
-                                                            {Math.round(canvasZoom * 100)}%
-                                                        </span>
-                                                        <button
-                                                            onClick={() => setCanvasZoom(prev => Math.min(prev + 0.2, 3))}
-                                                            className={`p-2 rounded transition-colors ${isLight ? "hover:bg-neutral-100 text-neutral-700" : "hover:bg-white/10 text-neutral-300"}`}
-                                                            title="Zoom In"
-                                                        >
-                                                            <ZoomIn size={16} />
-                                                        </button>
-                                                        <div className={`w-px h-6 mx-1 ${isLight ? "bg-neutral-200" : "bg-white/10"}`} />
+                                                {/* Navigation Controls */}
+                                                {screenshots.length > 1 && (
+                                                    <>
+                                                        {/* Previous Button */}
                                                         <button
                                                             onClick={() => {
-                                                                setCanvasZoom(1);
-                                                                centerSelectedScreenshot();
+                                                                if (selectedStepIndex > 0) {
+                                                                    setSelectedStepIndex(selectedStepIndex - 1);
+                                                                }
                                                             }}
-                                                            className={`p-2 rounded transition-colors ${isLight ? "hover:bg-neutral-100 text-neutral-700" : "hover:bg-white/10 text-neutral-300"}`}
-                                                            title="Reset View"
+                                                            disabled={selectedStepIndex === 0}
+                                                            className={`absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isLight ? "bg-white/90 hover:bg-white border border-neutral-200 text-neutral-700" : "bg-[#1E1E1E]/90 hover:bg-[#1E1E1E] border border-white/10 text-neutral-300"}`}
                                                         >
-                                                            <RotateCcw size={16} />
+                                                            <ChevronLeft size={20} />
                                                         </button>
-                                                    </div>
-
-                                                    {/* Frame Navigation */}
-                                                    {screenshots.length > 1 && (
-                                                        <div className={`absolute top-4 right-4 flex items-center gap-2 ${isLight ? "bg-white/90" : "bg-[#1E1E1E]/90"} border ${isLight ? "border-neutral-200" : "border-white/10"} rounded-lg px-3 py-2`}>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    if (selectedStepIndex > 0) {
-                                                                        setSelectedStepIndex(selectedStepIndex - 1);
-                                                                    }
-                                                                }}
-                                                                disabled={selectedStepIndex === 0}
-                                                                className={`p-1 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isLight ? "hover:bg-neutral-100 text-neutral-700" : "hover:bg-white/10 text-neutral-300"}`}
-                                                            >
-                                                                <ChevronLeft size={16} />
-                                                            </button>
-                                                            <span className={`text-xs font-light px-2 ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
-                                                                {selectedStepIndex + 1} / {screenshots.length}
-                                                            </span>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    if (selectedStepIndex < screenshots.length - 1) {
-                                                                        setSelectedStepIndex(selectedStepIndex + 1);
-                                                                    }
-                                                                }}
-                                                                disabled={selectedStepIndex === screenshots.length - 1}
-                                                                className={`p-1 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isLight ? "hover:bg-neutral-100 text-neutral-700" : "hover:bg-white/10 text-neutral-300"}`}
-                                                            >
-                                                                <ChevronRight size={16} />
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </>
-                                            );
-                                        })()}
+                                                        {/* Next Button */}
+                                                        <button
+                                                            onClick={() => {
+                                                                if (selectedStepIndex < screenshots.length - 1) {
+                                                                    setSelectedStepIndex(selectedStepIndex + 1);
+                                                                }
+                                                            }}
+                                                            disabled={selectedStepIndex === screenshots.length - 1}
+                                                            className={`absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isLight ? "bg-white/90 hover:bg-white border border-neutral-200 text-neutral-700" : "bg-[#1E1E1E]/90 hover:bg-[#1E1E1E] border border-white/10 text-neutral-300"}`}
+                                                        >
+                                                            <ChevronRight size={20} />
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                            </div>
                             </div>
                         )}
                     </div>

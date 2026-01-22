@@ -108,6 +108,7 @@ export interface ScreenshotAggregatedInsight {
     personaName: string;
     personaIndex: number;
     screenshotOrder: number;
+    evidence?: Array<{ personaName: string; personaIndex: number; screenshotOrder: number }> | null;
     createdAt: string;
 }
 
@@ -197,6 +198,18 @@ export async function rerunScreenshotTest(id: string): Promise<{
     message: string;
 }> {
     return fetchWithAuth(`/api/screenshot-tests/${id}/rerun`, {
+        method: "POST",
+    });
+}
+
+/**
+ * Terminate a running screenshot test
+ */
+export async function terminateScreenshotTest(id: string): Promise<{
+    screenshotTestRun: ScreenshotTestRun;
+    message: string;
+}> {
+    return fetchWithAuth(`/api/screenshot-tests/${id}/terminate`, {
         method: "POST",
     });
 }

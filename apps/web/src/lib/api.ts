@@ -48,21 +48,34 @@ interface Persona {
 }
 
 async function fetchWithAuth(path: string, options: RequestInit = {}) {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
+  try {
+    const response = await fetch(`${API_URL}${path}`, {
+      ...options,
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Request failed" }));
-    throw new Error(error.error || "Request failed");
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Request failed" }));
+      const errorMessage = error.error || `Request failed with status ${response.status}`;
+      const authError = new Error(errorMessage);
+      (authError as any).status = response.status;
+      throw authError;
+    }
+
+    return response.json();
+  } catch (error: any) {
+    // Handle network errors (CORS, connection refused, etc.)
+    if (error.message === "Failed to fetch" || error.name === "TypeError") {
+      const networkError = new Error("Unable to connect to API server. Please ensure the API is running.");
+      (networkError as any).isNetworkError = true;
+      throw networkError;
+    }
+    throw error;
   }
-
-  return response.json();
 }
 
 export async function getTests(): Promise<{ tests: TestRun[] }> {

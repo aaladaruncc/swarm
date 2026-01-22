@@ -200,43 +200,138 @@ async function analyzeScreenshotWithVision(
     screenshot.context
   );
 
-  // Use Gemini Vision API
-  const result = await generateContentWithFallback(model, fallbackModel, [
-    {
-      inlineData: {
-        data: imageBase64,
-        mimeType: "image/png", // Could detect from file extension
-      },
-    },
-    { text: prompt },
-  ]);
+  // Retry logic for empty responses
+  const maxRetries = 2;
+  let lastError: Error | null = null;
 
-  const response = await result.response;
-  const text = response.text();
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      // Use Gemini Vision API
+      const result = await generateContentWithFallback(model, fallbackModel, [
+        {
+          inlineData: {
+            data: imageBase64,
+            mimeType: "image/png", // Could detect from file extension
+          },
+        },
+        { text: prompt },
+      ]);
 
-  // Log the raw response for debugging (first 1000 chars)
-  console.log(`[Screenshot Agent] Raw response preview (first 1000 chars):\n${text.substring(0, 1000)}...`);
+      const response = await result.response;
+      const text = response.text();
 
-  // Parse structured response
-  const parsed = parseAnalysisResponse(text, previousContext);
-  
-  // Log if new format fields are missing - this is critical for debugging
-  if (!parsed.userObservation || !parsed.missionContext || !parsed.expectedOutcome) {
-    console.warn(`[Screenshot Agent] ⚠️ Missing new format fields:`, {
-      hasUserObservation: !!parsed.userObservation,
-      hasMissionContext: !!parsed.missionContext,
-      hasExpectedOutcome: !!parsed.expectedOutcome,
-      responseLength: text.length,
-    });
-    // Log a sample of the response to help debug parsing issues
-    if (!parsed.userObservation) {
-      console.warn(`[Screenshot Agent] Response sample around USER OBSERVATION:\n${text.substring(0, 2000)}`);
+      // Validate response
+      if (!text || text.trim().length === 0) {
+        if (attempt < maxRetries) {
+          console.warn(`[Screenshot Agent] ⚠️ Empty response from LLM (attempt ${attempt + 1}/${maxRetries + 1}), retrying...`);
+          // Wait a bit before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+          continue;
+        } else {
+          console.error(`[Screenshot Agent] ❌ Empty response from LLM after ${maxRetries + 1} attempts`);
+          // Return a default analysis instead of throwing
+          return {
+            observations: ["Unable to analyze screenshot - LLM returned empty response"],
+            positiveAspects: [],
+            issues: [{
+              severity: "medium" as const,
+              description: "Analysis unavailable - empty response from AI model",
+              recommendation: "Please try again or check API configuration"
+            }],
+            accessibilityNotes: [],
+            thoughts: "The AI model did not return any analysis for this screenshot. This may be due to API issues or rate limiting.",
+            userObservation: "Unable to generate observation - please retry the analysis",
+            missionContext: "Analysis unavailable",
+            expectedOutcome: "Unable to determine expected outcome"
+          };
+        }
+      }
+
+      // Log the raw response for debugging (first 1000 chars)
+      console.log(`[Screenshot Agent] Raw response preview (first 1000 chars):\n${text.substring(0, 1000)}...`);
+
+      // Parse structured response
+      const parsed = parseAnalysisResponse(text, previousContext);
+      
+      // Log if new format fields are missing - this is critical for debugging
+      const missingFields: string[] = [];
+      if (!parsed.userObservation) missingFields.push('userObservation');
+      if (!parsed.missionContext) missingFields.push('missionContext');
+      if (!parsed.expectedOutcome) missingFields.push('expectedOutcome');
+
+      if (missingFields.length > 0) {
+        console.warn(`[Screenshot Agent] ⚠️ Missing new format fields:`, {
+          missing: missingFields,
+          hasUserObservation: !!parsed.userObservation,
+          hasMissionContext: !!parsed.missionContext,
+          hasExpectedOutcome: !!parsed.expectedOutcome,
+          responseLength: text.length,
+        });
+        
+        // Log a more detailed sample of the response to help debug parsing issues
+        console.warn(`[Screenshot Agent] Full response (first 3000 chars) for debugging:\n${text.substring(0, 3000)}${text.length > 3000 ? '...' : ''}`);
+        
+        // Try to find what sections ARE present in the response
+        const sectionHeaders = [
+          'USER OBSERVATION',
+          'MISSION/CONTEXT',
+          'EXPECTED OUTCOME',
+          'OBSERVATIONS',
+          'POSITIVE ASPECTS',
+          'ISSUES FOUND',
+          'ACCESSIBILITY',
+          'THOUGHTS'
+        ];
+        const foundSections = sectionHeaders.filter(header => 
+          new RegExp(header.replace(/\//g, '\\/'), 'i').test(text)
+        );
+        console.warn(`[Screenshot Agent] Found sections in response:`, foundSections);
+        
+        // If we're missing critical fields, try to extract something useful from the response
+        // This is a fallback to ensure we don't lose all the analysis
+        if (!parsed.userObservation && !parsed.missionContext && !parsed.expectedOutcome) {
+          // Try to extract the first meaningful paragraph as userObservation
+          const firstParagraph = text.split('\n\n').find((p: string) => p.trim().length > 50);
+          if (firstParagraph) {
+            parsed.userObservation = cleanMarkdown(firstParagraph.trim().substring(0, 500));
+            console.warn(`[Screenshot Agent] ⚠️ Extracted fallback userObservation from first paragraph`);
+          }
+        }
+      } else {
+        console.log(`[Screenshot Agent] ✅ Successfully extracted all new format fields`);
+      }
+      
+      return parsed;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      if (attempt < maxRetries) {
+        console.warn(`[Screenshot Agent] ⚠️ Error on attempt ${attempt + 1}/${maxRetries + 1}:`, lastError.message);
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+        continue;
+      } else {
+        console.error(`[Screenshot Agent] ❌ Failed after ${maxRetries + 1} attempts:`, lastError);
+        // Return a default analysis instead of throwing
+        return {
+          observations: [`Error analyzing screenshot: ${lastError.message}`],
+          positiveAspects: [],
+          issues: [{
+            severity: "high" as const,
+            description: `Analysis failed: ${lastError.message}`,
+            recommendation: "Please try again or check API configuration"
+          }],
+          accessibilityNotes: [],
+          thoughts: `The AI model encountered an error while analyzing this screenshot: ${lastError.message}`,
+          userObservation: "Unable to generate observation due to analysis error",
+          missionContext: "Analysis unavailable due to error",
+          expectedOutcome: "Unable to determine expected outcome"
+        };
+      }
     }
-  } else {
-    console.log(`[Screenshot Agent] ✅ Successfully extracted all new format fields`);
   }
-  
-  return parsed;
+
+  // This should never be reached, but TypeScript needs it
+  throw new Error("Unexpected error in analyzeScreenshotWithVision");
 }
 
 async function generateReflection(
@@ -293,6 +388,14 @@ ${previousContext ? `PREVIOUS SCREENSHOT CONTEXT:\n${previousContext}\n\n` : ""}
 
 ANALYZE THIS SCREENSHOT as if you were seeing it for the first time. Be concise and action-oriented.
 
+IMPORTANT CONTEXT ABOUT DATA IN SCREENSHOTS:
+- Screenshots may contain pre-filled data, user-entered information, or test data that was already present when the screenshot was captured.
+- This is NORMAL and EXPECTED behavior - users often fill out forms, enter data, or interact with the platform before screenshots are taken.
+- Pre-filled fields, populated dropdowns, entered text, or existing data in the interface are NOT errors or platform faults.
+- Do NOT flag pre-filled data, user-entered information, or existing form values as issues, database errors, or platform problems.
+- Only flag actual errors such as: broken functionality, missing elements, unclear UI, accessibility issues, or genuine platform bugs.
+- If you see data already in fields or forms, assume this is intentional user input or pre-populated information, not a system error.
+
 CRITICAL: You MUST provide these three sections in your response. They are required.
 
 Provide your analysis in this EXACT format:
@@ -314,14 +417,22 @@ OBSERVATIONS:
 - [Key elements visible]
 
 POSITIVE ASPECTS:
-- [What you like about this screenshot]
+- [What you like about this screenshot. Be specific and pattern-able: "Clear navigation structure", "Helpful error messages", "Intuitive button placement"]
 
 ISSUES FOUND:
 - [Issue 1 - severity: low/medium/high/critical]
 - [Issue 2 - severity: low/medium/high/critical]
 
+IMPORTANT FOR ISSUES: Describe issues in a clear, specific, and pattern-able way. Focus on the core problem rather than personal interpretation. For example:
+- ✅ GOOD: "Navigation menu has 8 top-level items making it hard to find specific sections"
+- ✅ GOOD: "Form has 12 required fields with no progress indicator"
+- ✅ GOOD: "Text size is too small (8px) for comfortable reading"
+- ❌ BAD: "I found the navigation confusing" (too vague)
+- ❌ BAD: "The form was hard" (not specific)
+Use consistent terminology: "navigation menu", "form fields", "button size", "text contrast", etc.
+
 ACCESSIBILITY CONCERNS:
-- [Any issues with text size, colors, complexity, language?]
+- [Any issues with text size, colors, complexity, language? Be specific: "Text size is 8px", "Color contrast ratio is low", "No alt text on images"]
 
 THOUGHTS:
 [Your detailed stream of consciousness - what you're thinking as ${persona.name} looking at this screenshot. This can be longer and more detailed than the USER OBSERVATION above. Be honest and authentic.]
@@ -331,6 +442,75 @@ THOUGHTS:
 IMPORTANT: 
 - Keep USER OBSERVATION, MISSION/CONTEXT, and EXPECTED OUTCOME concise (as shown in examples)
 - Write all text in plain format. Do NOT use markdown formatting like hash symbols (#), asterisks (*), backticks (\`), bold (**text**), italic (*text*), or other markdown syntax. Use plain text only.`;
+}
+
+/**
+ * Helper function to escape regex special characters
+ */
+function escapeRegexSpecialChars(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Helper function to extract section content with multiple fallback patterns
+ */
+function extractSection(
+  text: string,
+  sectionName: string,
+  nextSections: string[],
+  allowEmpty: boolean = false
+): string | undefined {
+  if (!text || text.trim().length === 0) {
+    return undefined;
+  }
+
+  // Try multiple patterns for flexibility
+  const patterns = [
+    // Primary pattern: exact match with lookahead
+    new RegExp(`${sectionName}:\\s*([\\s\\S]*?)(?=\\n\\s*(?:${nextSections.join('|')}|===))`, 'i'),
+    // Pattern with optional markdown formatting
+    new RegExp(`(?:#+\\s*)?${sectionName}:\\s*([\\s\\S]*?)(?=\\n\\s*(?:${nextSections.join('|')}|===))`, 'i'),
+    // Pattern with different spacing
+    new RegExp(`${sectionName}\\s*:\\s*([\\s\\S]*?)(?=\\n\\s*(?:${nextSections.join('|')}|===))`, 'i'),
+    // Pattern without lookahead (greedy, stops at next section or end)
+    new RegExp(`${sectionName}:\\s*([\\s\\S]*?)(?=\\n\\s*(?:${nextSections.map(s => escapeRegexSpecialChars(s)).join('|')}|===|$))`, 'i'),
+  ];
+
+  for (const pattern of patterns) {
+    try {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        const content = cleanMarkdown(match[1].trim());
+        if (content.length > 0 || allowEmpty) {
+          return content;
+        }
+      }
+    } catch (e) {
+      // Skip invalid regex patterns - continue to next pattern
+      continue;
+    }
+  }
+
+  // Last resort: try to find the section header and extract until next header or end
+  const headerPattern = new RegExp(`${sectionName}:`, 'i');
+  const headerMatch = text.search(headerPattern);
+  if (headerMatch !== -1) {
+    const afterHeader = text.substring(headerMatch + sectionName.length + 1);
+    // Find the next section or end
+    const escapedSections = nextSections.map(s => escapeRegexSpecialChars(s));
+    const sectionsPattern = escapedSections.join('|');
+    const nextSectionPattern = new RegExp('\\n\\s*(?:' + sectionsPattern + '|===)', 'i');
+    const nextMatch = afterHeader.search(nextSectionPattern);
+    const content = nextMatch !== -1 
+      ? afterHeader.substring(0, nextMatch).trim()
+      : afterHeader.trim();
+    const cleaned = cleanMarkdown(content);
+    if (cleaned.length > 0 || allowEmpty) {
+      return cleaned;
+    }
+  }
+
+  return undefined;
 }
 
 /**
@@ -351,51 +531,74 @@ function parseAnalysisResponse(
     expectedOutcome: undefined,
   };
 
-  // Extract user observation (new concise format)
-  // More flexible regex to handle variations in formatting
-  const userObsMatch = responseText.match(/USER\s+OBSERVATION:\s*([\s\S]*?)(?=\n\s*(?:MISSION\/CONTEXT|EXPECTED\s+OUTCOME|OBSERVATIONS|POSITIVE\s+ASPECTS|ISSUES\s+FOUND|ACCESSIBILITY|THOUGHTS|===))/i);
-  if (userObsMatch) {
-    result.userObservation = cleanMarkdown(userObsMatch[1].trim());
+  // Early return if response is empty
+  if (!responseText || responseText.trim().length === 0) {
+    console.warn(`[Screenshot Agent] Empty response text received`);
+    return result;
   }
 
-  // Extract mission context (new concise format)
-  const missionMatch = responseText.match(/MISSION\/CONTEXT:\s*([\s\S]*?)(?=\n\s*(?:EXPECTED\s+OUTCOME|OBSERVATIONS|POSITIVE\s+ASPECTS|ISSUES\s+FOUND|ACCESSIBILITY|THOUGHTS|===))/i);
-  if (missionMatch) {
-    result.missionContext = cleanMarkdown(missionMatch[1].trim());
-  }
+  // Normalize the text: remove excessive whitespace but preserve structure
+  const normalizedText = responseText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-  // Extract expected outcome (new concise format)
-  const expectedMatch = responseText.match(/EXPECTED\s+OUTCOME:\s*([\s\S]*?)(?=\n\s*(?:OBSERVATIONS|POSITIVE\s+ASPECTS|ISSUES\s+FOUND|ACCESSIBILITY|THOUGHTS|===))/i);
-  if (expectedMatch) {
-    result.expectedOutcome = cleanMarkdown(expectedMatch[1].trim());
-  }
+  // Extract user observation (new concise format) with multiple fallback patterns
+  result.userObservation = extractSection(
+    normalizedText,
+    'USER\\s+OBSERVATION',
+    ['MISSION\\s*/\\s*CONTEXT', 'EXPECTED\\s+OUTCOME', 'OBSERVATIONS', 'POSITIVE\\s+ASPECTS', 'ISSUES\\s+FOUND', 'ACCESSIBILITY', 'THOUGHTS']
+  );
+
+  // Extract mission context (new concise format) with multiple fallback patterns
+  result.missionContext = extractSection(
+    normalizedText,
+    'MISSION\\s*/\\s*CONTEXT',
+    ['EXPECTED\\s+OUTCOME', 'OBSERVATIONS', 'POSITIVE\\s+ASPECTS', 'ISSUES\\s+FOUND', 'ACCESSIBILITY', 'THOUGHTS']
+  );
+
+  // Extract expected outcome (new concise format) with multiple fallback patterns
+  result.expectedOutcome = extractSection(
+    normalizedText,
+    'EXPECTED\\s+OUTCOME',
+    ['OBSERVATIONS', 'POSITIVE\\s+ASPECTS', 'ISSUES\\s+FOUND', 'ACCESSIBILITY', 'THOUGHTS']
+  );
 
   // Extract observations
-  const obsMatch = responseText.match(/OBSERVATIONS:\s*([\s\S]*?)(?=POSITIVE ASPECTS:|ISSUES FOUND:|ACCESSIBILITY|THOUGHTS:|===)/i);
-  if (obsMatch) {
-    result.observations = obsMatch[1]
+  const obsText = extractSection(
+    normalizedText,
+    'OBSERVATIONS',
+    ['POSITIVE\\s+ASPECTS', 'ISSUES\\s+FOUND', 'ACCESSIBILITY', 'THOUGHTS']
+  );
+  if (obsText) {
+    result.observations = obsText
       .split("\n")
-      .map((line) => line.replace(/^[-•]\s*/, "").trim())
+      .map((line) => line.replace(/^[-•*]\s*/, "").trim())
       .filter((line) => line.length > 0)
       .map(cleanMarkdown);
   }
 
   // Extract positive aspects
-  const posMatch = responseText.match(/POSITIVE ASPECTS:\s*([\s\S]*?)(?=ISSUES FOUND:|ACCESSIBILITY|THOUGHTS:|===)/i);
-  if (posMatch) {
-    result.positiveAspects = posMatch[1]
+  const posText = extractSection(
+    normalizedText,
+    'POSITIVE\\s+ASPECTS',
+    ['ISSUES\\s+FOUND', 'ACCESSIBILITY', 'THOUGHTS']
+  );
+  if (posText) {
+    result.positiveAspects = posText
       .split("\n")
-      .map((line) => line.replace(/^[-•]\s*/, "").trim())
+      .map((line) => line.replace(/^[-•*]\s*/, "").trim())
       .filter((line) => line.length > 0)
       .map(cleanMarkdown);
   }
 
   // Extract issues
-  const issuesMatch = responseText.match(/ISSUES FOUND:\s*([\s\S]*?)(?=ACCESSIBILITY|THOUGHTS:|===)/i);
-  if (issuesMatch) {
-    const issueLines = issuesMatch[1]
+  const issuesText = extractSection(
+    normalizedText,
+    'ISSUES\\s+FOUND',
+    ['ACCESSIBILITY', 'THOUGHTS']
+  );
+  if (issuesText) {
+    const issueLines = issuesText
       .split("\n")
-      .map((line) => line.replace(/^[-•]\s*/, "").trim())
+      .map((line) => line.replace(/^[-•*]\s*/, "").trim())
       .filter((line) => line.length > 0);
 
     result.issues = issueLines.map((line) => {
@@ -411,30 +614,40 @@ function parseAnalysisResponse(
   }
 
   // Extract accessibility notes
-  const accMatch = responseText.match(/ACCESSIBILITY CONCERNS:\s*([\s\S]*?)(?=COMPARISON|THOUGHTS:|===)/i);
-  if (accMatch) {
-    result.accessibilityNotes = accMatch[1]
+  const accText = extractSection(
+    normalizedText,
+    'ACCESSIBILITY\\s+CONCERNS',
+    ['COMPARISON', 'THOUGHTS']
+  );
+  if (accText) {
+    result.accessibilityNotes = accText
       .split("\n")
-      .map((line) => line.replace(/^[-•]\s*/, "").trim())
+      .map((line) => line.replace(/^[-•*]\s*/, "").trim())
       .filter((line) => line.length > 0)
       .map(cleanMarkdown);
   }
 
   // Extract comparison
   if (previousContext) {
-    const compMatch = responseText.match(/COMPARISON WITH PREVIOUS:\s*([\s\S]*?)(?=THOUGHTS:|===)/i);
-    if (compMatch) {
-      result.comparisonWithPrevious = cleanMarkdown(compMatch[1].trim());
-    }
+    result.comparisonWithPrevious = extractSection(
+      normalizedText,
+      'COMPARISON\\s+WITH\\s+PREVIOUS',
+      ['THOUGHTS']
+    );
   }
 
   // Extract thoughts
-  const thoughtsMatch = responseText.match(/THOUGHTS:\s*([\s\S]*?)(?===|$)/i);
-  if (thoughtsMatch) {
-    result.thoughts = cleanMarkdown(thoughtsMatch[1].trim());
+  const thoughtsText = extractSection(
+    normalizedText,
+    'THOUGHTS',
+    [],
+    true // Allow empty thoughts
+  );
+  if (thoughtsText) {
+    result.thoughts = thoughtsText;
   } else {
-    // Fallback: use the entire response as thoughts
-    result.thoughts = cleanMarkdown(responseText);
+    // Fallback: use the entire response as thoughts if no THOUGHTS section found
+    result.thoughts = cleanMarkdown(normalizedText);
   }
 
   return result;
