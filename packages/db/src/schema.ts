@@ -413,9 +413,6 @@ export const screenshotAnalysisResults = pgTable("screenshot_analysis_results", 
   accessibilityNotes: jsonb("accessibility_notes").$type<string[]>(),
   thoughts: text("thoughts"),
   comparisonWithPrevious: text("comparison_with_previous"),
-  userObservation: text("user_observation"),
-  missionContext: text("mission_context"),
-  expectedOutcome: text("expected_outcome"),
   // New concise format fields
   userObservation: text("user_observation"), // Action-oriented quoted feedback
   missionContext: text("mission_context"), // Why this action makes sense, what it tests
