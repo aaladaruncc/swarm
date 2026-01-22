@@ -103,7 +103,7 @@ export function InsightsTab({ run }: InsightsTabProps) {
 
     if (loading) {
         return (
-            <div className="relative w-full h-full min-h-[400px] flex items-center justify-center overflow-hidden">
+            <div className="relative w-full min-h-[400px] flex items-center justify-center">
                 {/* Flickering grid background */}
                 <div 
                     className="absolute inset-0 pointer-events-none"
@@ -139,7 +139,7 @@ export function InsightsTab({ run }: InsightsTabProps) {
     // No insights yet - show generate button
     if (insights.length === 0) {
         return (
-            <div className="relative w-full h-full min-h-[400px] flex items-center justify-center overflow-hidden">
+            <div className="relative w-full min-h-[400px] flex items-center justify-center">
                 {/* Flickering grid background */}
                 <div 
                     className="absolute inset-0 pointer-events-none"
@@ -226,7 +226,7 @@ export function InsightsTab({ run }: InsightsTabProps) {
     }, {} as Record<string, number>);
 
     return (
-        <div className="relative w-full h-full min-h-[400px] overflow-hidden">
+        <div className="relative w-full min-h-[400px]">
             {/* Flickering grid background */}
             <div 
                 className="absolute inset-0 pointer-events-none"
