@@ -1158,9 +1158,18 @@ async function runScreenshotAnalysisInBackground(
                         ...entry.result,
                     })),
                 } as any,
-                inputTokens: personaResults.reduce((sum, entry) => sum + (entry.result.tokenUsage?.inputTokens || 0), 0),
-                outputTokens: personaResults.reduce((sum, entry) => sum + (entry.result.tokenUsage?.outputTokens || 0), 0),
-                totalTokens: personaResults.reduce((sum, entry) => sum + (entry.result.tokenUsage?.totalTokens || 0), 0),
+                inputTokens: validPersonaResults.reduce(
+                    (sum, entry) => sum + (entry.result.tokenUsage?.inputTokens || 0),
+                    0
+                ),
+                outputTokens: validPersonaResults.reduce(
+                    (sum, entry) => sum + (entry.result.tokenUsage?.outputTokens || 0),
+                    0
+                ),
+                totalTokens: validPersonaResults.reduce(
+                    (sum, entry) => sum + (entry.result.tokenUsage?.totalTokens || 0),
+                    0
+                ),
                 completedAt: new Date(),
             })
             .where(eq(schema.screenshotTestRuns.id, testRunId));
