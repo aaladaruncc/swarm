@@ -10,11 +10,11 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const isLight = theme === "light";
   
   return (
-    <div className={`flex min-h-screen ${
+    <div className={`flex h-screen ${
       isLight ? "bg-neutral-50" : "bg-neutral-950"
     }`}>
       <DashboardSidebar />
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-hidden flex flex-col">
         {children}
       </main>
     </div>

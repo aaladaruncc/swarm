@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
@@ -8,9 +8,104 @@ import { generatePersonas, createBatchTest, getSwarms, type GeneratedPersona, ty
 import { uploadScreenshots, createScreenshotTest } from "@/lib/screenshot-api";
 import { ScreenshotUploader, type ScreenshotFile } from "@/components/screenshot-tests/ScreenshotUploader";
 import { GeneratingPersonasLoader } from "@/components/ui/generating-personas-loader";
-import { Loader2, Info, Check, Minus, Plus, Users, X, ArrowRight, Bot, Settings, ChevronDown, ChevronUp, Image, Zap } from "lucide-react";
+import { Loader2, Info, Check, Minus, Plus, Users, X, ArrowRight, Bot, Settings, ChevronDown, ChevronUp, Image, Zap, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/contexts/theme-context";
+
+// Add More Files Drop Zone Component
+function AddMoreFilesDropZone({
+  screenshots,
+  onScreenshotsChange,
+  maxScreenshots,
+}: {
+  screenshots: ScreenshotFile[];
+  onScreenshotsChange: (screenshots: ScreenshotFile[]) => void;
+  maxScreenshots: number;
+}) {
+  const { theme } = useTheme();
+  const isLight = theme === "light";
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleFiles = useCallback((files: FileList | null) => {
+    if (!files) return;
+
+    const newScreenshots: ScreenshotFile[] = [];
+    const remaining = maxScreenshots - screenshots.length;
+
+    const fileArray = Array.from(files)
+      .filter(file => file.type.startsWith("image/"))
+      .slice(0, remaining)
+      .sort((a, b) => {
+        if (a.lastModified !== b.lastModified) {
+          return a.lastModified - b.lastModified;
+        }
+        return a.name.localeCompare(b.name);
+      });
+
+    fileArray.forEach((file) => {
+      const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const preview = URL.createObjectURL(file);
+      newScreenshots.push({
+        id,
+        file,
+        preview,
+        description: "",
+      });
+    });
+
+    onScreenshotsChange([...screenshots, ...newScreenshots]);
+  }, [screenshots, maxScreenshots, onScreenshotsChange]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    handleFiles(e.dataTransfer.files);
+  }, [handleFiles]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+  }, []);
+
+  return (
+    <div
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onClick={() => fileInputRef.current?.click()}
+      className={`
+        border-2 border-dashed rounded-lg p-3 text-center cursor-pointer transition-all
+        ${dragOver
+          ? isLight
+            ? "border-neutral-900 bg-neutral-100"
+            : "border-white bg-white/10"
+          : isLight
+            ? "border-neutral-300 hover:border-neutral-400 bg-neutral-50 hover:bg-neutral-100"
+            : "border-white/10 hover:border-white/20 bg-[#252525] hover:bg-white/5"
+        }
+      `}
+    >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={(e) => handleFiles(e.target.files)}
+        className="hidden"
+      />
+      <Upload className={`w-4 h-4 mx-auto mb-1 ${isLight ? "text-neutral-400" : "text-neutral-500"}`} />
+      <p className={`text-xs font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>
+        Drop more files or click to upload
+      </p>
+    </div>
+  );
+}
 
 export default function NewTest() {
   const router = useRouter();
@@ -46,7 +141,7 @@ export default function NewTest() {
   const [swarmModalStep, setSwarmModalStep] = useState<"select" | "confirm">("select");
 
   // UI State
-  const [step, setStep] = useState<"describe" | "generating" | "select" | "starting">("describe");
+  const [step, setStep] = useState<"describe" | "generating" | "select" | "screenshots" | "starting">("describe");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -291,14 +386,14 @@ export default function NewTest() {
       router.push(`/dashboard/tests/screenshot/${testResult.screenshotTestRun.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start test");
-      setStep("select");
+      setStep("screenshots"); // Stay on screenshot upload page on error
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className={`h-full flex flex-col p-8 max-w-7xl mx-auto w-full overflow-y-auto ${isLight ? "playground-scrollbar-light" : "playground-scrollbar-dark"}`}>
+    <div className={`h-full flex flex-col p-8 max-w-7xl mx-auto w-full overflow-hidden min-h-0 ${isLight ? "playground-scrollbar-light" : "playground-scrollbar-dark"}`}>
       {/* Step 1: Describe */}
       {step === "describe" && (
         <>
@@ -315,64 +410,56 @@ export default function NewTest() {
                 Playground
               </Link>
               <span className={isLight ? "text-neutral-400" : "text-neutral-600"}>/</span>
-              <span className={isLight ? "text-neutral-900 font-medium" : "text-white font-medium"}>New Simulation</span>
+              <span className={isLight ? "text-neutral-900 font-medium" : "text-white font-medium"}>New Test</span>
             </nav>
           </div>
 
-          {/* Modality Selector */}
-          <div className="mb-6 flex-shrink-0">
-            <div className="grid grid-cols-2 gap-4 max-w-2xl">
-              <button
-                type="button"
-                onClick={() => setModality("live")}
-                className={`p-5 border rounded-xl text-left transition-all ${modality === "live"
-                  ? isLight
-                    ? "border-neutral-900 ring-2 ring-neutral-900 bg-white"
-                    : "border-white ring-2 ring-white bg-[#252525]"
-                  : isLight
-                    ? "border-neutral-200 bg-white hover:border-neutral-400"
-                    : "border-white/10 bg-[#1E1E1E] hover:border-white/30"
-                  }`}
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <div className={`p-2 rounded-lg ${modality === "live"
-                    ? isLight ? "bg-neutral-900 text-white" : "bg-white text-neutral-900"
-                    : isLight ? "bg-neutral-100 text-neutral-600" : "bg-[#252525] text-neutral-400"
-                    }`}>
-                    <Zap size={18} />
-                  </div>
-                  <h3 className={`font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>Live Agent Testing</h3>
-                </div>
-                <p className={`text-xs font-light ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
-                  AI agents browse your live site and provide real-time UX feedback
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setModality("screenshot")}
-                className={`p-5 border rounded-xl text-left transition-all ${modality === "screenshot"
-                  ? isLight
-                    ? "border-neutral-900 ring-2 ring-neutral-900 bg-white"
-                    : "border-white ring-2 ring-white bg-[#252525]"
-                  : isLight
-                    ? "border-neutral-200 bg-white hover:border-neutral-400"
-                    : "border-white/10 bg-[#1E1E1E] hover:border-white/30"
-                  }`}
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <div className={`p-2 rounded-lg ${modality === "screenshot"
-                    ? isLight ? "bg-neutral-900 text-white" : "bg-white text-neutral-900"
-                    : isLight ? "bg-neutral-100 text-neutral-600" : "bg-[#252525] text-neutral-400"
-                    }`}>
-                    <Image size={18} />
-                  </div>
-                  <h3 className={`font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>Screenshot Flow</h3>
-                </div>
-                <p className={`text-xs font-light ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
-                  Upload screenshots of a user flow for AI-powered UX analysis
-                </p>
-              </button>
+          {/* Test Type Selector */}
+          <div className="mb-8 flex-shrink-0">
+            <div className="flex flex-col gap-3">
+              <label className={`text-sm font-medium ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
+                Test Type
+              </label>
+              <div className={`flex items-center rounded-full border p-1 max-w-md ${isLight
+                ? "border-neutral-200 bg-neutral-50"
+                : "border-white/10 bg-[#252525]"
+                }`}>
+                <button
+                  type="button"
+                  onClick={() => setModality("live")}
+                  className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all rounded-full flex-1 justify-center ${modality === "live"
+                    ? isLight
+                      ? "bg-neutral-900 text-white shadow-sm"
+                      : "bg-white text-neutral-900 shadow-sm"
+                    : isLight
+                      ? "text-neutral-600 hover:text-neutral-900"
+                      : "text-neutral-400 hover:text-white"
+                    }`}
+                >
+                  <Zap size={14} />
+                  <span>Runtime</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModality("screenshot")}
+                  className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all rounded-full flex-1 justify-center ${modality === "screenshot"
+                    ? isLight
+                      ? "bg-neutral-900 text-white shadow-sm"
+                      : "bg-white text-neutral-900 shadow-sm"
+                    : isLight
+                      ? "text-neutral-600 hover:text-neutral-900"
+                      : "text-neutral-400 hover:text-white"
+                    }`}
+                >
+                  <Image size={14} />
+                  <span>Static</span>
+                </button>
+              </div>
+              <p className={`text-xs font-light ${isLight ? "text-neutral-500" : "text-neutral-500"}`}>
+                {modality === "live"
+                  ? "Deploy agents to interact with your live environment in real-time"
+                  : "Analyze static screenshots using vision-based AI analysis"}
+              </p>
             </div>
           </div>
 
@@ -642,143 +729,182 @@ export default function NewTest() {
             </form>
           )}
 
-          {/* Screenshot Mode Form */}
+          {/* Static Mode Form - Same layout as Runtime */}
           {modality === "screenshot" && (
             <form onSubmit={handleGenerateScreenshotPersonas} className="flex-1 flex flex-col min-h-0">
-              {/* Top Row: Screenshot Upload & Audience */}
-              <div className="grid grid-cols-2 gap-6 mb-6 items-stretch min-h-0">
-                {/* Left Module - Screenshot Uploader */}
-                <div className={`border rounded-xl p-6 flex flex-col h-full ${isLight
-                  ? "bg-white border-neutral-200"
-                  : "bg-[#1E1E1E] border-white/10"
-                  }`}>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Image className={isLight ? "text-neutral-900" : "text-white"} size={20} />
-                    <h3 className={`font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>1. Upload Screenshots</h3>
-                  </div>
-                  <div className="flex-1">
-                    <ScreenshotUploader
-                      screenshots={screenshots}
-                      onScreenshotsChange={setScreenshots}
-                    />
-                  </div>
-                </div>
-
-                {/* Right Module - Audience Description */}
-                <div className="flex flex-col gap-6 h-full">
-                  <div className={`border rounded-xl p-6 flex flex-col flex-1 ${isLight
+              {/* Top Row: Target Environment & Concurrency side by side */}
+              <div className="grid grid-cols-3 gap-6 mb-6 items-stretch min-h-0" style={{ height: '45vh' }}>
+                {/* Left Module - Wider (2 columns) - Target Environment & Audience */}
+                <div className="col-span-2 flex flex-col">
+                  <div className={`border rounded-xl p-6 flex flex-col h-full ${isLight
                     ? "bg-white border-neutral-200"
                     : "bg-[#1E1E1E] border-white/10"
                     }`}>
-                    <div className="flex items-center gap-2 mb-4">
-                      <Users className={isLight ? "text-neutral-900" : "text-white"} size={20} />
-                      <h3 className={`font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>2. Target Audience</h3>
-                    </div>
-
-                    <div className="space-y-4 flex-1 flex flex-col">
-                      <div>
-                        <label className={`text-sm font-medium mb-2 block ${isLight ? "text-neutral-900" : "text-white"
-                          }`}>Test Name (Optional)</label>
+                    <div className="space-y-6 flex-1 flex flex-col">
+                      {/* Test Name */}
+                      <section className="flex-shrink-0">
+                        <div className="flex items-center gap-2 mb-3">
+                          <label className={`text-sm font-medium ${isLight ? "text-neutral-900" : "text-white"
+                            }`}>Test Name (Optional)</label>
+                        </div>
                         <input
                           type="text"
                           value={testName}
                           onChange={(e) => setTestName(e.target.value)}
-                          placeholder="e.g. Checkout Flow V2"
+                          placeholder="e.g., Checkout Flow Review"
                           className={`w-full border px-4 py-3 focus:ring-1 outline-none transition-all placeholder:font-light text-sm rounded-lg ${isLight
                             ? "bg-neutral-50 border-neutral-300 text-neutral-900 focus:border-neutral-500 focus:ring-neutral-500/20 placeholder:text-neutral-400"
                             : "bg-[#252525] border-white/10 text-white focus:border-white/30 focus:ring-white/10 placeholder:text-neutral-600"
                             }`}
                         />
-                      </div>
+                        <p className={`text-xs font-light mt-2 ${isLight ? "text-neutral-500" : "text-neutral-500"
+                          }`}>
+                          Optional name to identify this test.
+                        </p>
+                      </section>
 
-                      <div className="flex-1 flex flex-col">
-                        <label className={`text-sm font-medium mb-2 block ${isLight ? "text-neutral-900" : "text-white"
-                          }`}>Describe your target audience</label>
+                      {/* Audience Description */}
+                      <section className="flex-1 flex flex-col min-h-0">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <label className={`text-sm font-medium ${isLight ? "text-neutral-900" : "text-white"
+                              }`}>Target Audience</label>
+                          </div>
+                        </div>
                         <textarea
                           value={userDescription}
                           onChange={(e) => setUserDescription(e.target.value)}
-                          placeholder="e.g. Tech-savvy millennials looking for eco-friendly products..."
-                          className={`w-full flex-1 border px-4 py-3 focus:ring-1 outline-none transition-all placeholder:font-light resize-none text-sm rounded-lg ${isLight
+                          placeholder="Example: Busy professionals aged 25-45 who need quick meal planning..."
+                          className={`w-full border px-4 py-3 focus:ring-1 outline-none transition-all placeholder:font-light flex-1 resize-none text-sm rounded-lg ${isLight
                             ? "bg-neutral-50 border-neutral-300 text-neutral-900 focus:border-neutral-500 focus:ring-neutral-500/20 placeholder:text-neutral-400"
                             : "bg-[#252525] border-white/10 text-white focus:border-white/30 focus:ring-white/10 placeholder:text-neutral-600"
                             }`}
                           required
+                          minLength={10}
+                          maxLength={2000}
                         />
+                        <p className={`text-xs font-light mt-2 ${isLight ? "text-neutral-500" : "text-neutral-500"
+                          }`}>
+                          Be specific: demographics, goals, tech comfort, pain points.
+                        </p>
+                      </section>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Module - Narrower (1 column) - Concurrency */}
+                <div className="col-span-1 flex flex-col">
+                  <div className={`border rounded-xl p-6 flex flex-col h-full justify-center ${isLight
+                    ? "bg-white border-neutral-200"
+                    : "bg-[#1E1E1E] border-white/10"
+                    }`}>
+                    <div className="flex flex-col items-center justify-center space-y-6">
+                      {/* Header */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <h2 className={`text-base font-medium ${isLight ? "text-neutral-900" : "text-white"
+                          }`}>Concurrency</h2>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className={`text-sm font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>Personas</p>
-                          <p className={`text-xs font-light ${isLight ? "text-neutral-500" : "text-neutral-500"}`}>
-                            Choose how many personas to analyze this flow
-                          </p>
+
+                      {/* Large Number Display */}
+                      <div className="flex flex-col items-center">
+                        <div className={`text-6xl font-light mb-2 ${isLight ? "text-neutral-900" : "text-white"
+                          }`}>{agentCount}</div>
+                        <div className={`text-xs font-light uppercase tracking-wider mb-6 ${isLight ? "text-neutral-500" : "text-neutral-500"
+                          }`}>
+                          {agentCount === 1 ? 'Persona' : 'Personas'}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setAgentCount(Math.max(1, agentCount - 1))}
-                            className={`w-9 h-9 border transition-colors flex items-center justify-center rounded-lg ${isLight
-                              ? "border-neutral-300 hover:border-neutral-500 hover:bg-neutral-100 text-neutral-900"
-                              : "border-white/10 hover:border-white/30 hover:bg-white/5 text-white"
-                              }`}
-                          >
-                            <Minus size={16} />
-                          </button>
-                          <div className={`w-8 text-center text-sm font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>
-                            {agentCount}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setAgentCount(Math.min(5, agentCount + 1))}
-                            className={`w-9 h-9 border transition-colors flex items-center justify-center rounded-lg ${isLight
-                              ? "border-neutral-300 hover:border-neutral-500 hover:bg-neutral-100 text-neutral-900"
-                              : "border-white/10 hover:border-white/30 hover:bg-white/5 text-white"
-                              }`}
-                          >
-                            <Plus size={16} />
-                          </button>
+                      </div>
+
+                      {/* Visual Indicator - Larger */}
+                      <div className="w-full space-y-2">
+                        <div className={`flex gap-2 h-2 max-w-full rounded-full overflow-hidden ${isLight ? "bg-neutral-200" : "bg-[#252525]"
+                          }`}>
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <div
+                              key={i}
+                              className={`flex-1 transition-colors rounded-full ${i <= agentCount
+                                ? isLight ? 'bg-neutral-900' : 'bg-white'
+                                : 'bg-transparent'
+                                }`}
+                            />
+                          ))}
                         </div>
+                      </div>
+
+                      {/* Control Buttons */}
+                      <div className="flex items-center gap-4 w-full justify-center">
+                        <button
+                          type="button"
+                          onClick={() => setAgentCount(Math.max(1, agentCount - 1))}
+                          className={`w-12 h-12 border transition-colors flex items-center justify-center rounded-lg ${isLight
+                            ? "border-neutral-300 hover:border-neutral-500 hover:bg-neutral-100 text-neutral-900"
+                            : "border-white/10 hover:border-white/30 hover:bg-white/5 text-white"
+                            }`}
+                        >
+                          <Minus size={18} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAgentCount(Math.min(5, agentCount + 1))}
+                          className={`w-12 h-12 border transition-colors flex items-center justify-center rounded-lg ${isLight
+                            ? "border-neutral-300 hover:border-neutral-500 hover:bg-neutral-100 text-neutral-900"
+                            : "border-white/10 hover:border-white/30 hover:bg-white/5 text-white"
+                            }`}
+                        >
+                          <Plus size={18} />
+                        </button>
+                      </div>
+
+                      {/* Description */}
+                      <div className="text-center pt-2">
+                        <p className={`text-xs font-light leading-relaxed ${isLight ? "text-neutral-500" : "text-neutral-500"
+                          }`}>
+                          {agentCount === 1 && "Single persona — Focused analysis"}
+                          {agentCount === 2 && "2 personas — Balanced perspectives"}
+                          {agentCount === 3 && "3 personas — Comprehensive analysis (recommended)"}
+                          {agentCount === 4 && "4 personas — Diverse viewpoints"}
+                          {agentCount === 5 && "5 personas — Maximum coverage"}
+                        </p>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Action Bar */}
-              <div className={`mt-auto border-t pt-6 flex items-center justify-between ${isLight ? "border-neutral-200" : "border-white/10"}`}>
-                <div className="flex items-center gap-2">
-                  {error && (
-                    <div className={`text-sm px-3 py-1.5 rounded-lg border ${isLight
-                      ? "bg-red-50 text-red-600 border-red-200"
-                      : "bg-red-500/10 text-red-400 border-red-500/20"
-                      }`}>
-                      {error}
-                    </div>
-                  )}
-                </div>
+              {/* Actions - Fixed at bottom */}
+              <div className="mt-6 flex-shrink-0 space-y-4">
+                {error && (
+                  <div className={`p-4 border text-sm font-light rounded-lg ${isLight
+                    ? "bg-red-50 text-red-700 border-red-200"
+                    : "bg-red-500/10 text-red-400 border-red-500/20"
+                    }`}>
+                    <span className="font-medium">Error:</span> {error}
+                  </div>
+                )}
 
-                <div className="flex items-center gap-3">
+                {/* Actions */}
+                <div className="flex items-center justify-end gap-4">
                   <Link
                     href="/dashboard"
-                    className={`px-6 py-2.5 text-sm font-medium transition-colors rounded-lg ${isLight
-                      ? "text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100"
-                      : "text-neutral-400 hover:text-white hover:bg-white/10"
+                    className={`px-5 py-2.5 text-sm font-medium transition-colors ${isLight
+                      ? "text-neutral-600 hover:text-neutral-900"
+                      : "text-neutral-400 hover:text-white"
                       }`}
                   >
                     Cancel
                   </Link>
-
                   <button
                     type="submit"
-                    disabled={generatingPersona || !userDescription}
+                    disabled={loading || !userDescription}
                     className={`px-6 py-2.5 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg ${isLight
                       ? "bg-neutral-900 text-white hover:bg-neutral-800"
                       : "bg-white text-neutral-900 hover:bg-neutral-200"
                       }`}
                   >
-                    {generatingPersona ? (
+                    {loading ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Generating Personas...</span>
+                        <span>Generating...</span>
                       </>
                     ) : (
                       <span>Generate Personas</span>
@@ -819,7 +945,7 @@ export default function NewTest() {
                   : "text-neutral-400 hover:text-white"
                   }`}
               >
-                {isScreenshotMode ? "New Screenshot Test" : "New Simulation"}
+                New Test
               </button>
               <span className={isLight ? "text-neutral-400" : "text-neutral-600"}>/</span>
               <span className={isLight ? "text-neutral-900 font-medium" : "text-white font-medium"}>Select Personas</span>
@@ -987,7 +1113,7 @@ export default function NewTest() {
               </button>
 
               <button
-                onClick={isScreenshotMode ? handleStartScreenshotTest : handleStartBatchTest}
+                onClick={isScreenshotMode ? () => setStep("screenshots") : handleStartBatchTest}
                 disabled={loading || selectedIndices.length !== agentCount}
                 className={`px-6 py-2 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg ${isLight
                   ? "bg-neutral-900 text-white hover:bg-neutral-800"
@@ -997,12 +1123,12 @@ export default function NewTest() {
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>{isScreenshotMode ? "Starting..." : "Deploying..."}</span>
+                    <span>Deploying...</span>
                   </>
                 ) : selectedIndices.length !== agentCount ? (
                   <span>Select {agentCount - selectedIndices.length} more</span>
                 ) : (
-                  <span>{isScreenshotMode ? "Start Analysis" : "Start Simulation"}</span>
+                  <span>{isScreenshotMode ? "Next" : "Start Simulation"}</span>
                 )}
               </button>
             </div>
@@ -1010,7 +1136,130 @@ export default function NewTest() {
         </>
       )}
 
-      {/* Step 3: Starting */}
+      {/* Step 3: Upload Screenshots (Static Mode Only) */}
+      {step === "screenshots" && isScreenshotMode && (
+        <>
+          {/* Breadcrumb Header */}
+          <div className="mb-8 flex-shrink-0">
+            <nav className="flex items-center gap-2 text-sm mb-6">
+              <Link
+                href="/dashboard"
+                className={`transition-colors font-light ${isLight
+                  ? "text-neutral-600 hover:text-neutral-900"
+                  : "text-neutral-400 hover:text-white"
+                  }`}
+              >
+                Playground
+              </Link>
+              <span className={isLight ? "text-neutral-400" : "text-neutral-600"}>/</span>
+              <button
+                onClick={() => setStep("select")}
+                className={`transition-colors font-light ${isLight
+                  ? "text-neutral-600 hover:text-neutral-900"
+                  : "text-neutral-400 hover:text-white"
+                  }`}
+              >
+                New Test
+              </button>
+              <span className={isLight ? "text-neutral-400" : "text-neutral-600"}>/</span>
+              <span className={isLight ? "text-neutral-900 font-medium" : "text-white font-medium"}>Upload Screenshots</span>
+            </nav>
+            <h1 className={`text-3xl font-light tracking-tight mb-2 ${isLight ? "text-neutral-900" : "text-white"
+              }`}>Upload Screenshots</h1>
+            <p className={`font-light ${isLight ? "text-neutral-500" : "text-neutral-400"
+              }`}>Upload a sequence of screenshots representing your user flow for analysis.</p>
+          </div>
+
+          <form onSubmit={(e) => { e.preventDefault(); handleStartScreenshotTest(); }} className="flex-1 flex flex-col min-h-0">
+            {/* Screenshot Upload - Wide Rectangle */}
+            <div className={`border-2 border-dashed rounded-xl p-8 mb-3 flex-1 flex flex-col min-h-0 overflow-hidden ${isLight
+              ? "bg-neutral-50 border-neutral-300"
+              : "bg-[#252525] border-white/10"
+              }`}>
+              <div className="mb-4 flex-shrink-0">
+                <h2 className={`text-lg font-medium mb-2 ${isLight ? "text-neutral-900" : "text-white"
+                  }`}>
+                  Screenshot Sequence
+                </h2>
+                <p className={`text-sm font-light mb-3 ${isLight ? "text-neutral-500" : "text-neutral-400"
+                  }`}>
+                  Upload your screenshots to test with personas. We'll use these to generate insights about your design.
+                </p>
+                {screenshots.length > 0 && (
+                  <p className={`text-sm font-light ${isLight ? "text-neutral-600" : "text-neutral-400"
+                    }`}>
+                    Drag and drop the images to arrange them according to the user flow. This is important to illustrate the user journey.
+                  </p>
+                )}
+              </div>
+              <div className="flex-1 overflow-y-auto min-h-0">
+                <ScreenshotUploader
+                  screenshots={screenshots}
+                  onScreenshotsChange={setScreenshots}
+                  maxScreenshots={20}
+                  showInstruction={false}
+                  showAddMoreFiles={false}
+                />
+              </div>
+            </div>
+
+            {/* Add More Files - Outside the dotted box */}
+            {screenshots.length > 0 && screenshots.length < 20 && (
+              <div className="mb-6 flex-shrink-0">
+                <AddMoreFilesDropZone
+                  screenshots={screenshots}
+                  onScreenshotsChange={setScreenshots}
+                  maxScreenshots={20}
+                />
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="mt-6 flex-shrink-0 space-y-4">
+              {error && (
+                <div className={`p-4 border text-sm font-light rounded-lg ${isLight
+                  ? "bg-red-50 text-red-700 border-red-200"
+                  : "bg-red-500/10 text-red-400 border-red-500/20"
+                  }`}>
+                  <span className="font-medium">Error:</span> {error}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-4">
+                <button
+                  type="button"
+                  onClick={() => setStep("select")}
+                  className={`px-5 py-2.5 text-sm font-medium transition-colors ${isLight
+                    ? "text-neutral-600 hover:text-neutral-900"
+                    : "text-neutral-400 hover:text-white"
+                    }`}
+                >
+                  ← Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading || screenshots.length === 0}
+                  className={`px-6 py-2.5 transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg ${isLight
+                    ? "bg-neutral-900 text-white hover:bg-neutral-800"
+                    : "bg-white text-neutral-900 hover:bg-neutral-200"
+                    }`}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Starting Analysis...</span>
+                    </>
+                  ) : (
+                    <span>Start Analysis</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </form>
+        </>
+      )}
+
+      {/* Step 4: Starting */}
       {step === "starting" && (
         <>
           {/* Breadcrumb Header */}
@@ -1033,7 +1282,7 @@ export default function NewTest() {
                   : "text-neutral-400 hover:text-white"
                   }`}
               >
-                {isScreenshotMode ? "New Screenshot Test" : "New Simulation"}
+                New Test
               </Link>
               <span className={isLight ? "text-neutral-400" : "text-neutral-600"}>/</span>
               <span className={isLight ? "text-neutral-900 font-medium" : "text-white font-medium"}>
