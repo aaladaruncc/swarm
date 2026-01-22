@@ -100,6 +100,9 @@ export const testRuns = pgTable("test_runs", {
   personaName: text("persona_name"),
   status: text("status").notNull().default("pending"), // pending, running, completed, failed
   browserbaseSessionId: text("browserbase_session_id"),
+  inputTokens: integer("input_tokens"),
+  outputTokens: integer("output_tokens"),
+  totalTokens: integer("total_tokens"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   startedAt: timestamp("started_at"),
   completedAt: timestamp("completed_at"),
@@ -341,6 +344,9 @@ export const screenshotTestRuns = pgTable("screenshot_test_runs", {
   overallScore: integer("overall_score"), // 0-100
   summary: text("summary"),
   fullReport: jsonb("full_report"),
+  inputTokens: integer("input_tokens"),
+  outputTokens: integer("output_tokens"),
+  totalTokens: integer("total_tokens"),
 
   // Shareable link fields
   shareToken: text("share_token").unique(), // Unique token for public sharing
@@ -407,6 +413,9 @@ export const screenshotAnalysisResults = pgTable("screenshot_analysis_results", 
   accessibilityNotes: jsonb("accessibility_notes").$type<string[]>(),
   thoughts: text("thoughts"),
   comparisonWithPrevious: text("comparison_with_previous"),
+  userObservation: text("user_observation"),
+  missionContext: text("mission_context"),
+  expectedOutcome: text("expected_outcome"),
   // New concise format fields
   userObservation: text("user_observation"), // Action-oriented quoted feedback
   missionContext: text("mission_context"), // Why this action makes sense, what it tests
@@ -506,4 +515,3 @@ export type NewScreenshotAnalysisResult = typeof screenshotAnalysisResults.$infe
 
 export type ScreenshotAggregatedInsight = typeof screenshotAggregatedInsights.$inferSelect;
 export type NewScreenshotAggregatedInsight = typeof screenshotAggregatedInsights.$inferInsert;
-

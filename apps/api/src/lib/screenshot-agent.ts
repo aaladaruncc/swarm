@@ -67,12 +67,28 @@ export interface ScreenshotTestResult {
   positiveAspects: string[];
   recommendations: string[];
   personaSpecificFeedback: string;
+  tokenUsage?: TokenUsageSummary;
 }
 
 export interface ScreenshotReflection {
   startOrder: number;
   endOrder: number;
   reflection: string;
+}
+
+export interface TokenUsageSummary {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+}
+
+interface UsageMetadataShape {
+  promptTokenCount?: number;
+  candidatesTokenCount?: number;
+  totalTokenCount?: number;
+  prompt_token_count?: number;
+  candidates_token_count?: number;
+  total_token_count?: number;
 }
 
 // ============================================================================
@@ -114,6 +130,22 @@ async function generateContentWithFallback(
   }
 }
 
+function extractUsageMetadata(result: any): TokenUsageSummary {
+  const response = result?.response ?? result;
+  const usageMetadata = response?.usageMetadata ?? response?.usage_metadata;
+  const usage = (usageMetadata || {}) as UsageMetadataShape;
+  const inputTokens = Number(usage.promptTokenCount ?? usage.prompt_token_count ?? 0);
+  const outputTokens = Number(usage.candidatesTokenCount ?? usage.candidates_token_count ?? 0);
+  const totalTokensRaw = usage.totalTokenCount ?? usage.total_token_count;
+  const totalTokens = Number(totalTokensRaw ?? inputTokens + outputTokens);
+
+  return {
+    inputTokens,
+    outputTokens,
+    totalTokens,
+  };
+}
+
 // ============================================================================
 // TEXT CLEANING UTILITY
 // ============================================================================
@@ -124,38 +156,38 @@ async function generateContentWithFallback(
 function cleanMarkdown(text: string): string {
   if (!text) return text;
   let cleaned = text;
-  
+
   // Remove markdown blockquotes (lines starting with >)
-  cleaned = cleaned.replace(/^>\s+/gm, '');
+  cleaned = cleaned.replace(/^>\s+/gm, "");
   // Remove HTML blockquote tags
-  cleaned = cleaned.replace(/<blockquote[^>]*>/gi, '');
-  cleaned = cleaned.replace(/<\/blockquote>/gi, '');
+  cleaned = cleaned.replace(/<blockquote[^>]*>/gi, "");
+  cleaned = cleaned.replace(/<\/blockquote>/gi, "");
   // Remove markdown bold (**text** or __text__)
-  cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, '$1');
-  cleaned = cleaned.replace(/__([^_]+)__/g, '$1');
+  cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, "$1");
+  cleaned = cleaned.replace(/__([^_]+)__/g, "$1");
   // Remove markdown italic (*text* or _text_)
-  cleaned = cleaned.replace(/\*([^*]+)\*/g, '$1');
-  cleaned = cleaned.replace(/_([^_]+)_/g, '$1');
+  cleaned = cleaned.replace(/\*([^*]+)\*/g, "$1");
+  cleaned = cleaned.replace(/_([^_]+)_/g, "$1");
   // Remove markdown code (`text`)
-  cleaned = cleaned.replace(/`([^`]+)`/g, '$1');
+  cleaned = cleaned.replace(/`([^`]+)`/g, "$1");
   // Remove markdown links [text](url)
-  cleaned = cleaned.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1');
+  cleaned = cleaned.replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1");
   // Remove markdown strikethrough (~~text~~)
-  cleaned = cleaned.replace(/~~([^~]+)~~/g, '$1');
+  cleaned = cleaned.replace(/~~([^~]+)~~/g, "$1");
   // Remove markdown headers (# ## ###)
-  cleaned = cleaned.replace(/^#{1,6}\s+/gm, '');
+  cleaned = cleaned.replace(/^#{1,6}\s+/gm, "");
   // Remove markdown horizontal rules (--- or ***)
-  cleaned = cleaned.replace(/^[-*]{3,}$/gm, '');
+  cleaned = cleaned.replace(/^[-*]{3,}$/gm, "");
   // Remove leading/trailing quotes if the entire text is wrapped
   cleaned = cleaned.trim();
-  if ((cleaned.startsWith('"') && cleaned.endsWith('"')) || 
-      (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
+  if ((cleaned.startsWith("\"") && cleaned.endsWith("\"")) ||
+    (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
     cleaned = cleaned.slice(1, -1);
   }
   // Remove any remaining quote markers at the start/end
-  cleaned = cleaned.replace(/^["']+/, '');
-  cleaned = cleaned.replace(/["']+$/, '');
-  
+  cleaned = cleaned.replace(/^["']+/, "");
+  cleaned = cleaned.replace(/["']+$/, "");
+
   return cleaned.trim();
 }
 
@@ -188,7 +220,10 @@ async function analyzeScreenshotWithVision(
   previousContext: string,
   model: any,
   fallbackModel: any
-): Promise<Omit<ScreenshotAnalysis, "screenshotOrder" | "s3Key" | "s3Url" | "personaName">> {
+): Promise<{
+  analysis: Omit<ScreenshotAnalysis, "screenshotOrder" | "s3Key" | "s3Url" | "personaName">;
+  usage: TokenUsageSummary;
+}> {
   // Download image
   const imageBase64 = await downloadImageAsBase64(screenshot.s3Url);
 
@@ -203,6 +238,7 @@ async function analyzeScreenshotWithVision(
   // Retry logic for empty responses
   const maxRetries = 2;
   let lastError: Error | null = null;
+  const emptyUsage: TokenUsageSummary = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -219,6 +255,7 @@ async function analyzeScreenshotWithVision(
 
       const response = await result.response;
       const text = response.text();
+      const usage = extractUsageMetadata(response);
 
       // Validate response
       if (!text || text.trim().length === 0) {
@@ -231,18 +268,21 @@ async function analyzeScreenshotWithVision(
           console.error(`[Screenshot Agent] ❌ Empty response from LLM after ${maxRetries + 1} attempts`);
           // Return a default analysis instead of throwing
           return {
-            observations: ["Unable to analyze screenshot - LLM returned empty response"],
-            positiveAspects: [],
-            issues: [{
-              severity: "medium" as const,
-              description: "Analysis unavailable - empty response from AI model",
-              recommendation: "Please try again or check API configuration"
-            }],
-            accessibilityNotes: [],
-            thoughts: "The AI model did not return any analysis for this screenshot. This may be due to API issues or rate limiting.",
-            userObservation: "Unable to generate observation - please retry the analysis",
-            missionContext: "Analysis unavailable",
-            expectedOutcome: "Unable to determine expected outcome"
+            analysis: {
+              observations: ["Unable to analyze screenshot - LLM returned empty response"],
+              positiveAspects: [],
+              issues: [{
+                severity: "medium" as const,
+                description: "Analysis unavailable - empty response from AI model",
+                recommendation: "Please try again or check API configuration",
+              }],
+              accessibilityNotes: [],
+              thoughts: "The AI model did not return any analysis for this screenshot. This may be due to API issues or rate limiting.",
+              userObservation: "Unable to generate observation - please retry the analysis",
+              missionContext: "Analysis unavailable",
+              expectedOutcome: "Unable to determine expected outcome",
+            },
+            usage,
           };
         }
       }
@@ -252,12 +292,12 @@ async function analyzeScreenshotWithVision(
 
       // Parse structured response
       const parsed = parseAnalysisResponse(text, previousContext);
-      
+
       // Log if new format fields are missing - this is critical for debugging
       const missingFields: string[] = [];
-      if (!parsed.userObservation) missingFields.push('userObservation');
-      if (!parsed.missionContext) missingFields.push('missionContext');
-      if (!parsed.expectedOutcome) missingFields.push('expectedOutcome');
+      if (!parsed.userObservation) missingFields.push("userObservation");
+      if (!parsed.missionContext) missingFields.push("missionContext");
+      if (!parsed.expectedOutcome) missingFields.push("expectedOutcome");
 
       if (missingFields.length > 0) {
         console.warn(`[Screenshot Agent] ⚠️ Missing new format fields:`, {
@@ -267,31 +307,31 @@ async function analyzeScreenshotWithVision(
           hasExpectedOutcome: !!parsed.expectedOutcome,
           responseLength: text.length,
         });
-        
+
         // Log a more detailed sample of the response to help debug parsing issues
-        console.warn(`[Screenshot Agent] Full response (first 3000 chars) for debugging:\n${text.substring(0, 3000)}${text.length > 3000 ? '...' : ''}`);
-        
+        console.warn(`[Screenshot Agent] Full response (first 3000 chars) for debugging:\n${text.substring(0, 3000)}${text.length > 3000 ? "..." : ""}`);
+
         // Try to find what sections ARE present in the response
         const sectionHeaders = [
-          'USER OBSERVATION',
-          'MISSION/CONTEXT',
-          'EXPECTED OUTCOME',
-          'OBSERVATIONS',
-          'POSITIVE ASPECTS',
-          'ISSUES FOUND',
-          'ACCESSIBILITY',
-          'THOUGHTS'
+          "USER OBSERVATION",
+          "MISSION/CONTEXT",
+          "EXPECTED OUTCOME",
+          "OBSERVATIONS",
+          "POSITIVE ASPECTS",
+          "ISSUES FOUND",
+          "ACCESSIBILITY",
+          "THOUGHTS",
         ];
-        const foundSections = sectionHeaders.filter(header => 
-          new RegExp(header.replace(/\//g, '\\/'), 'i').test(text)
+        const foundSections = sectionHeaders.filter((header) =>
+          new RegExp(header.replace(/\//g, "\\/"), "i").test(text)
         );
         console.warn(`[Screenshot Agent] Found sections in response:`, foundSections);
-        
+
         // If we're missing critical fields, try to extract something useful from the response
         // This is a fallback to ensure we don't lose all the analysis
         if (!parsed.userObservation && !parsed.missionContext && !parsed.expectedOutcome) {
           // Try to extract the first meaningful paragraph as userObservation
-          const firstParagraph = text.split('\n\n').find((p: string) => p.trim().length > 50);
+          const firstParagraph = text.split("\n\n").find((p: string) => p.trim().length > 50);
           if (firstParagraph) {
             parsed.userObservation = cleanMarkdown(firstParagraph.trim().substring(0, 500));
             console.warn(`[Screenshot Agent] ⚠️ Extracted fallback userObservation from first paragraph`);
@@ -300,8 +340,11 @@ async function analyzeScreenshotWithVision(
       } else {
         console.log(`[Screenshot Agent] ✅ Successfully extracted all new format fields`);
       }
-      
-      return parsed;
+
+      return {
+        analysis: parsed,
+        usage,
+      };
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       if (attempt < maxRetries) {
@@ -313,18 +356,21 @@ async function analyzeScreenshotWithVision(
         console.error(`[Screenshot Agent] ❌ Failed after ${maxRetries + 1} attempts:`, lastError);
         // Return a default analysis instead of throwing
         return {
-          observations: [`Error analyzing screenshot: ${lastError.message}`],
-          positiveAspects: [],
-          issues: [{
-            severity: "high" as const,
-            description: `Analysis failed: ${lastError.message}`,
-            recommendation: "Please try again or check API configuration"
-          }],
-          accessibilityNotes: [],
-          thoughts: `The AI model encountered an error while analyzing this screenshot: ${lastError.message}`,
-          userObservation: "Unable to generate observation due to analysis error",
-          missionContext: "Analysis unavailable due to error",
-          expectedOutcome: "Unable to determine expected outcome"
+          analysis: {
+            observations: [`Error analyzing screenshot: ${lastError.message}`],
+            positiveAspects: [],
+            issues: [{
+              severity: "high" as const,
+              description: `Analysis failed: ${lastError.message}`,
+              recommendation: "Please try again or check API configuration",
+            }],
+            accessibilityNotes: [],
+            thoughts: `The AI model encountered an error while analyzing this screenshot: ${lastError.message}`,
+            userObservation: "Unable to generate observation due to analysis error",
+            missionContext: "Analysis unavailable due to error",
+            expectedOutcome: "Unable to determine expected outcome",
+          },
+          usage: emptyUsage,
         };
       }
     }
@@ -340,7 +386,7 @@ async function generateReflection(
   priorReflection: string,
   model: any,
   fallbackModel: any
-): Promise<string> {
+): Promise<{ reflection: string; usage: TokenUsageSummary }> {
   const summary = recentAnalyses
     .map((analysis) => `Screenshot ${analysis.screenshotOrder + 1} thoughts: ${analysis.thoughts}`)
     .join("\n");
@@ -360,7 +406,10 @@ IMPORTANT: Write in plain text format. Do NOT use markdown formatting like hash 
 
   const result = await generateContentWithFallback(model, fallbackModel, [{ text: prompt }]);
   const response = await result.response;
-  return cleanMarkdown(response.text().trim());
+  return {
+    reflection: cleanMarkdown(response.text().trim()),
+    usage: extractUsageMetadata(response),
+  };
 }
 
 /**
@@ -373,13 +422,14 @@ function generateScreenshotAnalysisPrompt(
   screenshotContext?: string
 ): string {
   const missionContext = persona.context || userDescription || screenshotContext;
-  const currentDate = new Date().toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  const currentDate = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
   });
-  
+
+
   return `You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation} from ${persona.country}. You are participating in a user testing session where you'll analyze a series of screenshots.
 
 IMPORTANT: TODAY'S DATE IS ${currentDate}. When evaluating this screenshot, you are analyzing it on this date. Screenshots may contain dates from before today (this is normal - screenshots can be captured at any time). Do not flag dates in the screenshot as errors or issues unless they represent actual functional problems. Focus on UX issues, not date discrepancies.
@@ -393,6 +443,8 @@ WHAT FRUSTRATES YOU:
 ${persona.painPoints.map((p) => `- ${p}`).join("\n")}
 
 ${previousContext ? `PREVIOUS SCREENSHOT CONTEXT:\n${previousContext}\n\n` : ""}
+${userDescription ? `USER'S DESCRIPTION:\n${userDescription}\n\n` : ""}
+${screenshotContext ? `SCREENSHOT CONTEXT:\n${screenshotContext}\n\n` : ""}
 
 ANALYZE THIS SCREENSHOT as if you were seeing it for the first time. Be concise and action-oriented.
 
@@ -509,7 +561,7 @@ function extractSection(
     const sectionsPattern = escapedSections.join('|');
     const nextSectionPattern = new RegExp('\\n\\s*(?:' + sectionsPattern + '|===)', 'i');
     const nextMatch = afterHeader.search(nextSectionPattern);
-    const content = nextMatch !== -1 
+    const content = nextMatch !== -1
       ? afterHeader.substring(0, nextMatch).trim()
       : afterHeader.trim();
     const cleaned = cleanMarkdown(content);
@@ -680,6 +732,11 @@ export async function analyzeScreenshotSequence(
   let previousContext = "";
   let latestReflection = "";
   const reflectionInterval = 3;
+  const tokenUsage: TokenUsageSummary = {
+    inputTokens: 0,
+    outputTokens: 0,
+    totalTokens: 0,
+  };
 
   // Analyze each screenshot sequentially
   const orderedScreenshots = screenshots.sort((a, b) => a.order - b.order);
@@ -687,7 +744,7 @@ export async function analyzeScreenshotSequence(
     const screenshot = orderedScreenshots[index];
     console.log(`[Screenshot Agent] Analyzing screenshot ${screenshot.order}/${screenshots.length}...`);
 
-    const analysis = await analyzeScreenshotWithVision(
+    const { analysis, usage: analysisUsage } = await analyzeScreenshotWithVision(
       screenshot,
       persona,
       [previousContext, latestReflection].filter(Boolean).join("\n\n"),
@@ -705,18 +762,30 @@ export async function analyzeScreenshotSequence(
 
     analyses.push(fullAnalysis);
     previousContext = analysis.thoughts; // Use thoughts as context for next screenshot
+    tokenUsage.inputTokens += analysisUsage.inputTokens;
+    tokenUsage.outputTokens += analysisUsage.outputTokens;
+    tokenUsage.totalTokens += analysisUsage.totalTokens;
 
     const shouldReflect = (index + 1) % reflectionInterval === 0 || index === orderedScreenshots.length - 1;
     if (shouldReflect) {
       const windowStart = Math.max(0, analyses.length - reflectionInterval);
       const recentAnalyses = analyses.slice(windowStart);
-      const reflection = await generateReflection(persona, recentAnalyses, latestReflection, model, fallbackModel);
+      const { reflection, usage: reflectionUsage } = await generateReflection(
+        persona,
+        recentAnalyses,
+        latestReflection,
+        model,
+        fallbackModel
+      );
       reflections.push({
         startOrder: recentAnalyses[0].screenshotOrder,
         endOrder: recentAnalyses[recentAnalyses.length - 1].screenshotOrder,
         reflection,
       });
       latestReflection = reflection;
+      tokenUsage.inputTokens += reflectionUsage.inputTokens;
+      tokenUsage.outputTokens += reflectionUsage.outputTokens;
+      tokenUsage.totalTokens += reflectionUsage.totalTokens;
     }
   }
 
@@ -727,6 +796,7 @@ export async function analyzeScreenshotSequence(
     analyses,
     reflections,
     ...overallReport,
+    tokenUsage,
   };
 }
 

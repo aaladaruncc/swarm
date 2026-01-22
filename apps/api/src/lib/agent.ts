@@ -39,6 +39,12 @@ export interface AgentLog {
   message: string;
 }
 
+export interface TokenUsageSummary {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+}
+
 export interface AgentResult {
   persona: UserPersona;
   sessionId: string;
@@ -84,6 +90,7 @@ export interface AgentResult {
   runCaps?: {
     maxRunMs: number;
   };
+  tokenUsage?: TokenUsageSummary;
 }
 
 export interface RunTestOptions {
@@ -1200,6 +1207,17 @@ ${errorContext}`,
       currentLogEntry = null;
     }
 
+    const rawUsage = (agentResult as any)?.usage;
+    const inputTokens = rawUsage ? Number(rawUsage.input_tokens ?? rawUsage.inputTokens ?? 0) : 0;
+    const outputTokens = rawUsage ? Number(rawUsage.output_tokens ?? rawUsage.outputTokens ?? 0) : 0;
+    const tokenUsage = rawUsage
+      ? {
+          inputTokens,
+          outputTokens,
+          totalTokens: inputTokens + outputTokens,
+        }
+      : undefined;
+
     return {
       persona,
       sessionId: `test-${Date.now()}`,
@@ -1234,6 +1252,7 @@ ${errorContext}`,
         errorEvents,
       },
       runCaps,
+      tokenUsage,
     };
   } catch (unexpectedError: any) {
     log(`❌ Unexpected error during test: ${unexpectedError.message}`);

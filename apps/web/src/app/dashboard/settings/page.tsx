@@ -22,6 +22,12 @@ export default function SettingsPage() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [usageStats, setUsageStats] = useState<{
+    month: { totalTokens: number; liveTokens: number; screenshotTokens: number };
+    allTime: { totalTokens: number; liveTokens: number; screenshotTokens: number };
+  } | null>(null);
+  const [usageError, setUsageError] = useState<string | null>(null);
+  const [usageLoading, setUsageLoading] = useState(false);
   
   // Notification state
   const [notificationsEnabled, setNotificationsEnabledState] = useState(false);
@@ -36,6 +42,33 @@ export default function SettingsPage() {
       setEmail(session.user.email || "");
     }
   }, [session]);
+
+  useEffect(() => {
+    if (!session?.user) return;
+    const loadUsage = async () => {
+      setUsageLoading(true);
+      setUsageError(null);
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/user/me/usage`,
+          {
+            credentials: "include",
+          }
+        );
+        if (!response.ok) {
+          throw new Error("Failed to load usage");
+        }
+        const data = await response.json();
+        setUsageStats(data);
+      } catch (error: any) {
+        setUsageError(error.message || "Failed to load usage");
+      } finally {
+        setUsageLoading(false);
+      }
+    };
+
+    loadUsage();
+  }, [session?.user]);
 
   useEffect(() => {
     if (isNotificationSupported()) {
@@ -289,6 +322,66 @@ export default function SettingsPage() {
                 Sign Out
               </button>
             </div>
+          </div>
+        </section>
+
+        {/* Usage Section */}
+        <section>
+          <h2 className={`text-lg font-medium mb-4 uppercase tracking-widest text-xs border-b pb-2 ${
+            isLight 
+              ? "text-neutral-900 border-neutral-200" 
+              : "text-white border-white/10"
+          }`}>Usage</h2>
+
+          <div className={`rounded-xl p-6 ${
+            isLight 
+              ? "bg-white border border-neutral-200" 
+              : "bg-[#1E1E1E] border border-white/10"
+          }`}>
+            {usageLoading ? (
+              <p className={`text-sm font-light ${
+                isLight ? "text-neutral-500" : "text-neutral-400"
+              }`}>Loading token usage...</p>
+            ) : usageError ? (
+              <p className={`text-sm font-light ${
+                isLight ? "text-red-600" : "text-red-400"
+              }`}>{usageError}</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[
+                  { label: "This Month", data: usageStats?.month },
+                  { label: "All Time", data: usageStats?.allTime },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className={`rounded-lg p-4 border ${
+                      isLight
+                        ? "border-neutral-200 bg-neutral-50"
+                        : "border-white/10 bg-[#252525]"
+                    }`}
+                  >
+                    <p className={`text-xs uppercase tracking-wider ${
+                      isLight ? "text-neutral-500" : "text-neutral-400"
+                    }`}>{item.label}</p>
+                    <p className={`text-2xl font-medium mt-2 ${
+                      isLight ? "text-neutral-900" : "text-white"
+                    }`}>
+                      {(item.data?.totalTokens ?? 0).toLocaleString()}
+                      <span className={`text-xs font-light ml-2 ${
+                        isLight ? "text-neutral-500" : "text-neutral-400"
+                      }`}>tokens</span>
+                    </p>
+                    <div className={`mt-3 text-xs font-light ${
+                      isLight ? "text-neutral-500" : "text-neutral-400"
+                    }`}>
+                      Live: {(item.data?.liveTokens ?? 0).toLocaleString()}
+                      {" "}•{" "}
+                      Screenshot: {(item.data?.screenshotTokens ?? 0).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
