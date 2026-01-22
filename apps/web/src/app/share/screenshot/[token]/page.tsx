@@ -299,6 +299,7 @@ export default function SharedScreenshotTestPage() {
                                             }}
                                         >
                                             <div className="space-y-4">
+                                                
                                             {screenshots.map((screenshot, index) => {
                                                 const analysis = hasMultiplePersonas && activePersona
                                                     ? activeAnalysesByOrder.get(screenshot.orderIndex)

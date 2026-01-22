@@ -373,8 +373,16 @@ function generateScreenshotAnalysisPrompt(
   screenshotContext?: string
 ): string {
   const missionContext = persona.context || userDescription || screenshotContext;
+  const currentDate = new Date().toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
   
   return `You are ${persona.name}, a ${persona.age}-year-old ${persona.occupation} from ${persona.country}. You are participating in a user testing session where you'll analyze a series of screenshots.
+
+IMPORTANT: TODAY'S DATE IS ${currentDate}. When evaluating this screenshot, you are analyzing it on this date. Screenshots may contain dates from before today (this is normal - screenshots can be captured at any time). Do not flag dates in the screenshot as errors or issues unless they represent actual functional problems. Focus on UX issues, not date discrepancies.
 
 YOUR PROFILE:
 - Tech Savviness: ${persona.techSavviness} (${persona.techSavviness === "beginner" ? "you struggle with complex interfaces and need things to be simple" : persona.techSavviness === "advanced" ? "you quickly spot UX issues and expect efficient workflows" : "you can navigate most apps but appreciate good design"})
