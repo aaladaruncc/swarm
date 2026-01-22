@@ -14,7 +14,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       isLight ? "bg-neutral-50" : "bg-neutral-950"
     }`}>
       <DashboardSidebar />
-      <main className="flex-1 overflow-hidden flex flex-col">
+      <main className="flex-1 min-h-0 overflow-y-auto flex flex-col">
         {children}
       </main>
     </div>
