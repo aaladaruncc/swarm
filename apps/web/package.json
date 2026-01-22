@@ -27,6 +27,7 @@
     "motion": "^12.23.25",
     "next": "16.1.4",
     "posthog-js": "^1.333.0",
+    "posthog-node": "^5.24.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-markdown": "^10.1.0",

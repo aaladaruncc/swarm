@@ -11,6 +11,7 @@ import { GeneratingPersonasLoader } from "@/components/ui/generating-personas-lo
 import { Loader2, Info, Check, Minus, Plus, Users, X, ArrowRight, Bot, Settings, ChevronDown, ChevronUp, Image, Zap, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/contexts/theme-context";
+import posthog from "posthog-js";
 
 // Add More Files Drop Zone Component
 function AddMoreFilesDropZone({
@@ -281,6 +282,15 @@ export default function NewTest() {
 
     try {
       const result = await generatePersonas(url, userDescription, agentCount);
+
+      // Capture personas generated event
+      posthog.capture("personas_generated", {
+        target_url: url,
+        agent_count: agentCount,
+        personas_count: result.personas.length,
+        test_type: "live",
+      });
+
       applyGeneratedPersonas(result);
     } catch (err) {
       console.error("Error generating/starting:", err);
@@ -304,6 +314,17 @@ export default function NewTest() {
 
     try {
       const result = await createBatchTest(url, userDescription, personas, selectedIndices, agentCount, useUXAgent, 20);
+
+      // Capture test created event
+      posthog.capture("test_created", {
+        test_id: result.batchTestRun.id,
+        target_url: url,
+        agent_count: agentCount,
+        selected_personas_count: selectedIndices.length,
+        use_ux_agent: useUXAgent,
+        test_type: "live",
+      });
+
       router.push(`/dashboard/tests/${result.batchTestRun.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start batch test");
@@ -327,6 +348,14 @@ export default function NewTest() {
 
     try {
       const result = await generatePersonas("", userDescription, agentCount);
+
+      // Capture personas generated event for screenshot mode
+      posthog.capture("personas_generated", {
+        agent_count: agentCount,
+        personas_count: result.personas.length,
+        test_type: "screenshot",
+      });
+
       applyGeneratedPersonas(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate personas");
@@ -382,6 +411,15 @@ export default function NewTest() {
         selectedIndices,
         agentCount
       );
+
+      // Capture screenshot test started event
+      posthog.capture("screenshot_test_started", {
+        test_id: testResult.screenshotTestRun.id,
+        screenshots_count: screenshots.length,
+        agent_count: agentCount,
+        selected_personas_count: selectedIndices.length,
+        test_type: "screenshot",
+      });
 
       router.push(`/dashboard/tests/screenshot/${testResult.screenshotTestRun.id}`);
     } catch (err) {
