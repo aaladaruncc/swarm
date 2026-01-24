@@ -36,6 +36,9 @@ export interface ScreenshotTestRun {
     startedAt: string | null;
     completedAt: string | null;
     errorMessage: string | null;
+    inputTokens?: number | null;
+    outputTokens?: number | null;
+    totalTokens?: number | null;
 }
 
 export interface ScreenshotFlowImage {

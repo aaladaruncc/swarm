@@ -475,6 +475,9 @@ async function runTestInBackground(testRunId: string, targetUrl: string, persona
         status: "completed",
         completedAt: new Date(),
         browserbaseSessionId: result.browserbaseSessionId,
+        inputTokens: result.tokenUsage?.inputTokens ?? null,
+        outputTokens: result.tokenUsage?.outputTokens ?? null,
+        totalTokens: result.tokenUsage?.totalTokens ?? null,
       })
       .where(eq(schema.testRuns.id, testRunId));
 

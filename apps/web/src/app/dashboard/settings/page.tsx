@@ -185,7 +185,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-8 w-full h-full overflow-hidden">
+    <div className="max-w-7xl mx-auto p-8 w-full min-h-full">
       <div className={`mb-8 border-b pb-4 ${
         isLight ? "border-neutral-200" : "border-white/10"
       }`}>

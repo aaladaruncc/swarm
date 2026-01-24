@@ -12,6 +12,7 @@ import {
     Accessibility,
     Loader2,
     Sparkles,
+    Zap,
 } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import type { ScreenshotTestResult, ScreenshotAggregatedInsight } from "@/lib/screenshot-api";
@@ -244,7 +245,7 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div className={`border p-4 rounded-xl ${isLight
                     ? "bg-white border-neutral-200"
                     : "border-white/10 bg-[#1E1E1E]"
@@ -334,6 +335,30 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
                         </div>
                     </div>
                 </div>
+
+                {(result.testRun.totalTokens ?? 0) > 0 && (
+                    <div className={`border p-4 rounded-xl ${isLight
+                        ? "bg-white border-neutral-200"
+                        : "border-white/10 bg-[#1E1E1E]"
+                        }`}>
+                        <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 border flex items-center justify-center rounded-lg ${isLight
+                                ? "bg-neutral-100 border-neutral-200"
+                                : "bg-[#252525] border-white/10"
+                                }`}>
+                                <Zap size={20} className={isLight ? "text-amber-500" : "text-amber-400"} />
+                            </div>
+                            <div>
+                                <p className={`text-2xl font-light ${isLight ? "text-neutral-900" : "text-white"}`}>
+                                    {result.testRun.totalTokens?.toLocaleString()}
+                                </p>
+                                <p className={`text-xs uppercase tracking-wide font-light ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
+                                    Tokens
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Issues by Severity */}
