@@ -8,7 +8,7 @@ import { useSession } from "@/lib/auth-client";
 import { getScreenshotTest, rerunScreenshotTest, terminateScreenshotTest, enableScreenshotTestSharing, disableScreenshotTestSharing, getScreenshotTestShareStatus, type ScreenshotTestResult, type ShareStatus } from "@/lib/screenshot-api";
 import { Loader2, ArrowLeft, CheckCircle2, AlertCircle, Info, RefreshCw, Share2, Link as LinkIcon, Check, X, LayoutGrid, List, Lightbulb, MessageCircle, ChevronLeft, ChevronRight, Clipboard, Settings, FileText, XCircle } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
-import { ScreenshotCanvas } from "@/components/screenshot-tests/ScreenshotCanvas";
+import { AnalysisProgressView } from "@/components/screenshot-tests/AnalysisProgressView";
 import { AggregatedScreenshotInsights } from "@/components/screenshot-tests/AggregatedScreenshotInsights";
 import { ShineBorder } from "@/components/ui/shine-border";
 import { motion, AnimatePresence } from "framer-motion";
@@ -76,11 +76,11 @@ export default function ScreenshotTestResults() {
                 const data = await getScreenshotTest(testId);
                 const oldAnalysisCount = result?.personaResults?.reduce((sum, p) => sum + (p.analyses?.length || 0), 0) || 0;
                 const newAnalysisCount = data?.personaResults?.reduce((sum, p) => sum + (p.analyses?.length || 0), 0) || 0;
-                
+
                 if (newAnalysisCount !== oldAnalysisCount) {
                     console.log(`[Polling] Analysis count changed: ${oldAnalysisCount} -> ${newAnalysisCount}`);
                 }
-                
+
                 setResult(data);
                 // Stop polling if no longer analyzing
                 if (data.testRun.status !== "analyzing") {
@@ -96,12 +96,12 @@ export default function ScreenshotTestResults() {
 
     const personaResults = result?.personaResults ?? [];
     const screenshots = result?.screenshots ?? [];
-    
+
     // Create a stable key that changes when analyses are added - this ensures useMemo recalculates
     const analysesKey = useMemo(() => {
         return personaResults.map(p => `${p.personaIndex}:${p.analyses?.length || 0}`).join('|');
     }, [personaResults]);
-    
+
     // Calculate analyzing step - memoized to track changes
     const analyzingStep = useMemo(() => {
         if (!result || result.testRun.status !== "analyzing" || personaResults.length === 0) return 1;
@@ -112,10 +112,10 @@ export default function ScreenshotTestResults() {
         }, 0);
         // Current step is the next one to be analyzed (1-indexed)
         const currentStep = Math.max(1, Math.min(maxAnalyses + 1, screenshots.length));
-        console.log('[Analyzing Step]', { 
-            maxAnalyses, 
-            currentStep, 
-            totalScreenshots: screenshots.length, 
+        console.log('[Analyzing Step]', {
+            maxAnalyses,
+            currentStep,
+            totalScreenshots: screenshots.length,
             personaCount: personaResults.length,
             analysesKey,
             analysesPerPersona: personaResults.map(p => ({ index: p.personaIndex, count: p.analyses?.length || 0 }))
@@ -181,21 +181,21 @@ export default function ScreenshotTestResults() {
             const popupWidth = 300; // min-w-[300px]
             const padding = 16; // padding from viewport edge
             const viewportWidth = window.innerWidth;
-            
+
             // Calculate initial left position
             let left = rect.left + window.scrollX;
-            
+
             // Check if popup would overflow on the right
             if (left + popupWidth + padding > viewportWidth + window.scrollX) {
                 // Position to the left of the button, aligned to right edge
                 left = rect.right + window.scrollX - popupWidth;
-                
+
                 // If still overflowing, position it at the right edge of viewport
                 if (left < window.scrollX + padding) {
                     left = window.scrollX + padding;
                 }
             }
-            
+
             setPopupPosition({
                 top: rect.bottom + window.scrollY + 8,
                 left: left,
@@ -296,7 +296,7 @@ export default function ScreenshotTestResults() {
 
     const handleShareClick = async () => {
         if (!testId || shareLoading) return;
-        
+
         // If already shared, just copy the link immediately
         if (shareStatus?.enabled && shareStatus?.shareUrl) {
             try {
@@ -307,7 +307,7 @@ export default function ScreenshotTestResults() {
             }
             return;
         }
-        
+
         // Otherwise, enable sharing and copy immediately
         setShareLoading(true);
         try {
@@ -511,11 +511,11 @@ export default function ScreenshotTestResults() {
                 </div>
             </div>
 
-            {/* Analyzing State - Canvas View */}
+            {/* Analyzing State - Slideshow View */}
             {isAnalyzing && (
                 <div className="flex-1 min-h-0">
-                    <ScreenshotCanvas
-                        key={`canvas-${analyzingStep}-${personaResults.reduce((sum, p) => sum + (p.analyses?.length || 0), 0)}`}
+                    <AnalysisProgressView
+                        key={`progress-${analyzingStep}-${personaResults.reduce((sum, p) => sum + (p.analyses?.length || 0), 0)}`}
                         screenshots={result?.screenshots ?? []}
                         isAnalyzing={isAnalyzing}
                         analyzingStep={analyzingStep}
@@ -566,15 +566,14 @@ export default function ScreenshotTestResults() {
                                 <button
                                     key={key}
                                     onClick={() => setActiveTab(key as "insights" | "agent-sessions")}
-                                    className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
-                                        activeTab === key
+                                    className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === key
                                             ? isLight
                                                 ? "border-b-2 border-neutral-900 text-neutral-900"
                                                 : "border-b-2 border-white text-white"
                                             : isLight
                                                 ? "text-neutral-500 hover:text-neutral-700"
                                                 : "text-neutral-500 hover:text-neutral-300"
-                                    }`}
+                                        }`}
                                 >
                                     <Icon size={16} />
                                     {label}
@@ -635,188 +634,187 @@ export default function ScreenshotTestResults() {
                                 <div className="flex gap-6 flex-1 min-h-0">
                                     {/* Left Panel - Dotted Container with Step Modules */}
                                     <div className={`w-[65%] border-2 border-dashed rounded-xl h-[500px] lg:h-[600px] flex-shrink-0 ${isLight ? "border-neutral-300 bg-neutral-50/50" : "border-white/20 bg-[#1E1E1E]/50"}`}>
-                                        <div 
+                                        <div
                                             className="h-full overflow-y-scroll px-6 py-6"
-                                            style={{ 
+                                            style={{
                                                 scrollbarWidth: 'thin',
                                                 scrollbarColor: isLight ? '#d4d4d4 #f5f5f5' : '#404040 #1E1E1E',
                                                 WebkitOverflowScrolling: 'touch'
                                             }}
                                         >
                                             <div className="space-y-4">
-                                        {screenshots.map((screenshot, index) => {
-                                            const analysis = hasMultiplePersonas && activePersona
-                                                ? activeAnalysesByOrder.get(screenshot.orderIndex)
-                                                : null;
-                                            const isSelected = selectedStepIndex === index;
-                                            
-                                            return (
-                                                <div
-                                                    key={screenshot.id}
-                                                    onClick={() => setSelectedStepIndex(index)}
-                                                    className={`rounded-xl p-6 cursor-pointer transition-all relative overflow-hidden ${
-                                                        isSelected
-                                                            ? isLight
-                                                                ? "bg-white border border-neutral-200 shadow-lg"
-                                                                : "bg-[#1E1E1E] border border-white/10 shadow-lg"
-                                                            : isLight
-                                                                ? "bg-white border border-neutral-200 hover:bg-neutral-50 hover:border-neutral-300"
-                                                                : "bg-[#1E1E1E] border border-white/10 hover:bg-[#252525] hover:border-white/20"
-                                                    }`}
-                                                >
-                                                    {/* Blue Shine Border for Selected */}
-                                                    {isSelected && (
-                                                        <ShineBorder
-                                                            borderWidth={2}
-                                                            duration={3}
-                                                            shineColor={["#3b82f6", "#60a5fa", "#3b82f6"]}
-                                                        />
-                                                    )}
-                                                    {/* Step Header */}
-                                                    <div className={`mb-4 pb-3 border-b flex items-center justify-between ${isLight ? "border-neutral-200" : "border-white/10"}`}>
-                                                        <span className={`text-sm font-medium px-2 py-1 rounded ${isLight ? "bg-neutral-100 text-neutral-600" : "bg-[#252525] text-neutral-400"}`}>
-                                                            Step {index + 1}
-                                                        </span>
-                                                        {analysis?.thoughts && (
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setSelectedThoughtsIndex(index);
-                                                                }}
-                                                                className={`text-xs font-medium px-3 py-1.5 rounded transition-colors ${isLight
-                                                                    ? "bg-neutral-900 text-white hover:bg-neutral-800"
-                                                                    : "bg-white text-neutral-900 hover:bg-neutral-200"
+                                                {screenshots.map((screenshot, index) => {
+                                                    const analysis = hasMultiplePersonas && activePersona
+                                                        ? activeAnalysesByOrder.get(screenshot.orderIndex)
+                                                        : null;
+                                                    const isSelected = selectedStepIndex === index;
+
+                                                    return (
+                                                        <div
+                                                            key={screenshot.id}
+                                                            onClick={() => setSelectedStepIndex(index)}
+                                                            className={`rounded-xl p-6 cursor-pointer transition-all relative overflow-hidden ${isSelected
+                                                                    ? isLight
+                                                                        ? "bg-white border border-neutral-200 shadow-lg"
+                                                                        : "bg-[#1E1E1E] border border-white/10 shadow-lg"
+                                                                    : isLight
+                                                                        ? "bg-white border border-neutral-200 hover:bg-neutral-50 hover:border-neutral-300"
+                                                                        : "bg-[#1E1E1E] border border-white/10 hover:bg-[#252525] hover:border-white/20"
                                                                 }`}
-                                                            >
-                                                                Full thoughts
-                                                            </button>
-                                                        )}
-                                                    </div>
-
-                                                    {/* User Observation - New concise format */}
-                                                    {analysis?.userObservation && (
-                                                        <div className="mb-4">
-                                                            <div className="flex items-start gap-2 mb-2">
-                                                                <MessageCircle size={16} className={`mt-0.5 flex-shrink-0 ${isLight ? "text-green-600" : "text-green-400"}`} />
-                                                                <h4 className={`text-sm font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>
-                                                                    User Observation
-                                                                </h4>
-                                                            </div>
-                                                            <p className={`text-sm font-light leading-relaxed pl-6 ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
-                                                                "{cleanMarkdown(analysis.userObservation)}"
-                                                            </p>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Mission/Context - New concise format */}
-                                                    {analysis?.missionContext && (
-                                                        <div className="mb-4">
-                                                            <div className="flex items-start gap-2 mb-2">
-                                                                <Settings size={16} className={`mt-0.5 flex-shrink-0 ${isLight ? "text-neutral-600" : "text-neutral-400"}`} />
-                                                                <h4 className={`text-sm font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>
-                                                                    Mission/Context
-                                                                </h4>
-                                                            </div>
-                                                            <p className={`text-sm font-light leading-relaxed pl-6 ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
-                                                                {cleanMarkdown(analysis.missionContext)}
-                                                            </p>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Expected Outcome - New concise format */}
-                                                    {analysis?.expectedOutcome && (
-                                                        <div className="mb-4">
-                                                            <div className="flex items-start gap-2 mb-2">
-                                                                <FileText size={16} className={`mt-0.5 flex-shrink-0 ${isLight ? "text-blue-600" : "text-blue-400"}`} />
-                                                                <h4 className={`text-sm font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>
-                                                                    Expected Outcome
-                                                                </h4>
-                                                            </div>
-                                                            <p className={`text-sm font-light leading-relaxed pl-6 ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
-                                                                {cleanMarkdown(analysis.expectedOutcome)}
-                                                            </p>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Old format - only show if new format fields are not available */}
-                                                    {!analysis?.userObservation && (
-                                                        <>
-                                                            {/* Observations */}
-                                                            {analysis?.observations && analysis.observations.length > 0 && (
-                                                                <div className="mb-4">
-                                                                    <h4 className={`text-sm font-medium mb-2 ${isLight ? "text-neutral-900" : "text-white"}`}>
-                                                                        Observations
-                                                                    </h4>
-                                                                    <ul className="space-y-1">
-                                                                        {analysis.observations.map((obs, i) => (
-                                                                            <li key={i} className={`text-xs font-light flex items-start gap-2 ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
-                                                                                <span>•</span>
-                                                                                <span>{cleanMarkdown(obs)}</span>
-                                                                            </li>
-                                                                        ))}
-                                                                    </ul>
-                                                                </div>
+                                                        >
+                                                            {/* Blue Shine Border for Selected */}
+                                                            {isSelected && (
+                                                                <ShineBorder
+                                                                    borderWidth={2}
+                                                                    duration={3}
+                                                                    shineColor={["#3b82f6", "#60a5fa", "#3b82f6"]}
+                                                                />
                                                             )}
-
-                                                            {/* Positive Aspects */}
-                                                            {analysis?.positiveAspects && analysis.positiveAspects.length > 0 && (
-                                                                <div className="mb-4">
-                                                                    <h4 className={`text-sm font-medium mb-2 flex items-center gap-2 ${isLight ? "text-green-700" : "text-green-400"}`}>
-                                                                        <CheckCircle2 size={16} />
-                                                                        Positive Aspects
-                                                                    </h4>
-                                                                    <ul className="space-y-1">
-                                                                        {analysis.positiveAspects.map((aspect, i) => (
-                                                                            <li key={i} className={`text-xs font-light flex items-start gap-2 ${isLight ? "text-green-600" : "text-green-400"}`}>
-                                                                                <span>•</span>
-                                                                                <span>{cleanMarkdown(aspect)}</span>
-                                                                            </li>
-                                                                        ))}
-                                                                    </ul>
-                                                                </div>
-                                                            )}
-
-                                                            {/* Issues */}
-                                                            {analysis?.issues && analysis.issues.length > 0 && (
-                                                        <div>
-                                                            <h4 className={`text-sm font-medium mb-2 flex items-center gap-2 ${isLight ? "text-red-700" : "text-red-400"}`}>
-                                                                <AlertCircle size={16} />
-                                                                Issues Found
-                                                            </h4>
-                                                            <div className="space-y-2">
-                                                                {analysis.issues.slice(0, 2).map((issue, i) => (
-                                                                    <div
-                                                                        key={i}
-                                                                        className={`p-2 border rounded-lg ${isLight ? "border-red-200 bg-red-50" : "border-red-500/20 bg-red-500/10"}`}
+                                                            {/* Step Header */}
+                                                            <div className={`mb-4 pb-3 border-b flex items-center justify-between ${isLight ? "border-neutral-200" : "border-white/10"}`}>
+                                                                <span className={`text-sm font-medium px-2 py-1 rounded ${isLight ? "bg-neutral-100 text-neutral-600" : "bg-[#252525] text-neutral-400"}`}>
+                                                                    Step {index + 1}
+                                                                </span>
+                                                                {analysis?.thoughts && (
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setSelectedThoughtsIndex(index);
+                                                                        }}
+                                                                        className={`text-xs font-medium px-3 py-1.5 rounded transition-colors ${isLight
+                                                                            ? "bg-neutral-900 text-white hover:bg-neutral-800"
+                                                                            : "bg-white text-neutral-900 hover:bg-neutral-200"
+                                                                            }`}
                                                                     >
-                                                                        <div className="flex items-start gap-2 mb-1">
-                                                                            <span className={`text-[10px] font-medium uppercase px-1.5 py-0.5 rounded ${issue.severity === "critical"
-                                                                                ? isLight ? "bg-red-600 text-white" : "bg-red-500 text-white"
-                                                                                : issue.severity === "high"
-                                                                                    ? isLight ? "bg-orange-500 text-white" : "bg-orange-400 text-black"
-                                                                                    : isLight ? "bg-neutral-400 text-white" : "bg-neutral-500 text-black"
-                                                                                }`}>
-                                                                                {issue.severity}
-                                                                            </span>
-                                                                            <p className={`text-xs font-medium flex-1 ${isLight ? "text-red-900" : "text-red-300"}`}>
-                                                                                {cleanMarkdown(issue.description)}
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-                                                                ))}
-                                                                {analysis.issues.length > 2 && (
-                                                                    <p className={`text-xs font-light ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
-                                                                        +{analysis.issues.length - 2} more issues
-                                                                    </p>
+                                                                        Full thoughts
+                                                                    </button>
                                                                 )}
                                                             </div>
-                                                        </div>
+
+                                                            {/* User Observation - New concise format */}
+                                                            {analysis?.userObservation && (
+                                                                <div className="mb-4">
+                                                                    <div className="flex items-start gap-2 mb-2">
+                                                                        <MessageCircle size={16} className={`mt-0.5 flex-shrink-0 ${isLight ? "text-green-600" : "text-green-400"}`} />
+                                                                        <h4 className={`text-sm font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>
+                                                                            User Observation
+                                                                        </h4>
+                                                                    </div>
+                                                                    <p className={`text-sm font-light leading-relaxed pl-6 ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
+                                                                        "{cleanMarkdown(analysis.userObservation)}"
+                                                                    </p>
+                                                                </div>
                                                             )}
-                                                        </>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
+
+                                                            {/* Mission/Context - New concise format */}
+                                                            {analysis?.missionContext && (
+                                                                <div className="mb-4">
+                                                                    <div className="flex items-start gap-2 mb-2">
+                                                                        <Settings size={16} className={`mt-0.5 flex-shrink-0 ${isLight ? "text-neutral-600" : "text-neutral-400"}`} />
+                                                                        <h4 className={`text-sm font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>
+                                                                            Mission/Context
+                                                                        </h4>
+                                                                    </div>
+                                                                    <p className={`text-sm font-light leading-relaxed pl-6 ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
+                                                                        {cleanMarkdown(analysis.missionContext)}
+                                                                    </p>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Expected Outcome - New concise format */}
+                                                            {analysis?.expectedOutcome && (
+                                                                <div className="mb-4">
+                                                                    <div className="flex items-start gap-2 mb-2">
+                                                                        <FileText size={16} className={`mt-0.5 flex-shrink-0 ${isLight ? "text-blue-600" : "text-blue-400"}`} />
+                                                                        <h4 className={`text-sm font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>
+                                                                            Expected Outcome
+                                                                        </h4>
+                                                                    </div>
+                                                                    <p className={`text-sm font-light leading-relaxed pl-6 ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
+                                                                        {cleanMarkdown(analysis.expectedOutcome)}
+                                                                    </p>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Old format - only show if new format fields are not available */}
+                                                            {!analysis?.userObservation && (
+                                                                <>
+                                                                    {/* Observations */}
+                                                                    {analysis?.observations && analysis.observations.length > 0 && (
+                                                                        <div className="mb-4">
+                                                                            <h4 className={`text-sm font-medium mb-2 ${isLight ? "text-neutral-900" : "text-white"}`}>
+                                                                                Observations
+                                                                            </h4>
+                                                                            <ul className="space-y-1">
+                                                                                {analysis.observations.map((obs, i) => (
+                                                                                    <li key={i} className={`text-xs font-light flex items-start gap-2 ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
+                                                                                        <span>•</span>
+                                                                                        <span>{cleanMarkdown(obs)}</span>
+                                                                                    </li>
+                                                                                ))}
+                                                                            </ul>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* Positive Aspects */}
+                                                                    {analysis?.positiveAspects && analysis.positiveAspects.length > 0 && (
+                                                                        <div className="mb-4">
+                                                                            <h4 className={`text-sm font-medium mb-2 flex items-center gap-2 ${isLight ? "text-green-700" : "text-green-400"}`}>
+                                                                                <CheckCircle2 size={16} />
+                                                                                Positive Aspects
+                                                                            </h4>
+                                                                            <ul className="space-y-1">
+                                                                                {analysis.positiveAspects.map((aspect, i) => (
+                                                                                    <li key={i} className={`text-xs font-light flex items-start gap-2 ${isLight ? "text-green-600" : "text-green-400"}`}>
+                                                                                        <span>•</span>
+                                                                                        <span>{cleanMarkdown(aspect)}</span>
+                                                                                    </li>
+                                                                                ))}
+                                                                            </ul>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* Issues */}
+                                                                    {analysis?.issues && analysis.issues.length > 0 && (
+                                                                        <div>
+                                                                            <h4 className={`text-sm font-medium mb-2 flex items-center gap-2 ${isLight ? "text-red-700" : "text-red-400"}`}>
+                                                                                <AlertCircle size={16} />
+                                                                                Issues Found
+                                                                            </h4>
+                                                                            <div className="space-y-2">
+                                                                                {analysis.issues.slice(0, 2).map((issue, i) => (
+                                                                                    <div
+                                                                                        key={i}
+                                                                                        className={`p-2 border rounded-lg ${isLight ? "border-red-200 bg-red-50" : "border-red-500/20 bg-red-500/10"}`}
+                                                                                    >
+                                                                                        <div className="flex items-start gap-2 mb-1">
+                                                                                            <span className={`text-[10px] font-medium uppercase px-1.5 py-0.5 rounded ${issue.severity === "critical"
+                                                                                                ? isLight ? "bg-red-600 text-white" : "bg-red-500 text-white"
+                                                                                                : issue.severity === "high"
+                                                                                                    ? isLight ? "bg-orange-500 text-white" : "bg-orange-400 text-black"
+                                                                                                    : isLight ? "bg-neutral-400 text-white" : "bg-neutral-500 text-black"
+                                                                                                }`}>
+                                                                                                {issue.severity}
+                                                                                            </span>
+                                                                                            <p className={`text-xs font-medium flex-1 ${isLight ? "text-red-900" : "text-red-300"}`}>
+                                                                                                {cleanMarkdown(issue.description)}
+                                                                                            </p>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
+                                                                                {analysis.issues.length > 2 && (
+                                                                                    <p className={`text-xs font-light ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
+                                                                                        +{analysis.issues.length - 2} more issues
+                                                                                    </p>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     </div>
@@ -1054,7 +1052,7 @@ export default function ScreenshotTestResults() {
                                         className={`p-2 rounded-lg transition-colors ${isLight
                                             ? "hover:bg-neutral-100 text-neutral-600"
                                             : "hover:bg-white/10 text-neutral-400"
-                                        }`}
+                                            }`}
                                     >
                                         <X size={20} />
                                     </button>

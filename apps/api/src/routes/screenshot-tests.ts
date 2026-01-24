@@ -12,7 +12,7 @@ import { zValidator } from "@hono/zod-validator";
 import { eq, desc, and } from "drizzle-orm";
 import { db, schema } from "../db/index.js";
 import { uploadScreenshot, generateFlowScreenshotKey, getPresignedUrl } from "../lib/s3.js";
-import { analyzeScreenshotSequence, type ScreenshotInput, type UserPersona } from "../lib/screenshot-agent.js";
+import { analyzeScreenshotSequence, type ScreenshotInput, type UserPersona, type ScreenshotAnalysis } from "../lib/screenshot-agent.js";
 import type { Session } from "../lib/auth.js";
 
 type Variables = {
@@ -332,8 +332,8 @@ screenshotTestsRoutes.post("/:id/rerun", async (c) => {
                 generatedPersonas: existingTest.generatedPersonas,
                 selectedPersonaIndices: existingTest.selectedPersonaIndices,
             });
-            return c.json({ 
-                error: "No personas found for rerun. The original test may not have persona data saved." 
+            return c.json({
+                error: "No personas found for rerun. The original test may not have persona data saved."
             }, 400);
         }
 
@@ -721,7 +721,7 @@ screenshotTestsRoutes.post("/:id/insights/generate", async (c) => {
             cleaned = cleaned.replace(/^[-*]{3,}$/gm, '');
             // Remove leading/trailing quotes if the entire text is wrapped
             cleaned = cleaned.trim();
-            if ((cleaned.startsWith('"') && cleaned.endsWith('"')) || 
+            if ((cleaned.startsWith('"') && cleaned.endsWith('"')) ||
                 (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
                 cleaned = cleaned.slice(1, -1);
             }
@@ -744,12 +744,12 @@ screenshotTestsRoutes.post("/:id/insights/generate", async (c) => {
         const calculateSimilarity = (text1: string, text2: string): number => {
             const words1 = new Set(normalizeText(text1).split(' ').filter(w => w.length > 2));
             const words2 = new Set(normalizeText(text2).split(' ').filter(w => w.length > 2));
-            
+
             if (words1.size === 0 || words2.size === 0) return 0;
-            
+
             const intersection = new Set([...words1].filter(w => words2.has(w)));
             const union = new Set([...words1, ...words2]);
-            
+
             return intersection.size / union.size; // Jaccard similarity
         };
 
@@ -1079,10 +1079,9 @@ async function runScreenshotAnalysisInBackground(
                     return null;
                 }
 
-                const result = await analyzeScreenshotSequence(screenshots, persona);
-
-                await db.insert(schema.screenshotAnalysisResults).values(
-                    result.analyses.map((analysis) => ({
+                // Create callback to save each analysis incrementally for real-time progress
+                const onAnalysisComplete = async (analysis: ScreenshotAnalysis) => {
+                    await db.insert(schema.screenshotAnalysisResults).values({
                         screenshotTestRunId: testRunId,
                         screenshotOrder: analysis.screenshotOrder,
                         s3Key: analysis.s3Key,
@@ -1098,8 +1097,11 @@ async function runScreenshotAnalysisInBackground(
                         userObservation: analysis.userObservation,
                         missionContext: analysis.missionContext,
                         expectedOutcome: analysis.expectedOutcome,
-                    }))
-                );
+                    });
+                    console.log(`[${testRunId}] Saved analysis for screenshot ${analysis.screenshotOrder + 1} (${persona.name})`);
+                };
+
+                const result = await analyzeScreenshotSequence(screenshots, persona, onAnalysisComplete);
 
                 // Check if terminated after analysis
                 if (await checkTerminated()) {

@@ -718,11 +718,20 @@ function parseAnalysisResponse(
 // ============================================================================
 
 /**
+ * Callback type for incremental analysis progress updates
+ */
+export type OnAnalysisCompleteCallback = (analysis: ScreenshotAnalysis) => Promise<void>;
+
+/**
  * Analyzes a sequence of screenshots with a given persona
+ * @param screenshots - Array of screenshots to analyze
+ * @param persona - The persona to use for analysis
+ * @param onAnalysisComplete - Optional callback called after each screenshot is analyzed, enables incremental progress updates
  */
 export async function analyzeScreenshotSequence(
   screenshots: ScreenshotInput[],
-  persona: UserPersona
+  persona: UserPersona,
+  onAnalysisComplete?: OnAnalysisCompleteCallback
 ): Promise<ScreenshotTestResult> {
   const geminiClient = getGeminiClient();
   const model = geminiClient.getGenerativeModel({ model: "gemini-3-flash-preview" });
@@ -761,6 +770,12 @@ export async function analyzeScreenshotSequence(
     };
 
     analyses.push(fullAnalysis);
+
+    // Call the callback to allow incremental progress updates (e.g., saving to DB)
+    if (onAnalysisComplete) {
+      await onAnalysisComplete(fullAnalysis);
+    }
+
     previousContext = analysis.thoughts; // Use thoughts as context for next screenshot
     tokenUsage.inputTokens += analysisUsage.inputTokens;
     tokenUsage.outputTokens += analysisUsage.outputTokens;
