@@ -28,24 +28,24 @@ const PLANS = [
       "SLA & SSO",
     ],
   },
-  ];
+];
 
 export function Pricing() {
   return (
     <section id="pricing" className="relative py-32 bg-white overflow-hidden">
       <div className="container mx-auto px-6 max-w-7xl">
-        {/* Header - Matching Testing, evolved Style */}
+        {/* Header - Matching consistent style */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="text-center max-w-3xl mx-auto mb-20"
+          className="text-center mb-16"
         >
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-serif font-medium tracking-tight text-neutral-900 mb-6 leading-[1.1]">
-          <span className="italic text-neutral-500">Simple</span> Pricing
-            </h2>
-          <p className="text-xl md:text-2xl text-neutral-600 font-sans font-light leading-relaxed">
+          <h2 className="text-3xl md:text-4xl font-light text-white mb-4">
+            <span className="text-white/50">Simple</span> Pricing
+          </h2>
+          <p className="text-base md:text-lg text-white/50 max-w-2xl mx-auto">
             Start small and scale as your user base grows.
           </p>
         </motion.div>
@@ -84,7 +84,7 @@ export function Pricing() {
                   {plan.description}
                 </p>
               </div>
-              
+
               <ul className="space-y-4 mb-8 flex-1">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-center gap-3">
@@ -95,7 +95,7 @@ export function Pricing() {
                   </li>
                 ))}
               </ul>
-              
+
               <Link
                 href={plan.price === "Custom" ? "/login" : "/login"}
                 className="block w-full py-3 text-center text-sm font-sans font-light transition-all bg-neutral-900 text-white hover:bg-neutral-800"

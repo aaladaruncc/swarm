@@ -2,92 +2,154 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown } from "lucide-react";
+import { Plus, Minus } from "lucide-react";
 
 const FAQS = [
   {
     question: "How does AI persona testing work?",
-    answer: "Our platform uses advanced behavioral language models to generate realistic user personas based on your audience description. AI agents then navigate your website as these personas, providing authentic user experience feedback from different perspectives."
+    answer: "Our platform generates realistic user personas from your audience description. AI agents then navigate your site as these personas, providing authentic feedback from different user perspectives."
   },
   {
-    question: "Do I need to know how to code to use this?",
-    answer: "No coding required. Simply describe your target audience in plain English, and the platform handles everything automatically."
+    question: "Do I need to write any code?",
+    answer: "Nope. Describe your target audience in plain English and the platform handles everything automatically."
   },
   {
-    question: "How many personas can I test with at once?",
-    answer: "You can test with 1-5 personas per test run. Our AI generates 10 diverse personas and automatically recommends the most relevant ones for you to review."
+    question: "How many personas can I test with?",
+    answer: "Up to 5 personas per test run. The AI generates 10 diverse options and recommends the most relevant ones for your use case."
   },
   {
-    question: "What kind of insights do I get?",
-    answer: "You receive comprehensive UX reports with overall scores, persona-specific findings, common usability issues, and prioritized recommendations. Reports are aggregated from multiple persona perspectives to give you a holistic view."
+    question: "What kind of insights will I get?",
+    answer: "Comprehensive UX reports with usability scores, persona-specific findings, common issues, and prioritized recommendations aggregated across all test sessions."
   },
   {
-    question: "Can I save and reuse personas?",
-    answer: "Yes. You can save collections of personas as 'Swarms' for future use, making it easy to test your website with the same user profiles across different iterations."
+    question: "Can I reuse personas across tests?",
+    answer: "Yes. Save collections of personas as 'Swarms' and reuse them across different iterations of your product."
   },
   {
     question: "How long does a test take?",
-    answer: "Tests take 5-10 minutes."
+    answer: "Most tests complete in 5-10 minutes, depending on the complexity of your flows."
   }
 ];
 
+function FAQItem({
+  faq,
+  isOpen,
+  onToggle,
+  index
+}: {
+  faq: typeof FAQS[0];
+  isOpen: boolean;
+  onToggle: () => void;
+  index: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.4, delay: index * 0.05 }}
+    >
+      <button
+        onClick={onToggle}
+        className="w-full group"
+      >
+        <div className={`
+          flex items-start justify-between gap-4 py-6 text-left border-b transition-colors duration-200
+          ${isOpen ? "border-white/20" : "border-white/10"}
+        `}>
+          <span className={`text-base md:text-lg transition-colors duration-200 ${isOpen ? "text-white" : "text-white/70 group-hover:text-white/90"
+            }`}>
+            {faq.question}
+          </span>
+          <div className={`
+            flex-shrink-0 w-6 h-6 rounded-full border flex items-center justify-center transition-all duration-200
+            ${isOpen
+              ? "bg-white/10 border-white/30"
+              : "border-white/20 group-hover:border-white/30"
+            }
+          `}>
+            {isOpen ? (
+              <Minus className="w-3 h-3 text-white/70" />
+            ) : (
+              <Plus className="w-3 h-3 text-white/50 group-hover:text-white/70" />
+            )}
+          </div>
+        </div>
+      </button>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <p className="py-4 text-sm md:text-base text-white/50 leading-relaxed pr-10">
+              {faq.answer}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
 export function FAQ() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
+
+  // Split FAQs into two columns
+  const midpoint = Math.ceil(FAQS.length / 2);
+  const leftColumn = FAQS.slice(0, midpoint);
+  const rightColumn = FAQS.slice(midpoint);
 
   return (
-    <section id="faq" className="py-24 bg-neutral-50 border-t border-neutral-200">
-      <div className="container mx-auto px-6 max-w-3xl">
-        <div className="text-center mb-16">
-        <h2 className="text-4xl md:text-5xl lg:text-6xl font-serif font-medium tracking-tight text-neutral-900 mb-6 leading-[1.1]">
-              FAQ
-            </h2>
-          <p className="text-lg text-neutral-600 font-sans font-light">
-            Everything you need to know about the platform.
-          </p>
+    <section id="faq" className="py-24 md:py-32 border-b border-white/5 bg-transparent">
+      <div className="container mx-auto px-6 max-w-6xl">
+        {/* Header */}
+        <div className="mb-12 md:mb-16">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-light text-white">
+                Questions & answers
+              </h2>
+            </div>
+            <p className="text-sm md:text-base text-white/40 max-w-sm">
+              Everything you need to know about the platform.
+            </p>
+          </div>
         </div>
 
-        <div className="space-y-4">
-          {FAQS.map((faq, i) => (
-            <div
-              key={i}
-              className={`
-                border rounded-none transition-all duration-300
-                ${openIndex === i 
-                  ? "bg-white border-neutral-200 shadow-sm" 
-                  : "bg-white/50 border-neutral-200 hover:bg-white hover:border-neutral-300"
-                }
-              `}
-            >
-              <button
-                onClick={() => setOpenIndex(openIndex === i ? null : i)}
-                className="w-full flex items-center justify-between p-6 text-left"
-              >
-                <span className={`text-lg font-medium pr-8 transition-colors ${openIndex === i ? "text-neutral-900" : "text-neutral-700"}`}>
-                  {faq.question}
-                </span>
-                <ChevronDown
-                  className={`w-5 h-5 text-neutral-500 transition-transform duration-300 ${
-                    openIndex === i ? "rotate-180" : ""
-                  }`}
+        {/* Two-column FAQ grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 lg:gap-x-20">
+          {/* Left column */}
+          <div>
+            {leftColumn.map((faq, i) => (
+              <FAQItem
+                key={i}
+                faq={faq}
+                isOpen={openIndex === i}
+                onToggle={() => setOpenIndex(openIndex === i ? null : i)}
+                index={i}
+              />
+            ))}
+          </div>
+
+          {/* Right column */}
+          <div>
+            {rightColumn.map((faq, i) => {
+              const actualIndex = i + midpoint;
+              return (
+                <FAQItem
+                  key={actualIndex}
+                  faq={faq}
+                  isOpen={openIndex === actualIndex}
+                  onToggle={() => setOpenIndex(openIndex === actualIndex ? null : actualIndex)}
+                  index={actualIndex}
                 />
-              </button>
-              <AnimatePresence>
-                {openIndex === i && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3, ease: "easeInOut" }}
-                    className="overflow-hidden"
-                  >
-                    <div className="px-6 pb-6 text-neutral-600 font-sans font-light leading-relaxed">
-                      {faq.answer}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ))}
+              );
+            })}
+          </div>
         </div>
       </div>
     </section>

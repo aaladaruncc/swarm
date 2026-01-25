@@ -21,6 +21,8 @@ export default function Dashboard() {
   const [error, setError] = useState("");
   const [sortField, setSortField] = useState<"date" | "agents" | "status" | "targetUrl" | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [staticSortField, setStaticSortField] = useState<"date" | "agents" | "status" | "testName" | null>(null);
+  const [staticSortDirection, setStaticSortDirection] = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
     if (!isPending && !session?.user) {
@@ -68,7 +70,7 @@ export default function Dashboard() {
 
   const handleExportPDF = async () => {
     if (selectedTests.length === 0) return;
-    
+
     setExportingPDF(true);
     try {
       // Process each selected test sequentially
@@ -77,18 +79,18 @@ export default function Dashboard() {
           // Fetch full test details to get the aggregated report
           const data = await getBatchTest(id);
           const { batchTestRun, aggregatedReport, testRuns } = data;
-          
+
           if (!batchTestRun || !aggregatedReport) continue;
-          
+
           // Generate PDF
           const blob = await pdf(
-            <AggregatedReportPDF 
+            <AggregatedReportPDF
               batchTestRun={batchTestRun}
               aggregatedReport={aggregatedReport}
               agentCount={testRuns.length}
             />
           ).toBlob();
-          
+
           // Download
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
@@ -98,7 +100,7 @@ export default function Dashboard() {
           link.click();
           document.body.removeChild(link);
           URL.revokeObjectURL(url);
-          
+
           // Small delay to ensure browser handles sequential downloads
           await new Promise(resolve => setTimeout(resolve, 500));
         } catch (err) {
@@ -106,7 +108,7 @@ export default function Dashboard() {
           // Continue with next test
         }
       }
-      
+
       setSelectedTests([]);
       setIsSelectionMode(false);
     } catch (err) {
@@ -119,7 +121,7 @@ export default function Dashboard() {
 
   const handleArchive = async () => {
     if (selectedTests.length === 0) return;
-    
+
     if (!confirm(`Are you sure you want to archive ${selectedTests.length} test(s)?`)) return;
 
     setIsArchiving(true);
@@ -138,15 +140,15 @@ export default function Dashboard() {
   };
 
   const CustomCheckbox = ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
-    <div 
+    <div
       onClick={(e) => {
         e.stopPropagation();
         onChange();
       }}
       className={`
         w-5 h-5 border flex items-center justify-center cursor-pointer transition-all duration-200
-        ${checked 
-          ? 'bg-neutral-900 border-neutral-900 text-white' 
+        ${checked
+          ? 'bg-neutral-900 border-neutral-900 text-white'
           : 'bg-white border-neutral-300 hover:border-neutral-500'
         }
       `}
@@ -172,7 +174,7 @@ export default function Dashboard() {
       failed: "bg-red-50 text-red-700 border-red-200",
       terminated: "bg-orange-50 text-orange-700 border-orange-200",
     };
-    
+
     const labels: Record<string, string> = {
       pending: "Queued",
       running_tests: "Running",
@@ -200,6 +202,15 @@ export default function Dashboard() {
     }
   };
 
+  const handleStaticSort = (field: "date" | "agents" | "status" | "testName") => {
+    if (staticSortField === field) {
+      setStaticSortDirection(staticSortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setStaticSortField(field);
+      setStaticSortDirection("asc");
+    }
+  };
+
   const sortedTests = [...batchTests].sort((a, b) => {
     if (!sortField) return 0;
 
@@ -223,39 +234,37 @@ export default function Dashboard() {
     return sortDirection === "asc" ? comparison : -comparison;
   });
 
-  const SortableHeader = ({ 
-    field, 
+  const SortableHeader = ({
+    field,
     children,
     className = ""
-  }: { 
-    field: "date" | "agents" | "status" | "targetUrl"; 
+  }: {
+    field: "date" | "agents" | "status" | "targetUrl";
     children: React.ReactNode;
     className?: string;
   }) => {
     const isActive = sortField === field;
     return (
-      <th 
+      <th
         className={`px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-xs bg-neutral-50 cursor-pointer hover:text-neutral-900 transition-colors select-none ${className}`}
         onClick={() => handleSort(field)}
       >
         <div className="flex items-center gap-2">
           <span>{children}</span>
           <div className="flex flex-col">
-            <ChevronUp 
-              size={12} 
-              className={`transition-opacity ${
-                isActive && sortDirection === "asc" 
-                  ? "opacity-100 text-neutral-900" 
+            <ChevronUp
+              size={12}
+              className={`transition-opacity ${isActive && sortDirection === "asc"
+                  ? "opacity-100 text-neutral-900"
                   : "opacity-30"
-              }`}
+                }`}
             />
-            <ChevronDown 
-              size={12} 
-              className={`-mt-1 transition-opacity ${
-                isActive && sortDirection === "desc" 
-                  ? "opacity-100 text-neutral-900" 
+            <ChevronDown
+              size={12}
+              className={`-mt-1 transition-opacity ${isActive && sortDirection === "desc"
+                  ? "opacity-100 text-neutral-900"
                   : "opacity-30"
-              }`}
+                }`}
             />
           </div>
         </div>
@@ -291,9 +300,9 @@ export default function Dashboard() {
         {/* Table Header / Toolbar */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 bg-white/50 backdrop-blur-sm z-20">
           <div className="text-sm font-medium text-neutral-500">
-             {loading ? "Loading..." : `${batchTests.length} Simulations`}
+            {loading ? "Loading..." : `${batchTests.length} Simulations`}
           </div>
-          
+
           <div className="flex items-center gap-3">
             {isSelectionMode ? (
               <>
@@ -344,7 +353,7 @@ export default function Dashboard() {
                 <tr className="bg-neutral-50 border-b border-neutral-200">
                   {isSelectionMode && (
                     <th className="px-6 py-4 w-12 bg-neutral-50">
-                      <CustomCheckbox 
+                      <CustomCheckbox
                         checked={batchTests.length > 0 && selectedTests.length === batchTests.length}
                         onChange={toggleSelectAll}
                       />
@@ -389,7 +398,7 @@ export default function Dashboard() {
                     <tr key={test.id} className={`group transition-colors ${selectedTests.includes(test.id) ? "bg-neutral-50" : "hover:bg-neutral-50/30"}`}>
                       {isSelectionMode && (
                         <td className="px-6 py-5">
-                          <CustomCheckbox 
+                          <CustomCheckbox
                             checked={selectedTests.includes(test.id)}
                             onChange={() => toggleSelect(test.id)}
                           />
@@ -414,7 +423,7 @@ export default function Dashboard() {
                       </td>
                       <td className="px-6 py-5 text-right">
                         <Link
-                          href={`/tests/${test.id}`}
+                          href={`/dashboard/tests/${test.id}`}
                           className="inline-flex items-center justify-center bg-neutral-900 text-white px-4 py-1.5 text-xs font-medium hover:bg-neutral-800 transition-colors shadow-sm"
                         >
                           View Results
