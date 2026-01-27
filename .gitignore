@@ -43,6 +43,7 @@ reports/
 screenshots/
 
 *devicefarm_runs/
+
 # Drizzle
 drizzle/
 tools/ios_harness/*
