@@ -1,23 +1,45 @@
 [
   {
-    "persona": "Persona: Alice Chen\n\nBackground:\nAlice Chen is a 32-year-old Senior Financial Analyst from USA.\n\nDemographics:\nAge: 32\nGender: Female\nEducation: Master's Degree in Finance\nProfession: Senior Financial Analyst\nIncome: $150,000 USD\n\nFinancial Situation:\nAlice Chen has a high income level and manages their spending accordingly.\n\nBrowsing Habits:\nTech savviness: advanced. \n\nProfessional Life:\nWorks as a Senior Financial Analyst.\n\nPersonal Style:\nPractical and goal-oriented.\n\nPrimary Goal: To optimize portfolio performance and reduce reporting time.\nPain Points: Time-consuming manual data aggregation; Difficulty in real-time market analysis; Lack of integrated forecasting tools; Keeping up with regulatory changes",
-    "intent": "To optimize portfolio performance and reduce reporting time.",
-    "name": "Alice Chen",
-    "age": 32,
-    "gender": "Female",
-    "maritalStatus": "married",
+    "persona": "Persona: Alex Chen\n\nBackground:\nAlex Chen is a 21-year-old Student from USA.\n\nDemographics:\nAge: 21\nGender: Non-binary\nEducation: Computer Science Undergraduate\nProfession: Student\nIncome: $5,000 USD\n\nFinancial Situation:\nAlex Chen has a low income level and manages their spending accordingly.\n\nBrowsing Habits:\nTech savviness: advanced. \n\nProfessional Life:\nWorks as a Student.\n\nPersonal Style:\nPractical and goal-oriented.\n\nPrimary Goal: Launch a successful AI-powered educational platform.\nPain Points: Lack of funding for early-stage ideas.; Difficulty finding technical co-founders.; Navigating the complexities of startup legalities.; Balancing coursework with startup development.",
+    "intent": "Launch a successful AI-powered educational platform.",
+    "name": "Alex Chen",
+    "age": 21,
+    "gender": "Non-binary",
+    "maritalStatus": "single",
     "country": "USA",
-    "occupation": "Senior Financial Analyst",
-    "education": "Master's Degree in Finance",
-    "incomeLevel": "high",
-    "income": "$150,000 USD",
+    "occupation": "Student",
+    "education": "Computer Science Undergraduate",
+    "incomeLevel": "low",
+    "income": "$5,000 USD",
     "techSavviness": "advanced",
-    "primaryGoal": "To optimize portfolio performance and reduce reporting time.",
+    "primaryGoal": "Launch a successful AI-powered educational platform.",
     "painPoints": [
-      "Time-consuming manual data aggregation",
-      "Difficulty in real-time market analysis",
-      "Lack of integrated forecasting tools",
-      "Keeping up with regulatory changes"
+      "Lack of funding for early-stage ideas.",
+      "Difficulty finding technical co-founders.",
+      "Navigating the complexities of startup legalities.",
+      "Balancing coursework with startup development."
+    ],
+    "relevanceScore": 9
+  },
+  {
+    "persona": "Persona: Kenji Tanaka\n\nBackground:\nKenji Tanaka is a 22-year-old Student from Japan.\n\nDemographics:\nAge: 22\nGender: Male\nEducation: Economics Undergraduate\nProfession: Student\nIncome: $3,000 USD\n\nFinancial Situation:\nKenji Tanaka has a low income level and manages their spending accordingly.\n\nBrowsing Habits:\nTech savviness: advanced. \n\nProfessional Life:\nWorks as a Student.\n\nPersonal Style:\nPractical and goal-oriented.\n\nPrimary Goal: Build a fintech solution to simplify micro-investing for students.\nPain Points: Regulatory hurdles in the financial sector.; Ensuring data security and privacy.; Gaining user trust for financial applications.; Competing with established financial institutions.",
+    "intent": "Build a fintech solution to simplify micro-investing for students.",
+    "name": "Kenji Tanaka",
+    "age": 22,
+    "gender": "Male",
+    "maritalStatus": "single",
+    "country": "Japan",
+    "occupation": "Student",
+    "education": "Economics Undergraduate",
+    "incomeLevel": "low",
+    "income": "$3,000 USD",
+    "techSavviness": "advanced",
+    "primaryGoal": "Build a fintech solution to simplify micro-investing for students.",
+    "painPoints": [
+      "Regulatory hurdles in the financial sector.",
+      "Ensuring data security and privacy.",
+      "Gaining user trust for financial applications.",
+      "Competing with established financial institutions."
     ],
     "relevanceScore": 9
   }

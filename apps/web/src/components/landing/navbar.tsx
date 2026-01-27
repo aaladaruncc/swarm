@@ -20,31 +20,32 @@ export function Navbar() {
             shadowIntensity="sm"
             borderRadius="16px"
             blurIntensity="sm"
+            variant="dark"
             className="p-0"
           >
             <div className="flex items-center px-5 h-14">
-              <Link 
-                href="/" 
+              <Link
+                href="/"
                 className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-shrink-0 z-10"
               >
-                {/* White logo (Hero state) */}
+                {/* White logo for translucent dark navbar */}
                 <div className="h-14">
-                  <Image 
-                    src="/images/swarm_regular_2_white.png" 
-                    alt="Swarm" 
-                    width={280} 
-                    height={84} 
+                  <Image
+                    src="/images/swarm_regular_2_white.png"
+                    alt="Swarm"
+                    width={280}
+                    height={84}
                     className="w-auto object-contain h-full"
                   />
                 </div>
               </Link>
 
               <nav className="hidden md:flex items-center gap-6 font-sans font-light absolute left-1/2 -translate-x-1/2 z-10">
-                {["Features", "How it Works", "FAQ"].map((item) => (
-                  <a 
+                {["How it Works", "Insights", "Value"].map((item) => (
+                  <a
                     key={item}
                     href={`#${item.toLowerCase().replace(/\s+/g, "-")}`}
-                    className="text-sm cursor-pointer transition-colors hover:opacity-70 text-white/90"
+                    className="text-sm cursor-pointer transition-colors hover:text-white text-white/80"
                   >
                     {item}
                   </a>
@@ -52,22 +53,20 @@ export function Navbar() {
               </nav>
 
               <div className="flex items-center gap-3 ml-auto flex-shrink-0 z-10">
-                <Link 
-                  href="/login" 
-                  className="font-sans font-light text-sm px-3 py-1.5 transition-colors text-white/90 hover:text-white"
+                <Link
+                  href="/login"
+                  className="font-sans font-light text-sm px-3 py-1.5 transition-colors text-white/80 hover:text-white"
                 >
                   Log in
                 </Link>
-                <div className="rounded-lg bg-white/20 border border-white/30">
-                  <div className="px-4 py-2">
-                    <Link 
-                      href="/login" 
-                      className="font-sans font-light text-sm text-white hover:opacity-90 block rounded-lg transition-all"
-                    >
-                      Get Started
-                    </Link>
-                  </div>
-                </div>
+                <Link
+                  href="https://cal.com/team/swarm/demo"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-sans font-light text-sm px-4 py-2 bg-slate-950 text-white hover:bg-slate-800 rounded-lg transition-all"
+                >
+                  Book Demo
+                </Link>
               </div>
             </div>
           </LiquidGlassCard>

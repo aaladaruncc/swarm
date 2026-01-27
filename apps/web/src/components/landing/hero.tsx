@@ -2,72 +2,42 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ChevronRight, Play } from "lucide-react";
-import { FlickeringGrid } from "@/components/ui/flickering-grid";
-import posthog from "posthog-js";
+import { ChevronRight } from "lucide-react";
+import { AuroraBackground } from "@/components/ui/aurora-background";
 
 export function Hero() {
-  return (
-    <section className="relative h-screen flex flex-col items-center justify-center bg-transparent pt-0 pb-12 lg:pt-0 lg:pb-0">
-      
-      {/* Flickering Grid overlay - MagicUI style with fade out at bottom */}
-      <div 
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          zIndex: -1,
-          maskImage: "linear-gradient(to bottom, black 80%, transparent 100%)",
-          WebkitMaskImage: "linear-gradient(to bottom, black 80%, transparent 100%)"
-        }}
-      >
-        <div className="relative h-full w-full">
-          <FlickeringGrid
-            squareSize={4}
-            gridGap={6}
-            flickerChance={0.1}
-            color="rgb(59, 130, 246)" // Darker blue color
-            maxOpacity={0.15}
-            className="h-full w-full"
-          />
-        </div>
-      </div>
+    return (
+        <AuroraBackground className="bg-slate-50 text-slate-950">
+            <div className="relative z-10 flex flex-col items-center justify-center h-full px-4">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
+                    className="text-center max-w-4xl mx-auto"
+                >
+                    <h1 className="text-5xl md:text-7xl font-sans font-light tracking-tight text-slate-950 mb-8 leading-[1.1]">
+                        Understand your users
+                        <br />
+                        before you ship features.
+                    </h1>
 
-      <div className="container mx-auto px-6 relative z-10 w-full max-w-4xl flex-1 flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="text-center w-full"
-        >
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-sans font-light tracking-tight text-white mb-6 leading-[1.1] drop-shadow-lg">
-            The user simulator
-            <br />
-            <span className="text-white/95">for product teams.</span>
-          </h1>
+                    <p className="text-xl md:text-2xl text-slate-600 mb-10 max-w-3xl mx-auto leading-relaxed font-sans font-light whitespace-pre-line">
+                        Test product decisions before users ever touch them.{"\n"}See where people hesitate, drop off, or move forward.
+                    </p>
 
-          <p className="text-lg md:text-xl text-white/80 mb-8 max-w-2xl mx-auto leading-relaxed font-sans font-light drop-shadow">
-            Deploy AI personas to discover bugs, test accessibility, and validate user experiences at scale—without writing a single test script.
-          </p>
-
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <Link
-              href="/login"
-              onClick={() => posthog.capture("cta_clicked", { cta_type: "start_testing", location: "hero" })}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-white text-slate-900 hover:bg-white/90 transition-all text-base font-light rounded-lg min-w-[140px] justify-center shadow-lg"
-            >
-              Start Testing
-              <ChevronRight className="w-4 h-4" />
-            </Link>
-            <Link
-              href="#demo"
-              onClick={() => posthog.capture("cta_clicked", { cta_type: "see_demo", location: "hero" })}
-              className="inline-flex items-center gap-2 px-6 py-3 border border-white/30 text-white hover:bg-white/10 hover:border-white/50 transition-all text-base font-light rounded-lg min-w-[140px] justify-center backdrop-blur-sm"
-            >
-              <Play className="w-4 h-4 fill-current" />
-              See how it works
-            </Link>
-          </div>
-        </motion.div>
-      </div>
-    </section>
-  );
+                    <div className="flex items-center justify-center">
+                        <Link
+                            href="https://cal.com/team/swarm/demo"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-8 py-4 bg-slate-950 text-white hover:bg-slate-800 transition-all text-lg font-light rounded-lg shadow-xl hover:shadow-2xl hover:-translate-y-0.5"
+                        >
+                            Book Demo
+                            <ChevronRight className="w-5 h-5" />
+                        </Link>
+                    </div>
+                </motion.div>
+            </div>
+        </AuroraBackground>
+    );
 }

@@ -4,11 +4,11 @@ import React from 'react';
 import { LandingBackground } from "@/components/landing/landing-background";
 import { Navbar } from "@/components/landing/navbar";
 import { Hero } from "@/components/landing/hero";
-import { LogoGrid } from "@/components/landing/logo-grid";
-import { ResearchPapers } from "@/components/landing/research-papers";
-import { FeaturesGrid } from "@/components/landing/features-grid";
-import { HowItWorks } from "@/components/landing/how-it-works";
-import { FAQ } from "@/components/landing/faq";
+import { LogoShowcase } from "@/components/landing/logo-showcase";
+import { Features } from "@/components/landing/features";
+import { RevenueSection } from "@/components/landing/revenue-section";
+import { ProductDecisions } from "@/components/landing/product-decisions";
+import { CTASection } from "@/components/landing/cta-section";
 import { Footer } from "@/components/landing/footer";
 
 export default function App() {
@@ -24,20 +24,20 @@ export default function App() {
       {/* --- HERO SECTION --- */}
       <Hero />
 
-      {/* --- SOCIAL PROOF --- */}
-      <LogoGrid />
+      {/* --- TRUSTED BY --- */}
+      <LogoShowcase />
 
-      {/* --- VALUE PROPOSITION (Features Grid) --- */}
-      <FeaturesGrid />
+      {/* --- VALUE PROPOSITION (Features) --- */}
+      <Features />
 
-      {/* --- RESEARCH PAPERS --- */}
-      <ResearchPapers />
+      {/* --- REVENUE SECTION --- */}
+      <RevenueSection />
 
-      {/* --- HOW IT WORKS SECTION --- */}
-      <HowItWorks />
+      {/* --- PRODUCT DECISIONS SECTION --- */}
+      <ProductDecisions />
 
-      {/* --- FAQ --- */}
-      <FAQ />
+      {/* --- CTA SECTION --- */}
+      <CTASection />
 
       {/* --- FOOTER --- */}
       <Footer />
