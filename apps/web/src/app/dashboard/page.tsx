@@ -39,6 +39,8 @@ export default function Dashboard() {
   const [isScreenshotSelectionMode, setIsScreenshotSelectionMode] = useState(false);
   const [isArchivingScreenshots, setIsArchivingScreenshots] = useState(false);
   const [showScreenshotArchiveConfirm, setShowScreenshotArchiveConfirm] = useState(false);
+  const [sortFieldScreenshot, setSortFieldScreenshot] = useState<"date" | "agents" | "status" | "targetUrl" | null>(null);
+  const [sortDirectionScreenshot, setSortDirectionScreenshot] = useState<"asc" | "desc">("asc");
 
   const isLight = theme === "light";
 
@@ -259,9 +261,14 @@ export default function Dashboard() {
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, { light: string; dark: string }> = {
+      // Runtime (batch) statuses
       pending: {
         light: "bg-neutral-100 text-neutral-600 border-neutral-300",
         dark: "bg-neutral-500/10 text-neutral-400 border-neutral-500/20",
+      },
+      generating_personas: {
+        light: "bg-amber-50 text-amber-700 border-amber-200",
+        dark: "bg-amber-500/10 text-amber-400 border-amber-500/20",
       },
       running_tests: {
         light: "bg-blue-50 text-blue-700 border-blue-200",
@@ -270,6 +277,10 @@ export default function Dashboard() {
       aggregating: {
         light: "bg-purple-50 text-purple-700 border-purple-200",
         dark: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+      },
+      running_uxagent: {
+        light: "bg-blue-50 text-blue-700 border-blue-200",
+        dark: "bg-blue-500/10 text-blue-400 border-blue-500/20",
       },
       completed: {
         light: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -283,15 +294,28 @@ export default function Dashboard() {
         light: "bg-orange-50 text-orange-700 border-orange-200",
         dark: "bg-orange-500/10 text-orange-400 border-orange-500/20",
       },
+      // Static (screenshot) statuses
+      uploading: {
+        light: "bg-blue-50 text-blue-700 border-blue-200",
+        dark: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+      },
+      analyzing: {
+        light: "bg-blue-50 text-blue-700 border-blue-200",
+        dark: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+      },
     };
 
     const labels: Record<string, string> = {
       pending: "Queued",
+      generating_personas: "Generating agents",
       running_tests: "Running",
       aggregating: "Aggregating",
+      running_uxagent: "Analyzing",
       completed: "Success",
       failed: "Failed",
       terminated: "Terminated",
+      uploading: "Uploading",
+      analyzing: "Analyzing",
     };
 
     const statusStyle = styles[status] || styles.pending;
@@ -306,12 +330,19 @@ export default function Dashboard() {
 
   const handleSort = (field: "date" | "agents" | "status" | "targetUrl") => {
     if (sortField === field) {
-      // Toggle direction if clicking the same field
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
-      // Set new field and default to ascending
       setSortField(field);
       setSortDirection("asc");
+    }
+  };
+
+  const handleSortScreenshot = (field: "date" | "agents" | "status" | "targetUrl") => {
+    if (sortFieldScreenshot === field) {
+      setSortDirectionScreenshot(sortDirectionScreenshot === "asc" ? "desc" : "asc");
+    } else {
+      setSortFieldScreenshot(field);
+      setSortDirectionScreenshot("asc");
     }
   };
 
@@ -336,6 +367,26 @@ export default function Dashboard() {
     }
 
     return sortDirection === "asc" ? comparison : -comparison;
+  });
+
+  const sortedScreenshotTests = [...screenshotTests].sort((a, b) => {
+    if (!sortFieldScreenshot) return 0;
+    let comparison = 0;
+    switch (sortFieldScreenshot) {
+      case "date":
+        comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        break;
+      case "agents":
+        comparison = (a.agentCount ?? 0) - (b.agentCount ?? 0);
+        break;
+      case "status":
+        comparison = a.status.localeCompare(b.status);
+        break;
+      case "targetUrl":
+        comparison = (a.testName || "").localeCompare(b.testName || "");
+        break;
+    }
+    return sortDirectionScreenshot === "asc" ? comparison : -comparison;
   });
 
   const SortableHeader = ({
@@ -371,6 +422,51 @@ export default function Dashboard() {
             <ChevronDown
               size={12}
               className={`-mt-1 transition-opacity ${isActive && sortDirection === "desc"
+                ? isLight
+                  ? "opacity-100 text-neutral-900"
+                  : "opacity-100 text-white"
+                : "opacity-30"
+                }`}
+            />
+          </div>
+        </div>
+      </th>
+    );
+  };
+
+  const SortableHeaderScreenshot = ({
+    field,
+    children,
+    className = ""
+  }: {
+    field: "date" | "agents" | "status" | "targetUrl";
+    children: React.ReactNode;
+    className?: string;
+  }) => {
+    const isActive = sortFieldScreenshot === field;
+    return (
+      <th
+        className={`px-6 py-4 font-medium uppercase tracking-wider text-xs cursor-pointer transition-colors select-none ${isLight
+          ? "bg-neutral-100 text-neutral-600 hover:text-neutral-900"
+          : "bg-[#252525] text-neutral-400 hover:text-white"
+          } ${className}`}
+        onClick={() => handleSortScreenshot(field)}
+      >
+        <div className="flex items-center gap-2">
+          <span>{children}</span>
+          <div className="flex flex-col">
+            <ChevronUp
+              size={12}
+              className={`transition-opacity ${isActive && sortDirectionScreenshot === "asc"
+                ? isLight
+                  ? "opacity-100 text-neutral-900"
+                  : "opacity-100 text-white"
+                : "opacity-30"
+                }`}
+            />
+            <ChevronDown
+              size={12}
+              className={`-mt-1 transition-opacity ${isActive && sortDirectionScreenshot === "desc"
                 ? isLight
                   ? "opacity-100 text-neutral-900"
                   : "opacity-100 text-white"
@@ -550,8 +646,8 @@ export default function Dashboard() {
                   <SortableHeader field="status">Status</SortableHeader>
                   <SortableHeader field="date">Date</SortableHeader>
                   <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs text-right ${isLight
-                    ? "text-neutral-600"
-                    : "text-neutral-400"
+                    ? "bg-neutral-100 text-neutral-600"
+                    : "bg-[#252525] text-neutral-400"
                     }`}>Action</th>
                 </tr>
               </thead>
@@ -679,22 +775,10 @@ export default function Dashboard() {
                       />
                     </th>
                   )}
-                  <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs w-1/3 ${isLight
-                    ? "bg-neutral-100 text-neutral-600"
-                    : "bg-[#252525] text-neutral-400"
-                    }`}>Test Name</th>
-                  <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs ${isLight
-                    ? "bg-neutral-100 text-neutral-600"
-                    : "bg-[#252525] text-neutral-400"
-                    }`}>Score</th>
-                  <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs ${isLight
-                    ? "bg-neutral-100 text-neutral-600"
-                    : "bg-[#252525] text-neutral-400"
-                    }`}>Status</th>
-                  <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs ${isLight
-                    ? "bg-neutral-100 text-neutral-600"
-                    : "bg-[#252525] text-neutral-400"
-                    }`}>Date</th>
+                  <SortableHeaderScreenshot field="targetUrl" className="w-1/3">Test Name</SortableHeaderScreenshot>
+                  <SortableHeaderScreenshot field="agents">Agents</SortableHeaderScreenshot>
+                  <SortableHeaderScreenshot field="status">Status</SortableHeaderScreenshot>
+                  <SortableHeaderScreenshot field="date">Date</SortableHeaderScreenshot>
                   <th className={`px-6 py-4 font-medium uppercase tracking-wider text-xs text-right ${isLight
                     ? "bg-neutral-100 text-neutral-600"
                     : "bg-[#252525] text-neutral-400"
@@ -731,7 +815,7 @@ export default function Dashboard() {
                     </td>
                   </tr>
                 ) : (
-                  screenshotTests.map((test) => (
+                  sortedScreenshotTests.map((test) => (
                     <tr key={test.id} className={`group transition-colors ${selectedScreenshotTests.includes(test.id)
                       ? isLight
                         ? "bg-neutral-50"
@@ -762,7 +846,7 @@ export default function Dashboard() {
                       </td>
                       <td className={`px-6 py-5 font-light ${isLight ? "text-neutral-600" : "text-neutral-300"
                         }`}>
-                        {test.overallScore !== null ? `${test.overallScore}/100` : "—"}
+                        {test.agentCount != null ? `${test.agentCount} ${test.agentCount === 1 ? "persona" : "personas"}` : "—"}
                       </td>
                       <td className="px-6 py-5">
                         {getStatusBadge(test.status)}

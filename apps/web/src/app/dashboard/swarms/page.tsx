@@ -161,12 +161,12 @@ export default function SwarmsPage() {
         </Link>
       </div>
 
-      <div className={`border p-1 min-h-[400px] rounded-xl shadow-sm ${
+      <div className={`border p-1 min-h-[400px] max-h-[calc(100vh-14rem)] rounded-xl shadow-sm flex flex-col overflow-hidden ${
         isLight
           ? "border-neutral-200 bg-white"
           : "border-white/10 bg-[#1E1E1E]"
       }`}>
-        <div className={`h-full w-full rounded-lg ${
+        <div className={`flex-1 min-h-0 overflow-y-auto rounded-lg ${
           isLight ? "bg-white" : "bg-[#1E1E1E]"
         }`}>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">

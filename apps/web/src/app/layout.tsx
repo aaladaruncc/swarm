@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { PostHogProvider } from "@/components/PostHogProvider";
+import { PublicRouteThemeEnforcer } from "@/components/PublicRouteThemeEnforcer";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -27,6 +28,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} ${inter.className}`} suppressHydrationWarning>
         <PostHogProvider>
+          <PublicRouteThemeEnforcer />
           {children}
         </PostHogProvider>
       </body>

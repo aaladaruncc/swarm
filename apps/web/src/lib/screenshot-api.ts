@@ -28,7 +28,7 @@ export interface ScreenshotTestRun {
     generatedPersonas?: any[] | null;
     selectedPersonaIndices?: number[] | null;
     agentCount?: number | null;
-    status: string; // pending | uploading | analyzing | completed | failed
+    status: string; // pending | uploading | analyzing | completed | failed | terminated
     overallScore: number | null;
     summary: string | null;
     fullReport: any;

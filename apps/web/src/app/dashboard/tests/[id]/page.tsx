@@ -245,8 +245,10 @@ export default function TestDetails() {
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       pending: "bg-neutral-500/10 text-neutral-400 border-neutral-500/20",
+      generating_personas: "bg-amber-500/10 text-amber-400 border-amber-500/20",
       running_tests: "bg-blue-500/10 text-blue-400 border-blue-500/20",
       aggregating: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+      running_uxagent: "bg-blue-500/10 text-blue-400 border-blue-500/20",
       completed: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
       failed: "bg-red-500/10 text-red-400 border-red-500/20",
       terminated: "bg-orange-500/10 text-orange-400 border-orange-500/20",
@@ -254,8 +256,10 @@ export default function TestDetails() {
 
     const labels: Record<string, string> = {
       pending: "Queued",
+      generating_personas: "Generating agents",
       running_tests: "Running",
       aggregating: "Aggregating",
+      running_uxagent: "Analysis",
       completed: "Success",
       failed: "Failed",
       terminated: "Terminated",

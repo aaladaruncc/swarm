@@ -76,7 +76,7 @@ export const batchTestRuns = pgTable("batch_test_runs", {
   userDescription: text("user_description"), // User's description of their target audience
   generatedPersonas: jsonb("generated_personas").$type<any[]>(), // 10 AI-generated personas
   selectedPersonaIndices: jsonb("selected_persona_indices").$type<number[]>(), // Which 5 were selected
-  status: text("status").notNull().default("pending"), // pending, generating_personas, running_tests, aggregating, completed, failed
+  status: text("status").notNull().default("pending"), // pending, generating_personas, running_tests, aggregating, running_uxagent, completed, failed, terminated
   useUXAgent: boolean("use_ux_agent").default(false), // Whether UXAgent service was used
   // Shareable link fields
   shareToken: text("share_token").unique(), // Unique token for public sharing
@@ -338,7 +338,7 @@ export const screenshotTestRuns = pgTable("screenshot_test_runs", {
 
   // Status
   status: text("status").notNull().default("pending"),
-  // pending | uploading | analyzing | completed | failed
+  // pending | uploading | analyzing | completed | failed | terminated
 
   // Results
   overallScore: integer("overall_score"), // 0-100
