@@ -567,12 +567,12 @@ export default function ScreenshotTestResults() {
                                     key={key}
                                     onClick={() => setActiveTab(key as "insights" | "agent-sessions")}
                                     className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === key
-                                            ? isLight
-                                                ? "border-b-2 border-neutral-900 text-neutral-900"
-                                                : "border-b-2 border-white text-white"
-                                            : isLight
-                                                ? "text-neutral-500 hover:text-neutral-700"
-                                                : "text-neutral-500 hover:text-neutral-300"
+                                        ? isLight
+                                            ? "border-b-2 border-neutral-900 text-neutral-900"
+                                            : "border-b-2 border-white text-white"
+                                        : isLight
+                                            ? "text-neutral-500 hover:text-neutral-700"
+                                            : "text-neutral-500 hover:text-neutral-300"
                                         }`}
                                 >
                                     <Icon size={16} />
@@ -654,12 +654,12 @@ export default function ScreenshotTestResults() {
                                                             key={screenshot.id}
                                                             onClick={() => setSelectedStepIndex(index)}
                                                             className={`rounded-xl p-6 cursor-pointer transition-all relative overflow-hidden ${isSelected
-                                                                    ? isLight
-                                                                        ? "bg-white border border-neutral-200 shadow-lg"
-                                                                        : "bg-[#1E1E1E] border border-white/10 shadow-lg"
-                                                                    : isLight
-                                                                        ? "bg-white border border-neutral-200 hover:bg-neutral-50 hover:border-neutral-300"
-                                                                        : "bg-[#1E1E1E] border border-white/10 hover:bg-[#252525] hover:border-white/20"
+                                                                ? isLight
+                                                                    ? "bg-white border border-neutral-200 shadow-lg"
+                                                                    : "bg-[#1E1E1E] border border-white/10 shadow-lg"
+                                                                : isLight
+                                                                    ? "bg-white border border-neutral-200 hover:bg-neutral-50 hover:border-neutral-300"
+                                                                    : "bg-[#1E1E1E] border border-white/10 hover:bg-[#252525] hover:border-white/20"
                                                                 }`}
                                                         >
                                                             {/* Blue Shine Border for Selected */}
@@ -1002,19 +1002,6 @@ export default function ScreenshotTestResults() {
                 </div>
             )}
 
-            {/* Back Button - Bottom Right */}
-            <div className="mt-8 flex-shrink-0 flex justify-end">
-                <Link
-                    href="/dashboard"
-                    className={`inline-flex items-center gap-2 px-6 py-2.5 transition-all text-sm font-medium rounded-lg ${isLight
-                        ? "bg-neutral-900 text-white hover:bg-neutral-800"
-                        : "bg-white text-neutral-900 hover:bg-neutral-200"
-                        }`}
-                >
-                    <ArrowLeft size={16} />
-                    Back to Dashboard
-                </Link>
-            </div>
 
             {/* Thoughts Modal */}
             <AnimatePresence>

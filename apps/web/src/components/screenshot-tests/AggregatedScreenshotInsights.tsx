@@ -268,29 +268,6 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
                     </div>
                 </div>
 
-                {avgScore !== null && (
-                    <div className={`border p-4 rounded-xl ${isLight
-                        ? "bg-white border-neutral-200"
-                        : "border-white/10 bg-[#1E1E1E]"
-                        }`}>
-                        <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 border flex items-center justify-center rounded-lg ${isLight
-                                ? "bg-neutral-100 border-neutral-200"
-                                : "bg-[#252525] border-white/10"
-                                }`}>
-                                <Target size={20} className={isLight ? "text-neutral-500" : "text-neutral-400"} />
-                            </div>
-                            <div>
-                                <p className={`text-2xl font-light ${isLight ? "text-neutral-900" : "text-white"}`}>
-                                    {avgScore}<span className={`text-sm ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>/100</span>
-                                </p>
-                                <p className={`text-xs uppercase tracking-wide font-light ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
-                                    Score
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
 
                 <div className={`border p-4 rounded-xl ${isLight
                     ? "bg-white border-neutral-200"

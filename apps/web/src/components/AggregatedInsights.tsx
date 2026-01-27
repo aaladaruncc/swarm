@@ -152,10 +152,45 @@ export function AggregatedInsights({ uxagentRuns }: AggregatedInsightsProps) {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center p-12">
-                <Loader2 className={`animate-spin w-8 h-8 ${
-                    isLight ? "text-neutral-500" : "text-neutral-400"
-                }`} />
+            <div className="relative w-full min-h-[400px] flex items-center justify-center overflow-hidden rounded-2xl"
+                style={{
+                    background: isLight
+                        ? "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)"
+                        : "linear-gradient(135deg, #451a03 0%, #292524 100%)"
+                }}
+            >
+                <div className="absolute inset-0 pointer-events-none">
+                    <div
+                        className="absolute top-1/3 left-1/3 w-64 h-64 rounded-full blur-3xl"
+                        style={{
+                            background: "radial-gradient(circle, #f59e0b 0%, #ef4444 100%)",
+                            opacity: 0.2,
+                            animation: "pulse 3s ease-in-out infinite"
+                        }}
+                    />
+                </div>
+                <div className="relative z-10 text-center">
+                    <Loader2 size={48} className="mx-auto mb-4 animate-spin"
+                        style={{
+                            color: isLight ? "#f59e0b" : "#fbbf24",
+                            filter: "drop-shadow(0 0 20px rgba(251, 191, 36, 0.4))"
+                        }}
+                    />
+                    <p className={`text-lg font-semibold ${isLight ? "text-amber-900" : "text-amber-200"}`}
+                        style={{
+                            fontFamily: "'Syne', -apple-system, BlinkMacSystemFont, sans-serif",
+                            letterSpacing: "0.05em"
+                        }}
+                    >
+                        Loading insights...
+                    </p>
+                </div>
+                <style jsx>{`
+                    @keyframes pulse {
+                        0%, 100% { transform: scale(1); opacity: 0.2; }
+                        50% { transform: scale(1.1); opacity: 0.3; }
+                    }
+                `}</style>
             </div>
         );
     }
