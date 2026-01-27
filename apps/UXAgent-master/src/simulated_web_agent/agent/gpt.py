@@ -192,6 +192,8 @@ SLOW_CHAT_MODEL_LIST = [
     },
 ]
 
+GEMINI_EMBEDDING_MODEL = os.environ.get("GEMINI_EMBEDDING_MODEL", "gemini/embedding-001")
+
 EMBED_MODEL_LIST = [
     {
         "model_name": "openai",
@@ -208,11 +210,11 @@ EMBED_MODEL_LIST = [
     {
         # Anthropic doesn't have embeddings, so use Gemini as fallback
         "model_name": "anthropic",
-        "litellm_params": {"model": "gemini/text-embedding-004"},
+        "litellm_params": {"model": GEMINI_EMBEDDING_MODEL},
     },
     {
         "model_name": "gemini",
-        "litellm_params": {"model": "gemini/text-embedding-004"},
+        "litellm_params": {"model": GEMINI_EMBEDDING_MODEL},
     },
 ]
 
