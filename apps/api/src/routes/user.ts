@@ -24,15 +24,15 @@ userRoutes.patch("/me", authMiddleware, zValidator("json", updateUserSchema), as
   const updates: any = {};
   if (name) updates.name = name;
   if (email) {
-      // Check if email already exists
-      const existing = await db.query.user.findFirst({
-          where: eq(user.email, email)
-      });
-      if (existing && existing.id !== currentUser.id) {
-          return c.json({ error: "Email already in use" }, 409);
-      }
-      updates.email = email;
-      updates.emailVerified = false; // Reset verification if email changes
+    // Check if email already exists
+    const existing = await db.query.user.findFirst({
+      where: eq(user.email, email)
+    });
+    if (existing && existing.id !== currentUser.id) {
+      return c.json({ error: "Email already in use" }, 409);
+    }
+    updates.email = email;
+    updates.emailVerified = false; // Reset verification if email changes
   }
   updates.updatedAt = new Date();
 
@@ -53,6 +53,8 @@ userRoutes.get("/me/usage", authMiddleware, async (c) => {
   const [liveMonth] = await db
     .select({
       totalTokens: sql<number>`coalesce(sum(${testRuns.totalTokens}), 0)`,
+      inputTokens: sql<number>`coalesce(sum(${testRuns.inputTokens}), 0)`,
+      outputTokens: sql<number>`coalesce(sum(${testRuns.outputTokens}), 0)`,
     })
     .from(testRuns)
     .where(and(eq(testRuns.userId, currentUser.id), gte(testRuns.createdAt, monthStart)));
@@ -60,6 +62,8 @@ userRoutes.get("/me/usage", authMiddleware, async (c) => {
   const [liveAllTime] = await db
     .select({
       totalTokens: sql<number>`coalesce(sum(${testRuns.totalTokens}), 0)`,
+      inputTokens: sql<number>`coalesce(sum(${testRuns.inputTokens}), 0)`,
+      outputTokens: sql<number>`coalesce(sum(${testRuns.outputTokens}), 0)`,
     })
     .from(testRuns)
     .where(eq(testRuns.userId, currentUser.id));
@@ -67,6 +71,8 @@ userRoutes.get("/me/usage", authMiddleware, async (c) => {
   const [screenshotMonth] = await db
     .select({
       totalTokens: sql<number>`coalesce(sum(${screenshotTestRuns.totalTokens}), 0)`,
+      inputTokens: sql<number>`coalesce(sum(${screenshotTestRuns.inputTokens}), 0)`,
+      outputTokens: sql<number>`coalesce(sum(${screenshotTestRuns.outputTokens}), 0)`,
     })
     .from(screenshotTestRuns)
     .where(and(eq(screenshotTestRuns.userId, currentUser.id), gte(screenshotTestRuns.createdAt, monthStart)));
@@ -74,23 +80,37 @@ userRoutes.get("/me/usage", authMiddleware, async (c) => {
   const [screenshotAllTime] = await db
     .select({
       totalTokens: sql<number>`coalesce(sum(${screenshotTestRuns.totalTokens}), 0)`,
+      inputTokens: sql<number>`coalesce(sum(${screenshotTestRuns.inputTokens}), 0)`,
+      outputTokens: sql<number>`coalesce(sum(${screenshotTestRuns.outputTokens}), 0)`,
     })
     .from(screenshotTestRuns)
     .where(eq(screenshotTestRuns.userId, currentUser.id));
 
   const monthLiveTokens = Number(liveMonth?.totalTokens || 0);
+  const monthLiveInputTokens = Number(liveMonth?.inputTokens || 0);
+  const monthLiveOutputTokens = Number(liveMonth?.outputTokens || 0);
   const monthScreenshotTokens = Number(screenshotMonth?.totalTokens || 0);
+  const monthScreenshotInputTokens = Number(screenshotMonth?.inputTokens || 0);
+  const monthScreenshotOutputTokens = Number(screenshotMonth?.outputTokens || 0);
   const allTimeLiveTokens = Number(liveAllTime?.totalTokens || 0);
+  const allTimeLiveInputTokens = Number(liveAllTime?.inputTokens || 0);
+  const allTimeLiveOutputTokens = Number(liveAllTime?.outputTokens || 0);
   const allTimeScreenshotTokens = Number(screenshotAllTime?.totalTokens || 0);
+  const allTimeScreenshotInputTokens = Number(screenshotAllTime?.inputTokens || 0);
+  const allTimeScreenshotOutputTokens = Number(screenshotAllTime?.outputTokens || 0);
 
   return c.json({
     month: {
       totalTokens: monthLiveTokens + monthScreenshotTokens,
+      inputTokens: monthLiveInputTokens + monthScreenshotInputTokens,
+      outputTokens: monthLiveOutputTokens + monthScreenshotOutputTokens,
       liveTokens: monthLiveTokens,
       screenshotTokens: monthScreenshotTokens,
     },
     allTime: {
       totalTokens: allTimeLiveTokens + allTimeScreenshotTokens,
+      inputTokens: allTimeLiveInputTokens + allTimeScreenshotInputTokens,
+      outputTokens: allTimeLiveOutputTokens + allTimeScreenshotOutputTokens,
       liveTokens: allTimeLiveTokens,
       screenshotTokens: allTimeScreenshotTokens,
     },
