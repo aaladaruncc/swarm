@@ -39,7 +39,13 @@ export default function LoginPage() {
       const res = await signIn.email({ email, password });
 
       if (res?.error) {
-        setError(res.error.message || "Authentication failed");
+        // If signup is disabled, show a friendly high-demand message
+        const errorMessage = res.error.message || "Authentication failed";
+        if (errorMessage.toLowerCase().includes("sign up") && errorMessage.toLowerCase().includes("disabled")) {
+          setError("We're at capacity! Due to high demand, signups are temporarily closed. Book a demo to get access.");
+        } else {
+          setError(errorMessage);
+        }
         setLoading(false);
         return;
       }

@@ -192,7 +192,7 @@ SLOW_CHAT_MODEL_LIST = [
     },
 ]
 
-GEMINI_EMBEDDING_MODEL = os.environ.get("GEMINI_EMBEDDING_MODEL", "gemini/embedding-001")
+GEMINI_EMBEDDING_MODEL = os.environ.get("GEMINI_EMBEDDING_MODEL", "gemini/text-embedding-004")
 
 EMBED_MODEL_LIST = [
     {
