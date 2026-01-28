@@ -32,29 +32,30 @@ const lineVariants = {
 
 export function RevenueSection() {
   return (
-    <section id="insights" className="relative py-16 md:py-20 bg-white overflow-hidden">
+    <section id="insights" className="relative py-12 sm:py-16 md:py-20 bg-white overflow-hidden">
       {/* Subtle gradient overlays */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-b from-slate-50/50 via-transparent to-slate-50/50" />
       </div>
 
-      <div className="container mx-auto px-4 md:px-8 max-w-7xl relative z-10">
+      <div className="container mx-auto px-4 sm:px-6 md:px-8 max-w-7xl relative z-10">
         {/* Header - Centered */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center max-w-3xl mx-auto mb-10"
+          className="text-center max-w-3xl mx-auto mb-8 sm:mb-10"
         >
-          <h2 className="text-4xl md:text-5xl font-sans font-light tracking-tight text-slate-950 mb-4 leading-[1.15]">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-sans font-light tracking-tight text-slate-950 mb-3 sm:mb-4 leading-[1.15]">
             Identify what's blocking
-            <br />
+            <br className="hidden sm:block" />
+            <span className="sm:hidden"> </span>
             users from revenue
           </h2>
-          <p className="text-lg md:text-xl text-slate-600 font-light leading-relaxed">
-            Swarm shows where user behavior breaks down in 
-            revenue-critical <br />moments, so your team knows exactly what to fix before launch.
+          <p className="text-base sm:text-lg md:text-xl text-slate-600 font-light leading-relaxed px-2">
+            Swarm shows where user behavior breaks down in
+            revenue-critical <br className="hidden md:block" />moments, so your team knows exactly what to fix before launch.
           </p>
         </motion.div>
 

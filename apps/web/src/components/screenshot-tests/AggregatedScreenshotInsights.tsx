@@ -7,17 +7,21 @@ import {
     CheckCircle2,
     ChevronDown,
     ChevronUp,
-    Target,
     Eye,
     Accessibility,
     Loader2,
     Sparkles,
     Zap,
+    TrendingUp,
+    Image,
+    ThumbsUp,
 } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import type { ScreenshotTestResult, ScreenshotAggregatedInsight } from "@/lib/screenshot-api";
 import { getScreenshotInsights, generateScreenshotInsights } from "@/lib/screenshot-api";
 import { cleanMarkdown } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
+import { SeverityDistribution, InsightsSummaryCard, HorizontalBarChart } from "../insights/InsightCharts";
 
 interface AggregatedScreenshotInsightsProps {
     result: ScreenshotTestResult;
@@ -94,12 +98,12 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
         }
     };
 
-    // Group insights by category and severity
-    const { issuesBySeverity, positives, accessibility, observations } = useMemo(() => {
+    // Computed statistics and grouped data
+    const stats = useMemo(() => {
         const issues: ScreenshotAggregatedInsight[] = [];
-        const positivesList: ScreenshotAggregatedInsight[] = [];
-        const accessibilityList: ScreenshotAggregatedInsight[] = [];
-        const observationsList: ScreenshotAggregatedInsight[] = [];
+        const positives: ScreenshotAggregatedInsight[] = [];
+        const accessibility: ScreenshotAggregatedInsight[] = [];
+        const observations: ScreenshotAggregatedInsight[] = [];
 
         insights.forEach((insight) => {
             switch (insight.category) {
@@ -107,13 +111,13 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
                     issues.push(insight);
                     break;
                 case "positives":
-                    positivesList.push(insight);
+                    positives.push(insight);
                     break;
                 case "accessibility":
-                    accessibilityList.push(insight);
+                    accessibility.push(insight);
                     break;
                 case "observations":
-                    observationsList.push(insight);
+                    observations.push(insight);
                     break;
             }
         });
@@ -132,19 +136,28 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
             return acc;
         }, {} as Record<string, ScreenshotAggregatedInsight[]>);
 
+        const severityCounts = {
+            critical: bySeverity.critical?.length ?? 0,
+            high: bySeverity.high?.length ?? 0,
+            medium: bySeverity.medium?.length ?? 0,
+            low: bySeverity.low?.length ?? 0,
+        };
+
         return {
+            issues,
+            positives,
+            accessibility,
+            observations,
             issuesBySeverity: bySeverity,
-            positives: positivesList,
-            accessibility: accessibilityList,
-            observations: observationsList,
+            severityCounts,
+            totalIssues: issues.length,
+            criticalAndHigh: severityCounts.critical + severityCounts.high,
         };
     }, [insights]);
 
     // Stats
     const personaCount = result.personaResults?.length ?? 0;
-    const totalIssues = Object.values(issuesBySeverity).reduce((sum, arr) => sum + arr.length, 0);
-    const criticalCount = (issuesBySeverity.critical?.length ?? 0) + (issuesBySeverity.high?.length ?? 0);
-    const avgScore = result.overallReport?.score ?? null;
+    const screenshotCount = result.screenshots?.length ?? 0;
 
     const toggleSeverity = (severity: string) => {
         const newSet = new Set(expandedSeverities);
@@ -155,6 +168,14 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
         }
         setExpandedSeverities(newSet);
     };
+
+    // Data for category distribution chart
+    const categoryChartData = useMemo(() => [
+        { label: "Issues", value: stats.totalIssues, color: "#ef4444" },
+        { label: "Positives", value: stats.positives.length, color: "#10b981" },
+        { label: "Accessibility", value: stats.accessibility.length, color: "#8b5cf6" },
+        { label: "Observations", value: stats.observations.length, color: "#3b82f6" },
+    ].filter(d => d.value > 0), [stats]);
 
     if (loading) {
         return (
@@ -209,7 +230,7 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
                 <h3 className={`text-lg font-medium mb-2 ${isLight ? "text-neutral-900" : "text-white"}`}>
                     Generate Aggregated Insights
                 </h3>
-                <p className={`font-light text-sm mb-6 ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
+                <p className={`font-light text-sm mb-6 max-w-md mx-auto ${isLight ? "text-neutral-600" : "text-neutral-400"}`}>
                     Analyze persona results to generate aggregated insights across all screenshots.
                 </p>
                 <button
@@ -228,7 +249,7 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             {/* Regenerate Button */}
             <div className="flex justify-end">
                 <button
@@ -244,116 +265,107 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
                 </button>
             </div>
 
-            {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div className={`border p-4 rounded-xl ${isLight
-                    ? "bg-white border-neutral-200"
-                    : "border-white/10 bg-[#1E1E1E]"
-                    }`}>
-                    <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 border flex items-center justify-center rounded-lg ${isLight
-                            ? "bg-neutral-100 border-neutral-200"
-                            : "bg-[#252525] border-white/10"
-                            }`}>
-                            <Users size={20} className={isLight ? "text-neutral-500" : "text-neutral-400"} />
-                        </div>
-                        <div>
-                            <p className={`text-2xl font-light ${isLight ? "text-neutral-900" : "text-white"}`}>
-                                {personaCount}
-                            </p>
-                            <p className={`text-xs uppercase tracking-wide font-light ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
-                                Personas
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div className={`border p-4 rounded-xl ${isLight
-                    ? "bg-white border-neutral-200"
-                    : "border-white/10 bg-[#1E1E1E]"
-                    }`}>
-                    <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 border flex items-center justify-center rounded-lg ${isLight
-                            ? "bg-neutral-100 border-neutral-200"
-                            : "bg-[#252525] border-white/10"
-                            }`}>
-                            <Eye size={20} className={isLight ? "text-neutral-500" : "text-neutral-400"} />
-                        </div>
-                        <div>
-                            <p className={`text-2xl font-light ${isLight ? "text-neutral-900" : "text-white"}`}>
-                                {totalIssues}
-                            </p>
-                            <p className={`text-xs uppercase tracking-wide font-light ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
-                                Total Issues
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className={`border p-4 rounded-xl ${isLight
-                    ? "bg-white border-red-200"
-                    : "border-white/10 bg-[#1E1E1E]"
-                    }`}>
-                    <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 border flex items-center justify-center rounded-lg ${isLight
-                            ? "bg-red-50 border-red-200"
-                            : "bg-red-500/10 border-red-500/20"
-                            }`}>
-                            <AlertCircle size={20} className={isLight ? "text-red-600" : "text-red-400"} />
-                        </div>
-                        <div>
-                            <p className={`text-2xl font-light ${isLight ? "text-red-700" : "text-red-400"}`}>
-                                {criticalCount}
-                            </p>
-                            <p className={`text-xs uppercase tracking-wide font-light ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
-                                Critical + High
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
+            {/* Summary Stats Row */}
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                <InsightsSummaryCard
+                    icon={<Users size={20} className={isLight ? "text-neutral-500" : "text-neutral-400"} />}
+                    value={personaCount}
+                    label="Personas"
+                />
+                <InsightsSummaryCard
+                    icon={<Image size={20} className={isLight ? "text-blue-500" : "text-blue-400"} />}
+                    value={screenshotCount}
+                    label="Screenshots"
+                />
+                <InsightsSummaryCard
+                    icon={<Eye size={20} className={isLight ? "text-amber-500" : "text-amber-400"} />}
+                    value={stats.totalIssues}
+                    label="Total Issues"
+                />
+                <InsightsSummaryCard
+                    icon={<AlertCircle size={20} className={isLight ? "text-red-500" : "text-red-400"} />}
+                    value={stats.criticalAndHigh}
+                    label="Critical + High"
+                    highlight={stats.criticalAndHigh > 0}
+                    highlightColor="red"
+                />
                 {(result.testRun.totalTokens ?? 0) > 0 && (
-                    <div className={`border p-4 rounded-xl ${isLight
-                        ? "bg-white border-neutral-200"
-                        : "border-white/10 bg-[#1E1E1E]"
-                        }`}>
-                        <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 border flex items-center justify-center rounded-lg ${isLight
-                                ? "bg-neutral-100 border-neutral-200"
-                                : "bg-[#252525] border-white/10"
-                                }`}>
-                                <Zap size={20} className={isLight ? "text-amber-500" : "text-amber-400"} />
-                            </div>
-                            <div>
-                                <p className={`text-2xl font-light ${isLight ? "text-neutral-900" : "text-white"}`}>
-                                    {result.testRun.totalTokens?.toLocaleString()}
-                                </p>
-                                <p className={`text-xs uppercase tracking-wide font-light ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
-                                    Tokens
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                    <InsightsSummaryCard
+                        icon={<Zap size={20} className={isLight ? "text-amber-500" : "text-amber-400"} />}
+                        value={result.testRun.totalTokens?.toLocaleString() ?? 0}
+                        label="Tokens"
+                    />
+                )}
+            </div>
+
+            {/* Charts Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Severity Distribution Chart */}
+                {stats.totalIssues > 0 && (
+                    <motion.div
+                        className={`border p-6 rounded-xl ${isLight
+                            ? "bg-white border-neutral-200"
+                            : "border-white/10 bg-[#1E1E1E]"
+                            }`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4 }}
+                    >
+                        <h3 className={`text-sm font-medium mb-4 uppercase tracking-wide ${isLight ? "text-neutral-500" : "text-neutral-400"
+                            }`}>
+                            Issues by Severity
+                        </h3>
+                        <SeverityDistribution
+                            critical={stats.severityCounts.critical}
+                            high={stats.severityCounts.high}
+                            medium={stats.severityCounts.medium}
+                            low={stats.severityCounts.low}
+                        />
+                    </motion.div>
+                )}
+
+                {/* Category Distribution Chart */}
+                {categoryChartData.length > 0 && (
+                    <motion.div
+                        className={`border p-6 rounded-xl ${isLight
+                            ? "bg-white border-neutral-200"
+                            : "border-white/10 bg-[#1E1E1E]"
+                            }`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.1 }}
+                    >
+                        <h3 className={`text-sm font-medium mb-4 uppercase tracking-wide ${isLight ? "text-neutral-500" : "text-neutral-400"
+                            }`}>
+                            Findings by Type
+                        </h3>
+                        <HorizontalBarChart data={categoryChartData} />
+                    </motion.div>
                 )}
             </div>
 
             {/* Issues by Severity */}
-            {totalIssues > 0 && (
+            {stats.totalIssues > 0 && (
                 <div className="space-y-4">
                     <h3 className={`text-lg font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>
-                        All Issues by Priority
+                        Issues by Priority
                     </h3>
 
                     {(["critical", "high", "medium", "low"] as const).map((severity) => {
-                        const issues = issuesBySeverity[severity] ?? [];
+                        const issues = stats.issuesBySeverity[severity] ?? [];
                         if (issues.length === 0) return null;
 
                         return (
-                            <div key={severity} className={`border rounded-xl overflow-hidden ${isLight
-                                ? "bg-white border-neutral-200"
-                                : "border-white/10 bg-[#1E1E1E]"
-                                }`}>
+                            <motion.div
+                                key={severity}
+                                className={`border rounded-xl overflow-hidden ${isLight
+                                    ? "bg-white border-neutral-200"
+                                    : "border-white/10 bg-[#1E1E1E]"
+                                    }`}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.3 }}
+                            >
                                 <button
                                     onClick={() => toggleSeverity(severity)}
                                     className={`w-full flex items-center justify-between p-4 transition-colors ${isLight ? "hover:bg-neutral-50" : "hover:bg-white/5"
@@ -380,106 +392,141 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
                                     )}
                                 </button>
 
-                                {expandedSeverities.has(severity) && (
-                                    <div className={`border-t divide-y ${isLight
-                                        ? "border-neutral-200 divide-neutral-100"
-                                        : "border-white/10 divide-white/5"
-                                        }`}>
-                                        {issues.map((issue) => (
-                                            <div
-                                                key={issue.id}
-                                                className={`p-4 border-l-4 ${isLight ? "bg-white" : "bg-[#1E1E1E]"} ${severityBorderColors[issue.severity || "low"]}`}
-                                            >
-                                                <div className="flex items-start justify-between gap-4 mb-2">
-                                                    <div className="flex-1">
-                                                        <p className={`text-sm font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>
-                                                            {cleanMarkdown(issue.description)}
-                                                        </p>
-                                                        {issue.evidence && issue.evidence.length > 1 && (
-                                                            <p className={`text-xs mt-1 font-light ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
-                                                                Found by {issue.evidence.length} {issue.evidence.length === 1 ? 'persona' : 'personas'}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex flex-col items-end gap-2 shrink-0">
-                                                        {issue.evidence && issue.evidence.length > 1 ? (
-                                                            <div className="flex flex-wrap gap-1 justify-end max-w-[200px]">
-                                                                {issue.evidence.map((ev, idx) => (
-                                                                    <span
-                                                                        key={idx}
-                                                                        className={`text-xs px-2 py-0.5 border rounded-lg ${isLight
+                                <AnimatePresence>
+                                    {expandedSeverities.has(severity) && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: "auto", opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.2 }}
+                                            className={`border-t overflow-hidden ${isLight
+                                                ? "border-neutral-200"
+                                                : "border-white/10"
+                                                }`}
+                                        >
+                                            <div className={`divide-y ${isLight
+                                                ? "divide-neutral-100"
+                                                : "divide-white/5"
+                                                }`}>
+                                                {issues.map((issue, idx) => (
+                                                    <motion.div
+                                                        key={issue.id}
+                                                        className={`p-4 border-l-4 ${isLight ? "bg-white" : "bg-[#1E1E1E]"} ${severityBorderColors[issue.severity || "low"]}`}
+                                                        initial={{ opacity: 0, x: -10 }}
+                                                        animate={{ opacity: 1, x: 0 }}
+                                                        transition={{ duration: 0.2, delay: idx * 0.05 }}
+                                                    >
+                                                        <div className="flex items-start justify-between gap-4 mb-2">
+                                                            <div className="flex-1">
+                                                                <p className={`text-sm font-medium leading-relaxed ${isLight ? "text-neutral-900" : "text-white"}`}>
+                                                                    {cleanMarkdown(issue.description)}
+                                                                </p>
+                                                                {issue.evidence && issue.evidence.length > 1 && (
+                                                                    <p className={`text-xs mt-1.5 font-light ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
+                                                                        Found by {issue.evidence.length} {issue.evidence.length === 1 ? 'persona' : 'personas'}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex flex-col items-end gap-2 shrink-0">
+                                                                {issue.evidence && issue.evidence.length > 1 ? (
+                                                                    <div className="flex flex-wrap gap-1 justify-end max-w-[200px]">
+                                                                        {issue.evidence.map((ev, idx) => (
+                                                                            <span
+                                                                                key={idx}
+                                                                                className={`text-xs px-2 py-0.5 border rounded-lg ${isLight
+                                                                                    ? "bg-neutral-100 border-neutral-300 text-neutral-600"
+                                                                                    : "bg-[#252525] border-white/10 text-neutral-400"
+                                                                                    }`}
+                                                                                title={`${ev.personaName} - Screen ${ev.screenshotOrder + 1}`}
+                                                                            >
+                                                                                {ev.personaName} • S{ev.screenshotOrder + 1}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                ) : (
+                                                                    <>
+                                                                        <span className={`text-xs px-2 py-0.5 border rounded-lg ${isLight
+                                                                            ? "bg-neutral-100 border-neutral-300 text-neutral-700"
+                                                                            : "bg-[#252525] border-white/10 text-neutral-300"
+                                                                            }`}>
+                                                                            {issue.personaName}
+                                                                        </span>
+                                                                        <span className={`text-xs px-2 py-0.5 border rounded-lg ${isLight
                                                                             ? "bg-neutral-100 border-neutral-300 text-neutral-600"
                                                                             : "bg-[#252525] border-white/10 text-neutral-400"
-                                                                            }`}
-                                                                        title={`${ev.personaName} - Screen ${ev.screenshotOrder + 1}`}
-                                                                    >
-                                                                        {ev.personaName} • S{ev.screenshotOrder + 1}
-                                                                    </span>
-                                                                ))}
+                                                                            }`}>
+                                                                            Screen {issue.screenshotOrder + 1}
+                                                                        </span>
+                                                                    </>
+                                                                )}
                                                             </div>
-                                                        ) : (
-                                                            <>
-                                                                <span className={`text-xs px-2 py-0.5 border rounded-lg ${isLight
-                                                                    ? "bg-neutral-100 border-neutral-300 text-neutral-700"
-                                                                    : "bg-[#252525] border-white/10 text-neutral-300"
+                                                        </div>
+                                                        {issue.recommendation && (
+                                                            <div className={`border p-3 mt-3 rounded-lg ${isLight
+                                                                ? "bg-emerald-50/50 border-emerald-200"
+                                                                : "bg-emerald-500/5 border-emerald-500/20"
+                                                                }`}>
+                                                                <p className={`text-xs uppercase tracking-wide mb-1 font-medium flex items-center gap-1.5 ${isLight ? "text-emerald-700" : "text-emerald-400"
                                                                     }`}>
-                                                                    {issue.personaName}
-                                                                </span>
-                                                                <span className={`text-xs px-2 py-0.5 border rounded-lg ${isLight
-                                                                    ? "bg-neutral-100 border-neutral-300 text-neutral-600"
-                                                                    : "bg-[#252525] border-white/10 text-neutral-400"
-                                                                    }`}>
-                                                                    Screen {issue.screenshotOrder + 1}
-                                                                </span>
-                                                            </>
+                                                                    <TrendingUp size={12} />
+                                                                    Recommendation
+                                                                </p>
+                                                                <p className={`text-sm font-light ${isLight ? "text-neutral-700" : "text-neutral-300"}`}>
+                                                                    {cleanMarkdown(issue.recommendation)}
+                                                                </p>
+                                                            </div>
                                                         )}
-                                                    </div>
-                                                </div>
-                                                {issue.recommendation && (
-                                                    <div className={`border p-3 mt-2 rounded-lg ${isLight
-                                                        ? "bg-neutral-50 border-neutral-200"
-                                                        : "bg-[#252525] border-white/10"
-                                                        }`}>
-                                                        <p className={`text-xs uppercase tracking-wide mb-1 font-light ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
-                                                            Recommendation
-                                                        </p>
-                                                        <p className={`text-sm font-light ${isLight ? "text-neutral-700" : "text-neutral-300"}`}>
-                                                            {cleanMarkdown(issue.recommendation)}
-                                                        </p>
-                                                    </div>
-                                                )}
+                                                    </motion.div>
+                                                ))}
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </motion.div>
                         );
                     })}
                 </div>
             )}
 
             {/* Positive Aspects */}
-            {positives.length > 0 && (
-                <div className={`border rounded-xl overflow-hidden ${isLight
-                    ? "bg-white border-neutral-200"
-                    : "border-white/10 bg-[#1E1E1E]"
-                    }`}>
+            {stats.positives.length > 0 && (
+                <motion.div
+                    className={`border rounded-xl overflow-hidden ${isLight
+                        ? "bg-white border-neutral-200"
+                        : "border-white/10 bg-[#1E1E1E]"
+                        }`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                >
                     <div className={`p-4 border-b ${isLight
                         ? "bg-emerald-50 border-emerald-200"
                         : "bg-emerald-500/10 border-emerald-500/20"
                         }`}>
                         <div className="flex items-center gap-2">
-                            <CheckCircle2 size={18} className={isLight ? "text-emerald-600" : "text-emerald-400"} />
+                            <ThumbsUp size={18} className={isLight ? "text-emerald-600" : "text-emerald-400"} />
                             <h3 className={`font-medium ${isLight ? "text-emerald-900" : "text-emerald-300"}`}>
-                                Positive Observations ({positives.length})
+                                Positive Observations
                             </h3>
+                            <span className={`text-xs px-2 py-0.5 rounded-lg ${isLight
+                                ? "bg-emerald-100 text-emerald-700"
+                                : "bg-emerald-500/20 text-emerald-400"
+                                }`}>
+                                {stats.positives.length}
+                            </span>
                         </div>
                     </div>
                     <div className={`divide-y ${isLight ? "divide-neutral-100" : "divide-white/5"}`}>
-                        {positives.slice(0, 10).map((item) => (
-                            <div key={item.id} className="p-4 flex items-start justify-between gap-4">
+                        {stats.positives.slice(0, 10).map((item, idx) => (
+                            <motion.div
+                                key={item.id}
+                                className="p-4 flex items-start justify-between gap-4"
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ duration: 0.2, delay: idx * 0.03 }}
+                            >
                                 <div className="flex-1">
-                                    <p className={`text-sm font-light ${isLight ? "text-neutral-700" : "text-neutral-300"}`}>
+                                    <p className={`text-sm font-light leading-relaxed ${isLight ? "text-neutral-700" : "text-neutral-300"}`}>
                                         {cleanMarkdown(item.description)}
                                     </p>
                                     {item.evidence && item.evidence.length > 1 && (
@@ -511,23 +558,28 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
                                         {item.personaName} • Screen {item.screenshotOrder + 1}
                                     </span>
                                 )}
-                            </div>
+                            </motion.div>
                         ))}
-                        {positives.length > 10 && (
+                        {stats.positives.length > 10 && (
                             <div className={`p-4 text-center text-sm font-light ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
-                                +{positives.length - 10} more positive observations
+                                +{stats.positives.length - 10} more positive observations
                             </div>
                         )}
                     </div>
-                </div>
+                </motion.div>
             )}
 
             {/* Accessibility Notes */}
-            {accessibility.length > 0 && (
-                <div className={`border rounded-xl overflow-hidden ${isLight
-                    ? "bg-white border-neutral-200"
-                    : "border-white/10 bg-[#1E1E1E]"
-                    }`}>
+            {stats.accessibility.length > 0 && (
+                <motion.div
+                    className={`border rounded-xl overflow-hidden ${isLight
+                        ? "bg-white border-neutral-200"
+                        : "border-white/10 bg-[#1E1E1E]"
+                        }`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                >
                     <div className={`p-4 border-b ${isLight
                         ? "bg-purple-50 border-purple-200"
                         : "bg-purple-500/10 border-purple-500/20"
@@ -535,15 +587,27 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
                         <div className="flex items-center gap-2">
                             <Accessibility size={18} className={isLight ? "text-purple-600" : "text-purple-400"} />
                             <h3 className={`font-medium ${isLight ? "text-purple-900" : "text-purple-300"}`}>
-                                Accessibility Notes ({accessibility.length})
+                                Accessibility Notes
                             </h3>
+                            <span className={`text-xs px-2 py-0.5 rounded-lg ${isLight
+                                ? "bg-purple-100 text-purple-700"
+                                : "bg-purple-500/20 text-purple-400"
+                                }`}>
+                                {stats.accessibility.length}
+                            </span>
                         </div>
                     </div>
                     <div className={`divide-y ${isLight ? "divide-neutral-100" : "divide-white/5"}`}>
-                        {accessibility.slice(0, 8).map((item) => (
-                            <div key={item.id} className="p-4 flex items-start justify-between gap-4">
+                        {stats.accessibility.slice(0, 8).map((item, idx) => (
+                            <motion.div
+                                key={item.id}
+                                className="p-4 flex items-start justify-between gap-4"
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ duration: 0.2, delay: idx * 0.03 }}
+                            >
                                 <div className="flex-1">
-                                    <p className={`text-sm font-light ${isLight ? "text-neutral-700" : "text-neutral-300"}`}>
+                                    <p className={`text-sm font-light leading-relaxed ${isLight ? "text-neutral-700" : "text-neutral-300"}`}>
                                         {cleanMarkdown(item.description)}
                                     </p>
                                     {item.evidence && item.evidence.length > 1 && (
@@ -575,19 +639,19 @@ export function AggregatedScreenshotInsights({ result }: AggregatedScreenshotIns
                                         {item.personaName} • Screen {item.screenshotOrder + 1}
                                     </span>
                                 )}
-                            </div>
+                            </motion.div>
                         ))}
-                        {accessibility.length > 8 && (
+                        {stats.accessibility.length > 8 && (
                             <div className={`p-4 text-center text-sm font-light ${isLight ? "text-neutral-500" : "text-neutral-400"}`}>
-                                +{accessibility.length - 8} more accessibility notes
+                                +{stats.accessibility.length - 8} more accessibility notes
                             </div>
                         )}
                     </div>
-                </div>
+                </motion.div>
             )}
 
             {/* Empty state for no issues */}
-            {totalIssues === 0 && positives.length === 0 && accessibility.length === 0 && (
+            {stats.totalIssues === 0 && stats.positives.length === 0 && stats.accessibility.length === 0 && (
                 <div className={`border p-8 text-center rounded-xl ${isLight
                     ? "border-emerald-200 bg-emerald-50"
                     : "border-emerald-500/20 bg-emerald-500/10"

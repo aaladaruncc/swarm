@@ -78,7 +78,7 @@ function ContextVisual() {
   const typedText = useTypingEffect(exampleTexts, 80, 40, 2000);
 
   return (
-    <div className="relative w-full h-full min-h-[420px] rounded-xl overflow-hidden">
+    <div className="relative w-full h-full min-h-[320px] sm:min-h-[380px] md:min-h-[420px] rounded-xl overflow-hidden">
       {/* Background image - more faint */}
       <div 
         className="absolute inset-0 bg-cover bg-center opacity-40"
@@ -139,7 +139,7 @@ function SimulateVisual() {
   }, [personas.length]);
 
   return (
-    <div className="relative w-full h-full min-h-[420px] rounded-xl overflow-hidden">
+    <div className="relative w-full h-full min-h-[320px] sm:min-h-[380px] md:min-h-[420px] rounded-xl overflow-hidden">
       {/* Background image - more faint */}
       <div 
         className="absolute inset-0 bg-cover bg-center opacity-40"
@@ -250,9 +250,9 @@ function ObserveVisual() {
   const pathLength = 220; // approximate length of the path
 
   return (
-    <div className="relative w-full h-full min-h-[420px] rounded-xl overflow-hidden">
+    <div className="relative w-full h-full min-h-[320px] sm:min-h-[380px] md:min-h-[420px] rounded-xl overflow-hidden">
       {/* Background image - more faint */}
-      <div 
+      <div
         className="absolute inset-0 bg-cover bg-center opacity-40"
         style={{ backgroundImage: "url('/images/background_cards/3.png')" }}
       />
@@ -478,7 +478,7 @@ function InsightsVisual() {
   ];
 
   return (
-    <div className="relative w-full h-full min-h-[420px] rounded-xl overflow-hidden">
+    <div className="relative w-full h-full min-h-[320px] sm:min-h-[380px] md:min-h-[420px] rounded-xl overflow-hidden">
       {/* Background image - more faint */}
       <div 
         className="absolute inset-0 bg-cover bg-center opacity-40"
@@ -566,7 +566,7 @@ export function Features() {
   return (
     <section
       id="how-it-works"
-      className="relative py-24 md:py-32 bg-slate-50 overflow-hidden"
+      className="relative py-16 sm:py-20 md:py-24 lg:py-32 bg-slate-50 overflow-hidden"
     >
       {/* Subtle gradient overlays for depth and visual interest */}
       <div className="absolute inset-0 pointer-events-none">
@@ -574,23 +574,25 @@ export function Features() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-50/30 via-transparent to-transparent" />
       </div>
 
-      <div className="container mx-auto px-4 md:px-8 max-w-[1300px] relative z-10">
+      <div className="container mx-auto px-4 sm:px-6 md:px-8 max-w-[1300px] relative z-10">
         {/* Header - Centered */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center max-w-3xl mx-auto mb-16 md:mb-20"
+          className="text-center max-w-3xl mx-auto mb-10 sm:mb-12 md:mb-16 lg:mb-20"
         >
-          <h2 className="text-4xl md:text-5xl font-sans font-light tracking-tight text-slate-950 mb-5 leading-[1.15]">
-            Simulate user behavior 
-            <br />
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-sans font-light tracking-tight text-slate-950 mb-4 sm:mb-5 leading-[1.15]">
+            Simulate user behavior
+            <br className="hidden sm:block" />
+            <span className="sm:hidden"> </span>
             before you impact them
           </h2>
-          <p className="text-lg md:text-xl text-slate-600 font-light leading-relaxed">
-          Preview how users move through a feature 
-          <br />
+          <p className="text-base sm:text-lg md:text-xl text-slate-600 font-light leading-relaxed px-2">
+          Preview how users move through a feature
+          <br className="hidden sm:block" />
+          <span className="sm:hidden"> </span>
           and catch friction early, while changes are still easy.
           </p>
         </motion.div>
